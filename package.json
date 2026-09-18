@@ -16,7 +16,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^2.5.5",
-    "@neondatabase/auth": "latest"
+    "@neondatabase/auth": "0.4.2-beta"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
