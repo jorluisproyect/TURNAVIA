@@ -7,10 +7,10 @@ import { StatusPill } from '@/components/StatusPill';
 import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 type ClientStatus='TRIAL'|'PAGO_PENDIENTE'|'REVISION_BINANCE'|'ACTIVO'|'SUSPENDIDO';
 type Client={id:string;name:string;type:string;specialty?:string;phone:string;email:string;status:ClientStatus;trialEndsAt?:string;paymentMethod?:string;paymentReference?:string;paymentComment?:string};
-const label:Record<ClientStatus,string>={TRIAL:'Prueba gratis',PAGO_PENDIENTE:'Pago pendiente',REVISION_BINANCE:'Revisar Binance',ACTIVO:'Activo',SUSPENDIDO:'Suspendido'};
+const label:Record<ClientStatus,string>={TRIAL:'Prueba gratis',PAGO_PENDIENTE:'Pago pendiente',REVISION_BINANCE:'Pago en revisión',ACTIVO:'Activo',SUSPENDIDO:'Suspendido'};
 export default function Master(){
  const [clients,setClients]=useState<Client[]>([]); const [data,setData]=useState<any>(null);
- async function load(){const [c,d]=await Promise.all([fetch('/api/clients').then(r=>r.json()),fetch('/api/demo').then(r=>r.json())]);setClients(c.clients);setData(d)}
+ async function load(){const [c,d]=await Promise.all([fetch('/api/clients').then(r=>r.json()),fetch('/api/demo').then(r=>r.json())]);setClients(c.clients||[]);setData(d)}
  useEffect(()=>{load()},[]);
  async function setStatus(id:string,status:ClientStatus){await fetch('/api/clients',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,status})});load()}
  const active=clients.filter(c=>c.status==='ACTIVO'); const doctors=active.filter(c=>c.type.startsWith('Médico')).length; const clinics=active.filter(c=>c.type.startsWith('Clínica')).length; const mrr=doctors*15+clinics*49; const trials=clients.filter(c=>c.status==='TRIAL').length;
