@@ -1,10 +1,16 @@
+'use client';
+import { useActionState } from 'react';
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
-import { Building2, HeartPulse, ShieldCheck, UserRound, ArrowRight } from 'lucide-react';
-const roles=[
- {href:'/medico',title:'Médico',desc:'Agenda, disponibilidad y pacientes.',Icon:HeartPulse},
- {href:'/recepcion',title:'Clínica / Recepción',desc:'Control de agenda y llegadas.',Icon:Building2},
- {href:'/paciente',title:'Paciente',desc:'Mis citas y estado de atención.',Icon:UserRound},
- {href:'/master',title:'Administración Turnavia',desc:'Clientes, ingresos y operación.',Icon:ShieldCheck},
-];
-export default function Ingresar(){return <main className="demo-chooser"><div className="container"><div className="row space"><Brand/><Link className="btn btn-secondary" href="/">Inicio</Link></div><div className="demo-head"><span className="eyebrow">Acceso al MVP</span><h1>¿Cómo quieres entrar?</h1><p className="muted">En la demostración no pedimos contraseña para que puedas presentar todos los módulos rápidamente. La autenticación segura se activa antes de producción.</p></div><div className="role-grid">{roles.map(({href,title,desc,Icon})=><Link href={href} className="role-card" key={title}><div className="iconbox"><Icon/></div><h3>{title}</h3><p>{desc}</p><div className="go">Entrar <ArrowRight size={16}/></div></Link>)}</div></div></main>}
+import { signInUser } from './actions';
+
+export default function Ingresar(){
+  const [state,action,pending]=useActionState(signInUser,null);
+  return <main className="demo-chooser"><div className="container booking-wrap"><div className="row space"><Brand/><Link className="btn btn-secondary" href="/">Inicio</Link></div><div className="demo-head"><span className="eyebrow">Acceso seguro</span><h1>Ingresa a TURNAVIA</h1><p className="muted">Médicos y pacientes usan el correo y la contraseña que ellos mismos crearon.</p></div><section className="profile-card"><form action={action} className="form">
+    <div className="field"><label>Correo</label><input name="email" type="email" required placeholder="correo@ejemplo.com"/></div>
+    <div className="field"><label>Contraseña</label><input name="password" type="password" required/></div>
+    {state?.error&&<div className="notice danger">{state.error}</div>}
+    <button className="btn btn-primary" disabled={pending}>{pending?'Ingresando...':'Ingresar'}</button>
+    <div className="button-row"><Link href="/registro?role=DOCTOR" className="btn btn-secondary">Crear cuenta médico</Link><Link href="/registro?role=PATIENT" className="btn btn-secondary">Crear cuenta paciente</Link></div>
+  </form></section></div></main>
+}
