@@ -9,7 +9,7 @@ function mapClient(r:any){
     status:r.status,createdAt:r.created_at?new Date(r.created_at).toISOString():undefined,
     trialEndsAt:r.trial_ends_at?new Date(r.trial_ends_at).toISOString():undefined,
     paymentMethod:r.payment_method||undefined,paymentReference:r.payment_reference||undefined,
-    paymentComment:r.payment_comment||undefined,paypalOrderId:r.paypal_order_id||undefined
+    paymentComment:r.payment_comment||undefined,paypalOrderId:r.paypal_order_id||undefined,hasProof:Boolean(r.payment_proof),paymentSubmittedAt:r.payment_submitted_at?new Date(r.payment_submitted_at).toISOString():undefined,paymentRejectionReason:r.payment_rejection_reason||undefined
   };
 }
 
@@ -50,7 +50,9 @@ export async function PATCH(req:Request){
     payment_method=COALESCE(${body.paymentMethod||null},payment_method),
     payment_reference=COALESCE(${body.paymentReference||null},payment_reference),
     payment_comment=COALESCE(${body.paymentComment||null},payment_comment),
-    paypal_order_id=COALESCE(${body.paypalOrderId||null},paypal_order_id)
+    paypal_order_id=COALESCE(${body.paypalOrderId||null},paypal_order_id),
+    payment_reviewed_at=CASE WHEN ${body.status||null} IN ('ACTIVO','PAGO_PENDIENTE') THEN now() ELSE payment_reviewed_at END,
+    payment_rejection_reason=CASE WHEN ${body.status||null}='PAGO_PENDIENTE' THEN ${body.rejectionReason||'Pago rechazado. Verifica los datos e intenta nuevamente.'} ELSE payment_rejection_reason END
     WHERE id=${body.id}::uuid RETURNING *`;
   const client=mapClient(rows[0]);
   if(body.status==='ACTIVO' && prev.status!=='ACTIVO'){
