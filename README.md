@@ -44,3 +44,6 @@ Neon project: TURNAVIA
 - Demo API persists bookings, payment review/approval, doctor settings, statuses and one-time rescheduling whenever `DATABASE_URL` is present
 
 Before production deployment, set `DATABASE_URL` and payment secrets as environment variables in the hosting provider. Do not commit `.env.local`.
+
+
+<!-- Vercel clean deploy trigger -->
