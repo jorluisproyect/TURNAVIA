@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { planFromType } from '@/lib/plans';
 
-export type ClientStatus = 'TRIAL'|'PAGO_PENDIENTE'|'REVISION_BINANCE'|'ACTIVO'|'SUSPENDIDO';
-export type Client = {
+type ClientStatus = 'TRIAL'|'PAGO_PENDIENTE'|'REVISION_BINANCE'|'ACTIVO'|'SUSPENDIDO';
+type Client = {
   id:string; name:string; type:string; specialty?:string; phone:string; email:string;
   status:ClientStatus; createdAt:string; trialEndsAt?:string; paymentMethod?:'PAYPAL'|'BINANCE';
   paymentReference?:string; paymentComment?:string; paypalOrderId?:string;
@@ -18,15 +18,15 @@ const clients = globalThis.__turnaviaClients ?? [
 ];
 if(!globalThis.__turnaviaClients) globalThis.__turnaviaClients=clients;
 
-export function getClients(){ return clients }
-export function getClient(id:string){ return clients.find(c=>c.id===id) }
+function getClients(){ return clients }
+function getClient(id:string){ return clients.find(c=>c.id===id) }
 
 export async function GET(req:Request){
   const now=Date.now();
   for(const c of clients){ if(c.status==='TRIAL' && c.trialEndsAt && new Date(c.trialEndsAt).getTime()<now) c.status='PAGO_PENDIENTE'; }
   const url = new URL(req.url); const id=url.searchParams.get('id');
   if(id){ const client=getClient(id); return client?NextResponse.json({client}):NextResponse.json({error:'Cliente no encontrado'},{status:404}); }
-  return NextResponse.json({clients});
+  return NextResponse.json({clients:getClients()});
 }
 export async function POST(req:Request){
   const body=await req.json(); const plan=planFromType(body.type||'Médico independiente');
