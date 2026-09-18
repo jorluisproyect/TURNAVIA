@@ -8,6 +8,7 @@ export type Appointment = {
   patient: string;
   nationalId: string;
   phone: string;
+  email?: string;
   reason?: string;
   startsAt: string;
   endsAt: string;
