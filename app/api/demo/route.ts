@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { demoStore, makeSlots, resetDemoStore } from '@/lib/demo-store';
 import { sql } from '@/lib/db';
+import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
 
 const fallbackDoctor={slug:'sofia-mendoza',name:'Dra. Sofía Mendoza',initials:'SM',specialty:'Cardiología',location:'Centro Médico Caracas · Consultorio 204'};
 
@@ -18,10 +19,10 @@ async function dbSnapshot(){
   const d=await dbDoctor();
   if(!d) return null;
   const avs=await sql`SELECT id, starts_at, ends_at, slot_minutes FROM availability_blocks WHERE doctor_id=${d.id} AND published=true ORDER BY starts_at`;
-  const aps=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.reason_short,a.consultation_price,a.consultation_currency,a.payment_method,a.payment_reference,a.payment_proof_url,a.payment_submitted_at,a.payment_approved_at,a.reschedule_used,a.policy_accepted,p.full_name AS patient,p.national_id,p.phone
+  const aps=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.reason_short,a.consultation_price,a.consultation_currency,a.payment_method,a.payment_reference,a.payment_proof_url,a.payment_submitted_at,a.payment_approved_at,a.reschedule_used,a.policy_accepted,p.full_name AS patient,p.national_id,p.phone,p.email
     FROM appointments a JOIN patients p ON p.id=a.patient_id WHERE a.doctor_id=${d.id} ORDER BY a.starts_at`;
   const statusRows=await sql`SELECT status,delay_minutes FROM doctor_status_updates WHERE doctor_id=${d.id} ORDER BY updated_at DESC LIMIT 1`;
-  const appointments=aps.map((a:any)=>({id:String(a.id),doctorSlug:'sofia-mendoza',doctorName:d.full_name,patient:a.patient,nationalId:a.national_id||'',phone:a.phone,reason:a.reason_short||'',startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,location:[d.location_name,d.room?`Consultorio ${d.room}`:''].filter(Boolean).join(' · '),consultationPrice:Number(a.consultation_price ?? d.consultation_price ?? 0),currency:a.consultation_currency||d.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofDataUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():undefined,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():undefined,rescheduleUsed:Boolean(a.reschedule_used),policyAccepted:Boolean(a.policy_accepted)}));
+  const appointments=aps.map((a:any)=>({id:String(a.id),doctorSlug:'sofia-mendoza',doctorName:d.full_name,patient:a.patient,nationalId:a.national_id||'',phone:a.phone,email:a.email||'',reason:a.reason_short||'',startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,location:[d.location_name,d.room?`Consultorio ${d.room}`:''].filter(Boolean).join(' · '),consultationPrice:Number(a.consultation_price ?? d.consultation_price ?? 0),currency:a.consultation_currency||d.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofDataUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():undefined,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():undefined,rescheduleUsed:Boolean(a.reschedule_used),policyAccepted:Boolean(a.policy_accepted)}));
   const availability=avs.map((a:any)=>{
     const s=new Date(a.starts_at),e=new Date(a.ends_at); const date=s.toLocaleDateString('en-CA',{timeZone:'America/Caracas'}); const start=s.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'}); const end=e.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'});
     const base={id:String(a.id),doctorSlug:'sofia-mendoza',date,start,end,slotMinutes:Number(a.slot_minutes),location:[d.location_name,d.room?`Consultorio ${d.room}`:''].filter(Boolean).join(' · ')};
@@ -46,12 +47,25 @@ export async function POST(req:Request){
           if(taken.length)return NextResponse.json({error:'Ese horario acaba de ser reservado. Elige otro.'},{status:409});
           let patients=await sql`SELECT id FROM patients WHERE phone=${body.phone} LIMIT 1`;
           let patientId:any;
-          if(patients.length) patientId=(patients[0] as any).id; else {const p=await sql`INSERT INTO patients(full_name,national_id,phone) VALUES(${body.patient},${body.nationalId||null},${body.phone}) RETURNING id`;patientId=(p[0] as any).id}
+          if(patients.length){ patientId=(patients[0] as any).id; await sql`UPDATE patients SET email=COALESCE(${body.email||null},email),full_name=${body.patient} WHERE id=${patientId}`; } else {const p=await sql`INSERT INTO patients(full_name,national_id,phone,email) VALUES(${body.patient},${body.nationalId||null},${body.phone},${body.email||null}) RETURNING id`;patientId=(p[0] as any).id}
           await sql`INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted)
             VALUES(${doc.id},${patientId},${doc.location_id},${body.startsAt}::timestamptz,${body.startsAt}::timestamptz + interval '30 minutes','PAYMENT_REVIEW','PATIENT_WEB',${body.reason||null},${Number(doc.consultation_price||0)},${doc.consultation_currency||'USD'},${body.paymentMethod||null},${body.paymentReference||null},${body.paymentProofDataUrl||null},now(),false,${Boolean(body.policyAccepted)})`;
           return NextResponse.json({ok:true,state:await snapshot()});
         }
-        if(body.action==='approve_payment'){await sql`UPDATE appointments SET status='CONFIRMED',payment_approved_at=now() WHERE id=${body.id}::uuid`;return NextResponse.json({ok:true,state:await snapshot()})}
+        if(body.action==='approve_payment'){
+          const rows=await sql`SELECT p.email,p.full_name,a.starts_at,u.full_name AS doctor_name,l.name AS location_name,dl.room
+            FROM appointments a JOIN patients p ON p.id=a.patient_id
+            JOIN doctors d ON d.id=a.doctor_id JOIN users u ON u.id=d.user_id
+            LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id LEFT JOIN locations l ON l.id=dl.location_id
+            WHERE a.id=${body.id}::uuid LIMIT 1`;
+          await sql`UPDATE appointments SET status='CONFIRMED',payment_approved_at=now() WHERE id=${body.id}::uuid`;
+          const x=rows[0] as any;
+          if(x?.email){
+            const when=new Date(x.starts_at).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
+            await sendTransactionalEmail({to:x.email,subject:'Tu cita TURNAVIA fue confirmada',html:turnaviaEmail('Cita confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu cita quedó confirmada.</p><p><strong>Médico:</strong> ${x.doctor_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${[x.location_name,x.room?'Consultorio '+x.room:''].filter(Boolean).join(' · ')}</p><p>Si no puedes asistir, recuerda que tienes una sola reprogramación sujeta a disponibilidad.</p>`)});
+          }
+          return NextResponse.json({ok:true,state:await snapshot()})
+        }
         if(body.action==='reject_payment'){await sql`UPDATE appointments SET status='PAYMENT_REJECTED' WHERE id=${body.id}::uuid`;return NextResponse.json({ok:true,state:await snapshot()})}
         if(body.action==='doctor_settings'){await sql`UPDATE doctors SET consultation_price=${Number(body.consultationPrice||0)},consultation_currency=${body.currency||'USD'},payment_instructions=${body.paymentInstructions||''} WHERE id=${doc.id}`;return NextResponse.json({ok:true,state:await snapshot()})}
         if(body.action==='reschedule_once'){
@@ -69,7 +83,7 @@ export async function POST(req:Request){
   }
   if(body.action==='book'){
     const exists=demoStore.appointments.some(a=>a.startsAt===body.startsAt&&!['CANCELLED','PAYMENT_REJECTED'].includes(a.status)); if(exists)return NextResponse.json({error:'Ese horario acaba de ser reservado. Elige otro.'},{status:409});
-    const start=new Date(body.startsAt);const end=new Date(start.getTime()+30*60000);demoStore.appointments.push({id:`p${Date.now()}`,doctorSlug:'sofia-mendoza',doctorName:'Dra. Sofía Mendoza',patient:body.patient,nationalId:body.nationalId,phone:body.phone,reason:body.reason||'',startsAt:body.startsAt,endsAt:end.toISOString(),status:'PAYMENT_REVIEW',location:'Centro Médico Caracas · Consultorio 204',consultationPrice:demoStore.consultationPrice,currency:demoStore.currency,paymentMethod:body.paymentMethod||'',paymentReference:body.paymentReference||'',paymentProofName:body.paymentProofName||'',paymentProofDataUrl:body.paymentProofDataUrl||'',paymentSubmittedAt:new Date().toISOString(),rescheduleUsed:false,policyAccepted:Boolean(body.policyAccepted)});return NextResponse.json({ok:true,state:await snapshot()});
+    const start=new Date(body.startsAt);const end=new Date(start.getTime()+30*60000);demoStore.appointments.push({id:`p${Date.now()}`,doctorSlug:'sofia-mendoza',doctorName:'Dra. Sofía Mendoza',patient:body.patient,nationalId:body.nationalId,phone:body.phone,email:body.email||'',reason:body.reason||'',startsAt:body.startsAt,endsAt:end.toISOString(),status:'PAYMENT_REVIEW',location:'Centro Médico Caracas · Consultorio 204',consultationPrice:demoStore.consultationPrice,currency:demoStore.currency,paymentMethod:body.paymentMethod||'',paymentReference:body.paymentReference||'',paymentProofName:body.paymentProofName||'',paymentProofDataUrl:body.paymentProofDataUrl||'',paymentSubmittedAt:new Date().toISOString(),rescheduleUsed:false,policyAccepted:Boolean(body.policyAccepted)});return NextResponse.json({ok:true,state:await snapshot()});
   }
   if(body.action==='approve_payment'){const ap=demoStore.appointments.find(a=>a.id===body.id);if(!ap)return NextResponse.json({error:'Cita no encontrada'},{status:404});ap.status='CONFIRMED';ap.paymentApprovedAt=new Date().toISOString();return NextResponse.json({ok:true,state:await snapshot()})}
   if(body.action==='reject_payment'){const ap=demoStore.appointments.find(a=>a.id===body.id);if(!ap)return NextResponse.json({error:'Cita no encontrada'},{status:404});ap.status='PAYMENT_REJECTED';return NextResponse.json({ok:true,state:await snapshot()})}

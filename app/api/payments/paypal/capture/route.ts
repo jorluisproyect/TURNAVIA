@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getClient } from '@/lib/client-store';
+import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
 
 async function token(){
  const id=process.env.PAYPAL_CLIENT_ID, secret=process.env.PAYPAL_CLIENT_SECRET;
@@ -20,7 +21,10 @@ export async function POST(req:Request){
   const r=await fetch(`${base}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`,{method:'POST',headers:{Authorization:`Bearer ${access}`,'Content-Type':'application/json'},cache:'no-store'});
   const data=await r.json();
   if(!r.ok)return NextResponse.json({error:'No se pudo confirmar el pago',details:data},{status:502});
-  if(data.status==='COMPLETED'){c.status='ACTIVO';c.paymentMethod='PAYPAL';}
+  if(data.status==='COMPLETED'){
+    c.status='ACTIVO';c.paymentMethod='PAYPAL';
+    await sendTransactionalEmail({to:c.email,subject:'Pago confirmado - TURNAVIA',html:turnaviaEmail('Tu cuenta TURNAVIA está activa',`<p>Hola <strong>${c.name}</strong>.</p><p>Confirmamos tu pago por PayPal.</p><p>Tu cuenta ya está <strong>ACTIVA</strong>.</p><p><a href="${process.env.APP_URL||'https://turnavia.vercel.app'}/ingresar">Ingresar a TURNAVIA</a></p>`)});
+  }
   return NextResponse.json({ok:data.status==='COMPLETED',status:data.status,client:c});
  }catch(e:any){
   return NextResponse.json({error:'Error confirmando PayPal',details:e.message},{status:500});
