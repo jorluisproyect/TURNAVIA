@@ -10,7 +10,7 @@ function mapClient(r:any){
     status:r.status,createdAt:r.created_at?new Date(r.created_at).toISOString():undefined,
     trialEndsAt:r.trial_ends_at?new Date(r.trial_ends_at).toISOString():undefined,
     paymentMethod:r.payment_method||undefined,paymentReference:r.payment_reference||undefined,
-    paymentComment:r.payment_comment||undefined,paypalOrderId:r.paypal_order_id||undefined,hasProof:Boolean(r.payment_proof),paymentSubmittedAt:r.payment_submitted_at?new Date(r.payment_submitted_at).toISOString():undefined,paymentRejectionReason:r.payment_rejection_reason||undefined
+    paymentComment:r.payment_comment||undefined,paypalOrderId:r.paypal_order_id||undefined,hasProof:Boolean(r.payment_proof),paymentSubmittedAt:r.payment_submitted_at?new Date(r.payment_submitted_at).toISOString():undefined,paymentReviewedAt:r.payment_reviewed_at?new Date(r.payment_reviewed_at).toISOString():undefined,paymentRejectionReason:r.payment_rejection_reason||undefined
   };
 }
 
@@ -24,7 +24,7 @@ export async function GET(req:Request){
     if(!access.client) return NextResponse.json({error:'Cliente no encontrado'},{status:404});
     if(!access.allowed) return NextResponse.json({error:'No autorizado'},{status:403});
     const x=mapClient(access.client);
-    return NextResponse.json({client:{id:x.id,name:x.name,type:x.type,category:x.category,subcategory:x.subcategory,status:x.status,trialEndsAt:x.trialEndsAt,paymentSubmittedAt:x.paymentSubmittedAt,paymentRejectionReason:x.paymentRejectionReason}});
+    return NextResponse.json({client:{id:x.id,name:x.name,type:x.type,category:x.category,subcategory:x.subcategory,status:x.status,trialEndsAt:x.trialEndsAt,paymentSubmittedAt:x.paymentSubmittedAt,paymentReviewedAt:x.paymentReviewedAt,paymentRejectionReason:x.paymentRejectionReason}});
   }
   if(!(await isMasterSession())) return NextResponse.json({error:'No autorizado'},{status:403});
   const rows=await sql`SELECT * FROM commercial_clients ORDER BY created_at DESC`;
