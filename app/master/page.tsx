@@ -4,6 +4,7 @@ import { Building2, HeartPulse, DollarSign, CheckCircle2, UserPlus, Clock3, Eye 
 import { StatusPill } from '@/components/StatusPill';
 import { sql } from '@/lib/db';
 import MasterActions from './MasterActions';
+import { refreshAllCommercialStatuses } from '@/lib/subscription';
 
 export const dynamic='force-dynamic';
 
@@ -11,6 +12,7 @@ type ClientStatus='TRIAL'|'PAGO_PENDIENTE'|'REVISION_BINANCE'|'ACTIVO'|'SUSPENDI
 const labels:Record<ClientStatus,string>={TRIAL:'Prueba gratis',PAGO_PENDIENTE:'Pago pendiente',REVISION_BINANCE:'Pago en revisión',ACTIVO:'Activo',SUSPENDIDO:'Suspendido'};
 
 export default async function Master(){
+  await refreshAllCommercialStatuses();
   const rows=sql ? await sql`SELECT * FROM commercial_clients ORDER BY created_at DESC` : [];
   const clients=rows.map((r:any)=>({
     id:String(r.id),name:r.name||'Sin nombre',type:r.type||'—',category:r.category||'',subcategory:r.subcategory||'',specialty:r.specialty||'',phone:r.phone||'—',email:r.email||'—',
@@ -18,6 +20,7 @@ export default async function Master(){
     trialEndsAt:r.trial_ends_at?new Date(r.trial_ends_at).toISOString():undefined,
     paymentMethod:r.payment_method||'',paymentReference:r.payment_reference||'',
     paymentSubmittedAt:r.payment_submitted_at?new Date(r.payment_submitted_at).toISOString():undefined,
+    paymentReviewedAt:r.payment_reviewed_at?new Date(r.payment_reviewed_at).toISOString():undefined,
     hasProof:Boolean(r.payment_proof),paymentRejectionReason:r.payment_rejection_reason||''
   }));
   const active=clients.filter(c=>c.status==='ACTIVO');
@@ -49,7 +52,7 @@ export default async function Master(){
           <td><strong>{c.name}</strong><div className="muted" style={{fontSize:12}}>{c.email} · {c.phone}</div>{c.trialEndsAt&&c.status==='TRIAL'&&<div className="muted" style={{fontSize:12}}>Prueba hasta {new Date(c.trialEndsAt).toLocaleDateString('es-VE')}</div>}</td>
           <td>{c.type}<div className="muted" style={{fontSize:12}}>{c.category}{c.subcategory?` · ${c.subcategory}`:''}</div><div className="muted" style={{fontSize:12}}>{c.specialty}</div></td>
           <td>{c.paymentMethod||'—'}{c.paymentReference&&<div><strong>Ref: {c.paymentReference}</strong></div>}{c.paymentSubmittedAt&&<div className="muted" style={{fontSize:12}}>Enviado: {new Date(c.paymentSubmittedAt).toLocaleString('es-VE')}</div>}{c.hasProof&&<a className="btn btn-secondary" style={{marginTop:8}} href={`/api/payments/proof?id=${c.id}`} target="_blank" rel="noreferrer"><Eye size={15}/> Ver comprobante</a>}{c.paymentRejectionReason&&<div className="notice danger" style={{marginTop:8,fontSize:12}}>{c.paymentRejectionReason}</div>}</td>
-          <td><StatusPill tone={tone(c.status)}>{labels[c.status]||c.status}</StatusPill></td>
+          <td><StatusPill tone={tone(c.status)}>{labels[c.status]||c.status}</StatusPill>{c.status==='ACTIVO'&&c.paymentReviewedAt&&<div className="muted" style={{fontSize:12,marginTop:5}}>Renueva aprox. {new Date(new Date(c.paymentReviewedAt).getTime()+31*86400000).toLocaleDateString('es-VE')}</div>}</td>
           <td><MasterActions id={c.id} status={c.status}/></td>
         </tr>)}</tbody></table></div>}
       </section>
