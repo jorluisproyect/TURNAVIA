@@ -1,11 +1,13 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authClient } from '@/lib/auth/client';
 import { Brand } from '@/components/Brand';
 import { CheckCircle2, ShieldCheck } from 'lucide-react';
 
 export default function SeguridadCuenta(){
+  const router=useRouter();
   const [currentPassword,setCurrentPassword]=useState('');
   const [newPassword,setNewPassword]=useState('');
   const [confirm,setConfirm]=useState('');
@@ -21,14 +23,16 @@ export default function SeguridadCuenta(){
     try{
       const {error}=await authClient.changePassword({currentPassword,newPassword,revokeOtherSessions:true});
       if(error){setError(error.message||'No se pudo cambiar la contraseña.');return}
+      await fetch('/api/account/password-changed',{method:'POST'});
       setDone(true);setCurrentPassword('');setNewPassword('');setConfirm('');
+      setTimeout(()=>{router.replace('/panel');router.refresh()},900);
     }catch{setError('No se pudo completar el cambio.')}
     finally{setBusy(false)}
   }
 
   return <main className="demo-chooser"><div className="container booking-wrap">
     <div className="row space"><Brand/><Link href="/panel" className="btn btn-secondary">Volver a mi panel</Link></div>
-    <div className="demo-head"><span className="eyebrow"><ShieldCheck size={15}/> Seguridad</span><h1>Contraseña y acceso</h1><p className="muted">Cambia tu contraseña y cierra las demás sesiones por seguridad.</p></div>
+    <div className="demo-head"><span className="eyebrow"><ShieldCheck size={15}/> Seguridad</span><h1>Contraseña y acceso</h1><p className="muted">Cambia tu contraseña y cierra las demás sesiones por seguridad. Si el sistema te envió aquí al entrar como Master, debes completar este cambio antes de abrir el panel administrativo.</p></div>
     <section className="profile-card">
       {done&&<div className="notice"><CheckCircle2 size={16}/> Contraseña actualizada correctamente.</div>}
       <form className="form" onSubmit={submit}>
