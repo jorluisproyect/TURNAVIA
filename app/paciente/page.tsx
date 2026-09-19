@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { CalendarCheck2, CarFront, CheckCircle2, MapPin, XCircle } from 'lucide-react';
+import { CalendarCheck2, CalendarClock, CarFront, CheckCircle2, MapPin, XCircle } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 
 const label:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Ya llegaste',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asististe'};
@@ -11,6 +11,10 @@ export default function Paciente(){
  const [data,setData]=useState<any>(null);
  const [error,setError]=useState('');
  const [msg,setMsg]=useState('');
+ const [reschedule,setReschedule]=useState<any>(null);
+ const [resData,setResData]=useState<any>(null);
+ const [resDate,setResDate]=useState('');
+ const [resStart,setResStart]=useState('');
 
  const load=()=>fetch('/api/me/patient').then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{if(!ok){setError(j.error||'No se pudo cargar tu cuenta');return}setData(j);setError('')}).catch(()=>setError('No se pudo conectar con TURNAVIA.'));
  useEffect(()=>{load()},[]);
@@ -20,6 +24,28 @@ export default function Paciente(){
  async function action(id:string,status:string){
    const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'appointment_status',id,status})});
    const j=await r.json();if(!r.ok){setMsg(j.error||'No se pudo completar');return}setMsg('Actualizado');await load();setTimeout(()=>setMsg(''),1500);
+ }
+
+ async function openReschedule(ap:any){
+   if(!ap.serviceId){setMsg('Esta reserva antigua no tiene servicio asociado para reprogramar automáticamente.');return}
+   setMsg('');setReschedule(ap);setResData(null);setResDate('');setResStart('');
+   try{
+     const r=await fetch('/api/public/provider/'+encodeURIComponent(ap.providerSlug)+'?serviceId='+encodeURIComponent(ap.serviceId));
+     const j=await r.json();
+     if(!r.ok){setMsg(j.error||'No se pudo cargar la disponibilidad');setReschedule(null);return}
+     setResData(j);
+     const first=j.availability?.find((a:any)=>a.slots?.some((s:any)=>s.available));
+     setResDate(first?.date||'');
+     setResStart(first?.slots?.find((s:any)=>s.available)?.startsAt||'');
+   }catch{setMsg('No se pudo cargar la disponibilidad.');setReschedule(null)}
+ }
+
+ async function confirmReschedule(){
+   if(!reschedule||!resStart)return;
+   const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'reschedule',id:reschedule.id,startsAt:resStart})});
+   const j=await r.json();
+   if(!r.ok){setMsg(j.error||'No se pudo reprogramar');return}
+   setReschedule(null);setResData(null);setMsg('Reserva reprogramada correctamente.');await load();setTimeout(()=>setMsg(''),2200);
  }
 
  if(error&&!data)return <div className="dashboard"><Sidebar role="paciente"/><main className="main"><section className="panel"><h1>Mi cuenta</h1><div className="notice danger">{error}</div></section></main></div>;
@@ -46,12 +72,24 @@ export default function Paciente(){
       <div className="hero-actions" style={{marginTop:14}}>
         {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<button className="btn btn-primary" onClick={()=>action(ap.id,'ON_THE_WAY')}><CarFront size={17}/> Estoy en camino</button>}
         {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>action(ap.id,'ARRIVED')}><CheckCircle2 size={17}/> Ya llegué</button>}
+        {!ap.rescheduleUsed&&['PAYMENT_REVIEW','CONFIRMED'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>openReschedule(ap)}><CalendarClock size={17}/> Reprogramar</button>}
+        {ap.rescheduleUsed&&<span className="pill">Reprogramación usada</span>}
         {!['COMPLETED','CANCELLED','IN_CONSULTATION'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>action(ap.id,'CANCELLED')}><XCircle size={17}/> Cancelar</button>}
         <Link className="btn btn-secondary" href={'/reservar/'+ap.providerSlug}>Reservar otra</Link>
       </div>
    </section>)}</div>}
 
    {history.length>0&&<section className="panel" style={{marginTop:18}}><h2>Historial</h2><div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Profesional / negocio</th><th>Servicio</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{history.map((a:any)=><tr key={a.id}><td><strong>{a.providerName}</strong><div className="muted" style={{fontSize:12}}>{a.activity}</div></td><td>{a.serviceName}</td><td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'})}</td><td><StatusPill tone={a.status==='COMPLETED'?'ok':a.status==='PAYMENT_REJECTED'?'bad':''}>{label[a.status]||a.status}</StatusPill></td></tr>)}</tbody></table></div></section>}
+   {reschedule&&<div className="modal-backdrop"><div className="modal">
+     <h2>Reprogramar reserva</h2>
+     <p className="muted">{reschedule.providerName} · {reschedule.serviceName}. TURNAVIA permite una sola reprogramación por reserva.</p>
+     {!resData?<div className="notice">Cargando horarios disponibles…</div>:<>
+       <div className="field"><label>Selecciona el día</label><div className="date-tabs">{resData.availability.map((a:any)=><button type="button" key={a.id} className={'date-tab '+(resDate===a.date?'active':'')} onClick={()=>{setResDate(a.date);setResStart(a.slots.find((s:any)=>s.available)?.startsAt||'')}}><strong>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11}}>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div></div>
+       <div className="field"><label>Selecciona la hora</label><div className="booking-slots">{resData.availability.find((a:any)=>a.date===resDate)?.slots.map((s:any)=><button type="button" disabled={!s.available} className={resStart===s.startsAt?'selected':''} onClick={()=>setResStart(s.startsAt)} key={s.startsAt}>{s.time}</button>)}</div></div>
+       {!resData.availability.some((a:any)=>a.slots.some((s:any)=>s.available))&&<div className="notice">No hay horarios disponibles por ahora.</div>}
+     </>}
+     <div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" disabled={!resStart} onClick={confirmReschedule}>Confirmar nueva fecha</button><button className="btn btn-secondary" onClick={()=>{setReschedule(null);setResData(null)}}>Cancelar</button></div>
+   </div></div>}
    {msg&&<div className="toast">{msg}</div>}
  </main></div>;
 }
