@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { commercialClientAccess } from '@/lib/access';
 
 export const runtime='nodejs';
 
@@ -7,6 +8,9 @@ export async function POST(req:Request){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const form=await req.formData();
   const clientId=String(form.get('clientId')||'');
+  const access=await commercialClientAccess(clientId);
+  if(!access.client) return NextResponse.json({error:'Cliente no encontrado'},{status:404});
+  if(!access.allowed) return NextResponse.json({error:'No autorizado'},{status:403});
   const reference=String(form.get('reference')||'').trim();
   const comment=String(form.get('comment')||'');
   const paymentMethod=String(form.get('paymentMethod')||'BINANCE');
