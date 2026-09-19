@@ -16,7 +16,7 @@ async function currentProvider(){
       d.consultation_price,d.consultation_currency,d.payment_instructions,d.default_appointment_minutes,d.accepts_online_booking,
       u.id AS user_id,u.full_name,u.email,u.phone,
       l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room,
-      c.status AS subscription_status,c.trial_ends_at
+      c.id AS commercial_client_id,c.status AS subscription_status,c.trial_ends_at,c.payment_reviewed_at
     FROM users u
     JOIN doctors d ON d.user_id=u.id
     LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
@@ -57,7 +57,7 @@ export async function GET(){
       paymentInstructions:provider.payment_instructions||'',defaultMinutes:Number(provider.default_appointment_minutes||30),
       acceptsOnlineBooking:Boolean(provider.accepts_online_booking),
       location:{id:provider.location_id?String(provider.location_id):'',name:provider.location_name||'',address:provider.address||'',city:provider.city||'',state:provider.state||'',country:provider.country||'Venezuela',room:provider.room||''},
-      subscriptionStatus:provider.subscription_status||'TRIAL',trialEndsAt:provider.trial_ends_at?new Date(provider.trial_ends_at).toISOString():null,
+      subscriptionStatus:provider.subscription_status||'TRIAL',clientId:provider.commercial_client_id?String(provider.commercial_client_id):'',trialEndsAt:provider.trial_ends_at?new Date(provider.trial_ends_at).toISOString():null,renewalDueAt:provider.payment_reviewed_at?new Date(new Date(provider.payment_reviewed_at).getTime()+31*86400000).toISOString():null,
       dayStatus:(statusRows[0] as any)?.status||'NORMAL',delayMinutes:Number((statusRows[0] as any)?.delay_minutes||0)
     },
     services:services.map((s:any)=>({id:String(s.id),name:s.name,description:s.description||'',durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active)})),
