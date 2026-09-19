@@ -186,9 +186,15 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
 
   if(!rows.length) return NextResponse.json({error:'Ese horario ya no está disponible o acaba de ser reservado. Elige otro.'},{status:409});
   const appointmentId=String((rows[0] as any)?.id);
+  const when=requestedStart.toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
   if(initialStatus==='CONFIRMED'){
-    const when=requestedStart.toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
     await sendTransactionalEmail({to:email,subject:'Tu reserva TURNAVIA fue confirmada',html:turnaviaEmail('Reserva confirmada',`<p>Hola <strong>${clientName}</strong>.</p><p>Tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+  }else{
+    await sendTransactionalEmail({to:email,subject:'Recibimos tu reserva TURNAVIA',html:turnaviaEmail('Reserva preagendada',`<p>Hola <strong>${clientName}</strong>.</p><p>Recibimos tu reserva y comprobante. El profesional o negocio revisará el pago antes de confirmarla.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+  }
+  const providerEmail=String(p.organization_email||p.email||'').trim();
+  if(providerEmail){
+    await sendTransactionalEmail({to:providerEmail,subject:'Nueva reserva en TURNAVIA',html:turnaviaEmail('Nueva reserva recibida',`<p><strong>${clientName}</strong> reservó <strong>${service.name}</strong> con ${p.full_name}.</p><p><strong>Fecha y hora:</strong> ${when}<br/><strong>Monto:</strong> ${service.currency||'USD'} ${Number(service.price||0)}<br/><strong>Estado:</strong> ${initialStatus==='CONFIRMED'?'Confirmada':'Pago por revisar'}</p><p><a href="${process.env.APP_URL||'https://turnavia.vercel.app'}/panel">Abrir TURNAVIA</a></p>`)});
   }
   return NextResponse.json({ok:true,appointmentId,status:initialStatus},{status:201});
 }
