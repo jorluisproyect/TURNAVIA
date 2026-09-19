@@ -48,6 +48,9 @@ CREATE TABLE doctors (
   user_id uuid UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   public_slug text UNIQUE NOT NULL,
   specialty text NOT NULL,
+  provider_category text NOT NULL DEFAULT 'Salud',
+  provider_activity text NOT NULL DEFAULT 'Médico',
+  provider_type text NOT NULL DEFAULT 'Profesional independiente',
   license_number text,
   bio text,
   default_appointment_minutes integer NOT NULL DEFAULT 30 CHECK (default_appointment_minutes > 0),
@@ -57,6 +60,20 @@ CREATE TABLE doctors (
   payment_instructions text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE provider_services (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  doctor_id uuid NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text,
+  duration_minutes integer NOT NULL DEFAULT 30 CHECK (duration_minutes > 0),
+  price numeric(10,2) NOT NULL DEFAULT 0,
+  currency text NOT NULL DEFAULT 'USD',
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX provider_services_doctor_idx ON provider_services(doctor_id, active);
 
 CREATE TABLE doctor_locations (
   doctor_id uuid REFERENCES doctors(id) ON DELETE CASCADE,
@@ -86,6 +103,7 @@ CREATE TABLE patients (
   phone text NOT NULL,
   email text,
   birth_date date,
+  auth_user_id text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -100,6 +118,8 @@ CREATE TABLE appointments (
   source text NOT NULL DEFAULT 'PATIENT_WEB',
   reason_short text,
   cancellation_reason text,
+  service_id uuid REFERENCES provider_services(id) ON DELETE SET NULL,
+  service_name text,
   created_by_user_id uuid REFERENCES users(id),
   consultation_price numeric(10,2),
   consultation_currency text NOT NULL DEFAULT 'USD',
@@ -180,3 +200,12 @@ CREATE TABLE IF NOT EXISTS payments (
   completed_at timestamptz
 );
 CREATE INDEX IF NOT EXISTS payments_org_created_idx ON payments(organization_id, created_at DESC);
+
+
+-- Multirubro compatibility for existing installations
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS provider_category text NOT NULL DEFAULT 'Salud';
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS provider_activity text NOT NULL DEFAULT 'Médico';
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS provider_type text NOT NULL DEFAULT 'Profesional independiente';
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS auth_user_id text;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_id uuid REFERENCES provider_services(id) ON DELETE SET NULL;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_name text;
