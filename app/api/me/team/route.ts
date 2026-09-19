@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
+import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -15,7 +16,7 @@ async function context(){
   const {data:session}=await auth.getSession();
   if(!session?.user) return null;
   const email=String((session.user as any).email||'').toLowerCase();
-  const rows=await sql`SELECT u.id AS user_id,u.organization_id,d.id AS doctor_id,d.provider_type,o.name AS organization_name,o.slug AS organization_slug
+  const rows=await sql`SELECT u.id AS user_id,u.email,u.organization_id,d.id AS doctor_id,d.provider_type,o.name AS organization_name,o.slug AS organization_slug
     FROM users u
     JOIN doctors d ON d.user_id=u.id
     LEFT JOIN organizations o ON o.id=u.organization_id
@@ -37,6 +38,8 @@ export async function GET(){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const ctx=await context();
   if(!ctx) return NextResponse.json({error:'No autorizado'},{status:401});
+  const commercial=await refreshCommercialClientByEmail(String(ctx.email||''));
+  if(commercial&&!subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)) return NextResponse.json({error:'Tu cuenta requiere activación o renovación.',clientId:String(commercial.id)},{status:402});
   if(!ctx.organization_id) return NextResponse.json({business:false,team:[]});
 
   const members=await sql`SELECT d.id AS doctor_id,d.public_slug,d.provider_category,d.provider_activity,d.specialty,
@@ -70,6 +73,8 @@ export async function POST(req:Request){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const ctx=await context();
   if(!ctx) return NextResponse.json({error:'No autorizado'},{status:401});
+  const commercial=await refreshCommercialClientByEmail(String(ctx.email||''));
+  if(commercial&&!subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)) return NextResponse.json({error:'Tu cuenta requiere activación o renovación.',clientId:String(commercial.id)},{status:402});
   if(!ctx.organization_id) return NextResponse.json({error:'La gestión de equipo está disponible para cuentas Negocio / local.'},{status:403});
   const body=await req.json();
   const action=String(body.action||'');
