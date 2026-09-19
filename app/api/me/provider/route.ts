@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -31,6 +32,8 @@ export async function GET(){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const provider=await currentProvider();
   if(!provider) return NextResponse.json({error:'Cuenta profesional no encontrada'},{status:404});
+  const commercial=await refreshCommercialClientByEmail(String(provider.email||''));
+  if(commercial && !subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)) return NextResponse.json({error:'Tu prueba o mensualidad requiere activación.',paymentRequired:true,clientId:String(commercial.id),status:commercial.status},{status:402});
 
   const services=await sql`SELECT id,name,description,duration_minutes,price,currency,active
     FROM provider_services WHERE doctor_id=${provider.doctor_id} ORDER BY active DESC,created_at`;
@@ -67,6 +70,8 @@ export async function PATCH(req:Request){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const provider=await currentProvider();
   if(!provider) return NextResponse.json({error:'No autorizado'},{status:401});
+  const commercial=await refreshCommercialClientByEmail(String(provider.email||''));
+  if(commercial && !subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)) return NextResponse.json({error:'Tu prueba o mensualidad requiere activación.',paymentRequired:true,clientId:String(commercial.id),status:commercial.status},{status:402});
   const body=await req.json();
   const action=String(body.action||'');
 
