@@ -11,18 +11,18 @@ export default function Home(){
       <span className="eyebrow"><HeartPulse size={16}/> Citas, turnos y reservas para cualquier servicio</span>
       <h1>Tu servicio, <span>a tu hora.</span></h1>
       <p>Turnavia conecta profesionales, negocios y clientes en una sola agenda. Publicas disponibilidad, el cliente reserva, registra su pago y el negocio organiza todo desde un mismo lugar.</p>
-      <div className="hero-actions"><Link className="btn btn-primary" href="/demo">Explorar demo <ArrowRight size={17}/></Link><Link className="btn btn-secondary" href="/activar">Quiero Turnavia</Link><Link className="btn btn-secondary" href="/reservar/sofia-mendoza">Probar una reserva</Link></div>
+      <div className="hero-actions"><Link className="btn btn-primary" href="/demo">Explorar demo <ArrowRight size={17}/></Link><Link className="btn btn-secondary" href="/registro?role=DOCTOR">Crear mi cuenta</Link><Link className="btn btn-secondary" href="/explorar">Explorar servicios</Link></div>
       <div className="hero-proof"><span><CheckCircle2 size={16}/> Sin instalar nada</span><span><CheckCircle2 size={16}/> Funciona en móvil y PC</span><span><CheckCircle2 size={16}/> Diseñado para crecer globalmente</span></div>
     </div>
     <div className="phone-wrap">
       <div className="blob"/>
       <div className="phone"><div className="phone-screen">
-        <div className="phone-top"><strong>Reservar consulta</strong><span className="pill">Disponible</span></div>
+        <div className="phone-top"><strong>Reservar servicio</strong><span className="pill">Disponible</span></div>
         <div className="doctor-card"><div className="row"><div className="avatar">SM</div><div><strong>Dra. Sofía Mendoza</strong><div className="muted" style={{fontSize:13,marginTop:4}}>Cardiología · Caracas</div></div></div>
           <div style={{marginTop:18,fontSize:13,fontWeight:800}}>Jueves 24 de septiembre</div>
           <div className="slot-grid"><div className="slot active">8:00</div><div className="slot">8:30</div><div className="slot">9:00</div><div className="slot">9:30</div><div className="slot">10:00</div><div className="slot">10:30</div></div>
         </div>
-        <div className="notice" style={{marginTop:14}}>Tu cita se confirma al instante y recepción la verá en su agenda.</div>
+        <div className="notice" style={{marginTop:14}}>Tu reserva queda registrada y el profesional la gestiona desde su panel.</div>
       </div></div>
     </div>
    </section>
