@@ -17,7 +17,7 @@ export default async function Explorar(){
     WHERE u.active=true AND d.accepts_online_booking=true
       AND (
         c.id IS NULL
-        OR (c.status='TRIAL' AND (c.trial_ends_at IS NULL OR c.trial_ends_at>now()))
+        OR (c.status IN ('TRIAL','REVISION_BINANCE') AND c.trial_ends_at IS NOT NULL AND c.trial_ends_at>now())
         OR (c.status='ACTIVO' AND COALESCE(c.payment_reviewed_at,c.created_at)>=now()-interval '31 days')
       )
     GROUP BY d.id,u.full_name,l.city,l.state
