@@ -23,7 +23,9 @@ const categories:Record<string,string[]>={
 
 export default function RegistroClient(){
   const sp=useSearchParams();
-  const initial=sp.get('role')==='PATIENT'?'PATIENT':'PROFESSIONAL';
+  const initialRole=sp.get('role')==='PATIENT'?'PATIENT':'PROFESSIONAL';
+  const requestedType=sp.get('type');
+  const initial=requestedType==='BUSINESS'?'BUSINESS':requestedType==='PROFESSIONAL'?'PROFESSIONAL':initialRole;
   const [accountType,setAccountType]=useState(initial);
   const [category,setCategory]=useState('Salud');
   const [activity,setActivity]=useState('Médico');
@@ -41,6 +43,7 @@ export default function RegistroClient(){
         <option value="PATIENT">Cliente / paciente</option>
       </select></div>
       <input type="hidden" name="role" value={provider?'DOCTOR':'PATIENT'}/>
+      <input type="hidden" name="buyIntent" value={sp.get('buy')==='1'?'1':'0'}/>
       {provider&&<div className="row" style={{alignItems:'stretch',gap:12,flexWrap:'wrap'}}>
         <div className="field" style={{flex:1,minWidth:220}}><label>Rubro</label><select name="category" value={category} onChange={e=>{const v=e.target.value;setCategory(v);setActivity(categories[v][0])}}>{Object.keys(categories).map(c=><option key={c}>{c}</option>)}</select></div>
         <div className="field" style={{flex:1,minWidth:220}}><label>Actividad</label><select name="activity" value={activity} onChange={e=>setActivity(e.target.value)}>{categories[category].map(a=><option key={a}>{a}</option>)}</select></div>
