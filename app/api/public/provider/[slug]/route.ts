@@ -106,6 +106,11 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   }
   if(proof.length>3_000_000) return NextResponse.json({error:'El comprobante es demasiado grande.'},{status:413});
 
+  if(clientName.length>120||phone.length>40||email.length>200||String(body.note||'').length>600||reference.length>160){
+    return NextResponse.json({error:'Uno de los campos supera el tamaño permitido.'},{status:400});
+  }
+  if(!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({error:'Escribe un correo válido.'},{status:400});
+
   const methodRows=await sql`SELECT pm.requires_proof
     FROM payment_methods pm
     JOIN doctors md ON md.id=pm.doctor_id
@@ -121,6 +126,12 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(!method) return NextResponse.json({error:'Método de pago no disponible.'},{status:409});
   const requiresProof=method.requires_proof!==false;
   if(requiresProof&&(!reference||!proof)) return NextResponse.json({error:'Este método requiere referencia y comprobante de pago.'},{status:400});
+  if(requiresProof&&!/^data:(image\/(jpeg|png|webp)|application\/pdf);base64,/i.test(proof)) return NextResponse.json({error:'Formato de comprobante no permitido.'},{status:400});
+  const recent=await sql`SELECT count(*)::int AS n
+    FROM appointments a JOIN patients pat ON pat.id=a.patient_id
+    WHERE a.created_at>now()-interval '10 minutes'
+      AND (lower(pat.email)=lower(${email}) OR pat.phone=${phone})`;
+  if(Number((recent[0] as any)?.n||0)>=5) return NextResponse.json({error:'Has realizado varias solicitudes seguidas. Espera unos minutos e intenta nuevamente.'},{status:429});
   const initialStatus=requiresProof?'PAYMENT_REVIEW':'CONFIRMED';
 
   const serviceRows=await sql`SELECT id,name,duration_minutes,price,currency FROM provider_services WHERE id=${body.serviceId}::uuid AND doctor_id=${p.id} AND active=true LIMIT 1`;
