@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { Brand } from "./Brand";
+import { LogoutButton } from "./LogoutButton";
 import { CalendarDays, LayoutDashboard, Users, Clock3, Building2, Settings, HeartPulse, UserRound, BarChart3, BriefcaseBusiness, Search } from "lucide-react";
 
 const config = {
@@ -44,5 +45,5 @@ export function Sidebar({role}:{role:keyof typeof config}){
     const path=String(href).split('#')[0];
     const active=pathname===path && !String(href).includes('#');
     return <Link key={label} href={href} className={`side-link ${active?"active":""}`}><Icon size={18}/>{label}</Link>
-  })}</aside>
+  })}<div style={{marginTop:'auto'}}><LogoutButton/></div></aside>
 }
