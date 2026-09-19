@@ -5,7 +5,7 @@ import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
 
 function mapClient(r:any){
   return {
-    id:String(r.id),name:r.name,type:r.type,specialty:r.specialty||'',phone:r.phone||'',email:r.email,
+    id:String(r.id),name:r.name,type:r.type,category:r.category||'',subcategory:r.subcategory||'',specialty:r.specialty||'',phone:r.phone||'',email:r.email,
     status:r.status,createdAt:r.created_at?new Date(r.created_at).toISOString():undefined,
     trialEndsAt:r.trial_ends_at?new Date(r.trial_ends_at).toISOString():undefined,
     paymentMethod:r.payment_method||undefined,paymentReference:r.payment_reference||undefined,
@@ -33,8 +33,8 @@ export async function POST(req:Request){
   const plan=planFromType(body.type||'Médico independiente');
   const existing=await sql`SELECT * FROM commercial_clients WHERE lower(email)=lower(${body.email}) ORDER BY created_at DESC LIMIT 1`;
   if(existing.length) return NextResponse.json({ok:true,client:mapClient(existing[0]),plan});
-  const rows=await sql`INSERT INTO commercial_clients(name,type,specialty,phone,email,status,trial_ends_at)
-    VALUES(${body.name},${body.type||'Médico independiente'},${body.specialty||null},${body.phone||null},${body.email},'TRIAL',now()+${plan.trialDays}*interval '1 day')
+  const rows=await sql`INSERT INTO commercial_clients(name,type,category,subcategory,specialty,phone,email,status,trial_ends_at)
+    VALUES(${body.name},${body.type||'Profesional independiente'},${body.category||null},${body.subcategory||null},${body.specialty||null},${body.phone||null},${body.email},'TRIAL',now()+${plan.trialDays}*interval '1 day')
     RETURNING *`;
   return NextResponse.json({ok:true,client:mapClient(rows[0]),plan},{status:201});
 }
