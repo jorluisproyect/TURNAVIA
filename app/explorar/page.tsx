@@ -9,10 +9,17 @@ export default async function Explorar(){
   const rows=sql?await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,u.full_name,
       l.city,l.state,COUNT(ps.id) FILTER (WHERE ps.active=true)::int AS services
     FROM doctors d JOIN users u ON u.id=d.user_id
+    LEFT JOIN organizations o ON o.id=u.organization_id
+    LEFT JOIN commercial_clients c ON lower(c.email)=lower(COALESCE(o.email,u.email))
     LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
     LEFT JOIN locations l ON l.id=dl.location_id
     LEFT JOIN provider_services ps ON ps.doctor_id=d.id
     WHERE u.active=true AND d.accepts_online_booking=true
+      AND (
+        c.id IS NULL
+        OR (c.status='TRIAL' AND (c.trial_ends_at IS NULL OR c.trial_ends_at>now()))
+        OR (c.status='ACTIVO' AND COALESCE(c.payment_reviewed_at,c.created_at)>=now()-interval '31 days')
+      )
     GROUP BY d.id,u.full_name,l.city,l.state
     ORDER BY d.provider_category,u.full_name`:[];
 
