@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Brand } from '@/components/Brand';
 import { authClient } from '@/lib/auth/client';
 import { CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { passwordIssues, PASSWORD_HELP } from '@/lib/password-policy';
 
 function ResetContent(){
   const sp=useSearchParams();
@@ -20,7 +21,8 @@ function ResetContent(){
 
   async function submit(e:React.FormEvent){
     e.preventDefault();
-    if(password.length<8){setError('La contraseña debe tener al menos 8 caracteres.');return}
+    const issues=passwordIssues(password);
+    if(issues.length){setError('La contraseña necesita '+issues.join(', ')+'.');return}
     if(password!==confirm){setError('Las contraseñas no coinciden.');return}
     if(!token){setError('El enlace de recuperación no es válido o ya expiró.');return}
     setBusy(true);setError('');
@@ -39,8 +41,8 @@ function ResetContent(){
       {done?<div style={{textAlign:'center',padding:'20px 4px'}}><CheckCircle2 size={42}/><h2>Contraseña actualizada</h2><p className="muted">Ya puedes ingresar con tu contraseña nueva.</p><Link href="/ingresar" className="btn btn-primary">Ingresar a TURNAVIA</Link></div>:
       <form className="form" onSubmit={submit}>
         {(invalid||!token)&&<div className="notice danger">Este enlace no es válido o expiró. Solicita uno nuevo.</div>}
-        <div className="field"><label>Nueva contraseña</label><div style={{position:'relative'}}><input type={showPassword?'text':'password'} required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
-        <div className="field"><label>Repite la contraseña</label><div style={{position:'relative'}}><input type={showConfirm?'text':'password'} required minLength={8} value={confirm} onChange={e=>setConfirm(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showConfirm?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowConfirm(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center'}}>{showConfirm?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
+        <div className="field"><label>Nueva contraseña</label><div style={{position:'relative'}}><input type={showPassword?'text':'password'} required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div><div className="muted" style={{fontSize:12,marginTop:6}}>{PASSWORD_HELP}</div></div>
+        <div className="field"><label>Repite la contraseña</label><div style={{position:'relative'}}><input type={showConfirm?'text':'password'} required minLength={8} value={confirm} onChange={e=>setConfirm(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showConfirm?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowConfirm(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showConfirm?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
         {error&&<div className="notice danger">{error}</div>}
         <button className="btn btn-primary" disabled={busy||!token}>{busy?'Guardando...':'Guardar nueva contraseña'}</button>
         <Link href="/olvidar-contrasena" className="btn btn-secondary">Solicitar otro enlace</Link>
