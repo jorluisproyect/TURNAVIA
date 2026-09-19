@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { auth } from '@/lib/auth/server';
+import { MASTER_EMAIL } from '@/lib/access';
 
 type Method = {
   id:string; scope:'MASTER'|'DOCTOR'; doctorId?:string|null; name:string; type:string;
@@ -9,7 +10,6 @@ type Method = {
 };
 
 declare global { var __turnaviaPaymentMethods: Method[] | undefined }
-const MASTER_EMAIL='jorgeluisananguren@gmail.com';
 
 function fallback(){
   if(!globalThis.__turnaviaPaymentMethods){
@@ -41,7 +41,16 @@ async function access(slug?:string){
   }
   let owner=false;
   if(slug){
-    const rows=await sql`SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE d.public_slug=${slug} AND lower(u.email)=lower(${email}) LIMIT 1`;
+    const rows=await sql`SELECT target.id
+      FROM doctors target
+      JOIN users tu ON tu.id=target.user_id
+      JOIN users me ON lower(me.email)=lower(${email})
+      WHERE target.public_slug=${slug}
+        AND (
+          target.user_id=me.id
+          OR (tu.organization_id IS NOT NULL AND me.organization_id=tu.organization_id)
+        )
+      LIMIT 1`;
     owner=rows.length>0;
   }
   return {master,owner};
@@ -67,9 +76,22 @@ export async function GET(req:Request){
       const a=await access(slug);
       if(!a.master&&!a.owner) return NextResponse.json({error:'No autorizado'},{status:403});
     }
-    const rows=activeOnly
+    let rows=activeOnly
       ? await sql`SELECT id,scope,doctor_id,name,type,account_label,account_value,instructions,currency,requires_proof,active,is_primary FROM payment_methods WHERE scope='DOCTOR' AND doctor_id=${did} AND active=true ORDER BY is_primary DESC, created_at`
       : await sql`SELECT id,scope,doctor_id,name,type,account_label,account_value,instructions,currency,requires_proof,active,is_primary FROM payment_methods WHERE scope='DOCTOR' AND doctor_id=${did} ORDER BY is_primary DESC, created_at`;
+
+    // Team members inherit the business payment methods if they do not have their own.
+    if(activeOnly && !rows.length){
+      rows=await sql`SELECT pm.id,pm.scope,pm.doctor_id,pm.name,pm.type,pm.account_label,pm.account_value,pm.instructions,pm.currency,pm.requires_proof,pm.active,pm.is_primary
+        FROM doctors target
+        JOIN users target_user ON target_user.id=target.user_id
+        JOIN users owner_user ON owner_user.organization_id=target_user.organization_id AND owner_user.active=true
+        JOIN doctors owner_doctor ON owner_doctor.user_id=owner_user.id
+        JOIN payment_methods pm ON pm.doctor_id=owner_doctor.id AND pm.scope='DOCTOR' AND pm.active=true
+        WHERE target.id=${did} AND target_user.organization_id IS NOT NULL
+        ORDER BY owner_user.created_at ASC,pm.is_primary DESC,pm.created_at
+        LIMIT 10`;
+    }
     return NextResponse.json({methods:rows});
   }
 
