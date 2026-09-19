@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -34,7 +35,7 @@ async function providerBySlug(slug:string){
   if(!sql) return null;
   const rows=await sql`SELECT d.id,d.public_slug,d.specialty,d.provider_category,d.provider_activity,d.provider_type,
       d.consultation_price,d.consultation_currency,d.payment_instructions,d.default_appointment_minutes,d.accepts_online_booking,
-      u.full_name,u.phone,u.email,l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
+      u.full_name,u.phone,u.email,u.organization_id,l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
     FROM doctors d JOIN users u ON u.id=d.user_id
     LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
     LEFT JOIN locations l ON l.id=dl.location_id
@@ -93,10 +94,28 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   const email=String(body.email||'').trim().toLowerCase();
   const reference=String(body.paymentReference||'').trim();
   const proof=String(body.paymentProofDataUrl||'');
-  if(!startsAt||!clientName||!phone||!email||!reference||!proof||!body.policyAccepted){
-    return NextResponse.json({error:'Completa tus datos, referencia, comprobante y acepta la política.'},{status:400});
+  const paymentMethod=String(body.paymentMethod||'').trim();
+  if(!startsAt||!clientName||!phone||!email||!paymentMethod||!body.policyAccepted){
+    return NextResponse.json({error:'Completa tus datos, método de pago y acepta la política.'},{status:400});
   }
   if(proof.length>3_000_000) return NextResponse.json({error:'El comprobante es demasiado grande.'},{status:413});
+
+  const methodRows=await sql`SELECT pm.requires_proof
+    FROM payment_methods pm
+    JOIN doctors md ON md.id=pm.doctor_id
+    JOIN users mu ON mu.id=md.user_id
+    WHERE pm.scope='DOCTOR' AND pm.active=true AND lower(pm.name)=lower(${paymentMethod})
+      AND (
+        pm.doctor_id=${p.id}
+        OR (${p.organization_id}::uuid IS NOT NULL AND mu.organization_id=${p.organization_id})
+      )
+    ORDER BY CASE WHEN pm.doctor_id=${p.id} THEN 0 ELSE 1 END,mu.created_at ASC,pm.created_at ASC
+    LIMIT 1`;
+  const method=methodRows[0] as any;
+  if(!method) return NextResponse.json({error:'Método de pago no disponible.'},{status:409});
+  const requiresProof=method.requires_proof!==false;
+  if(requiresProof&&(!reference||!proof)) return NextResponse.json({error:'Este método requiere referencia y comprobante de pago.'},{status:400});
+  const initialStatus=requiresProof?'PAYMENT_REVIEW':'CONFIRMED';
 
   const serviceRows=await sql`SELECT id,name,duration_minutes,price,currency FROM provider_services WHERE id=${body.serviceId}::uuid AND doctor_id=${p.id} AND active=true LIMIT 1`;
   const service=serviceRows[0] as any;
@@ -135,7 +154,7 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
     ),
     inserted AS (
       INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted)
-      SELECT ${p.id},${patientId},${p.location_id},${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,'PAYMENT_REVIEW','PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${String(body.paymentMethod||'')},${reference},${proof},now(),false,true
+      SELECT ${p.id},${patientId},${p.location_id},${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true
       FROM valid_block
       WHERE NOT EXISTS (
         SELECT 1 FROM appointments a
@@ -149,5 +168,10 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
     SELECT id FROM inserted`;
 
   if(!rows.length) return NextResponse.json({error:'Ese horario ya no está disponible o acaba de ser reservado. Elige otro.'},{status:409});
-  return NextResponse.json({ok:true,appointmentId:String((rows[0] as any)?.id)},{status:201});
+  const appointmentId=String((rows[0] as any)?.id);
+  if(initialStatus==='CONFIRMED'){
+    const when=requestedStart.toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
+    await sendTransactionalEmail({to:email,subject:'Tu reserva TURNAVIA fue confirmada',html:turnaviaEmail('Reserva confirmada',`<p>Hola <strong>${clientName}</strong>.</p><p>Tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+  }
+  return NextResponse.json({ok:true,appointmentId,status:initialStatus},{status:201});
 }
