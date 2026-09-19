@@ -12,7 +12,7 @@ const config = {
     ["/recepcion", "Resumen", LayoutDashboard], ["/recepcion/agenda", "Agenda general", CalendarDays], ["/recepcion/medicos", "Médicos", HeartPulse], ["/recepcion/pacientes", "Pacientes", Users], ["/recepcion/sedes", "Sedes", Building2],
   ],
   paciente: [
-    ["/paciente", "Mis citas", CalendarDays], ["/reservar/sofia-mendoza", "Reservar", HeartPulse], ["/paciente", "Mis médicos", UserRound], ["/paciente", "Perfil", Settings],
+    ["/paciente", "Mis citas", CalendarDays], ["/reservar/sofia-mendoza", "Reservar", HeartPulse], ["/paciente/medicos", "Mis médicos", UserRound], ["/paciente/perfil", "Perfil", Settings],
   ],
   master: [
     ["/master", "Resumen", LayoutDashboard], ["/master", "Clientes", Building2], ["/master", "Médicos", HeartPulse], ["/master", "Suscripciones", BarChart3], ["/master", "Configuración", Settings],
