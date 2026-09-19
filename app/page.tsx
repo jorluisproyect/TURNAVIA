@@ -8,10 +8,10 @@ export default function Home(){
   <main className="container">
    <section className="hero">
     <div>
-      <span className="eyebrow"><HeartPulse size={16}/> Agenda médica simple, humana y en tiempo real</span>
-      <h1>Tu consulta, <span>a tu hora.</span></h1>
-      <p>Turnavia conecta médicos, recepción y pacientes en una sola agenda. El médico publica cuándo atiende, el paciente reserva y la clínica organiza todo sin filas innecesarias.</p>
-      <div className="hero-actions"><Link className="btn btn-primary" href="/demo">Explorar demo <ArrowRight size={17}/></Link><Link className="btn btn-secondary" href="/activar">Quiero Turnavia</Link><Link className="btn btn-secondary" href="/reservar/sofia-mendoza">Probar como paciente</Link></div>
+      <span className="eyebrow"><HeartPulse size={16}/> Citas, turnos y reservas para cualquier servicio</span>
+      <h1>Tu servicio, <span>a tu hora.</span></h1>
+      <p>Turnavia conecta profesionales, negocios y clientes en una sola agenda. Publicas disponibilidad, el cliente reserva, registra su pago y el negocio organiza todo desde un mismo lugar.</p>
+      <div className="hero-actions"><Link className="btn btn-primary" href="/demo">Explorar demo <ArrowRight size={17}/></Link><Link className="btn btn-secondary" href="/activar">Quiero Turnavia</Link><Link className="btn btn-secondary" href="/reservar/sofia-mendoza">Probar una reserva</Link></div>
       <div className="hero-proof"><span><CheckCircle2 size={16}/> Sin instalar nada</span><span><CheckCircle2 size={16}/> Funciona en móvil y PC</span><span><CheckCircle2 size={16}/> Diseñado para crecer globalmente</span></div>
     </div>
     <div className="phone-wrap">
@@ -26,18 +26,18 @@ export default function Home(){
       </div></div>
     </div>
    </section>
-   <section className="section" id="como-funciona"><div className="section-title"><span className="eyebrow"><Route size={15}/> Un solo flujo</span><h2>Tres personas. Una agenda.</h2><p>Turnavia elimina llamadas repetidas y agendas separadas. Cada rol ve exactamente lo que necesita.</p></div><div className="grid-3">
-    <div className="card"><div className="iconbox"><HeartPulse/></div><h3>El médico publica</h3><p>Define sede, días, horario, duración por consulta y cantidad de pacientes desde cualquier lugar.</p></div>
-    <div className="card"><div className="iconbox"><CalendarCheck2/></div><h3>El paciente reserva</h3><p>Abre un enlace, elige una hora disponible y recibe su cita sin tener que llamar o llegar de madrugada.</p></div>
-    <div className="card"><div className="iconbox"><UsersRound/></div><h3>Recepción coordina</h3><p>Visualiza todos los médicos, confirma llegadas, mueve citas y gestiona pacientes que llaman por teléfono.</p></div>
+   <section className="section" id="como-funciona"><div className="section-title"><span className="eyebrow"><Route size={15}/> Un solo flujo</span><h2>Un solo sistema para muchos rubros.</h2><p>Salud, barbería, spa, uñas, servicios profesionales, automotriz, mascotas y más comparten el mismo motor de reservas.</p></div><div className="grid-3">
+    <div className="card"><div className="iconbox"><HeartPulse/></div><h3>El profesional publica</h3><p>Define servicios, sede, días, horarios, duración y precios desde cualquier lugar.</p></div>
+    <div className="card"><div className="iconbox"><CalendarCheck2/></div><h3>El cliente reserva</h3><p>Abre un enlace, elige servicio, fecha y hora disponible y deja su reserva en pocos pasos.</p></div>
+    <div className="card"><div className="iconbox"><UsersRound/></div><h3>El negocio coordina</h3><p>Visualiza reservas, confirma pagos, gestiona horarios y organiza la operación diaria.</p></div>
    </div></section>
-   <section className="section" id="beneficios"><div className="section-title"><span className="eyebrow"><Clock3 size={15}/> Menos espera</span><h2>La cita empieza antes de llegar a la clínica.</h2><p>Estado del médico, llegada del paciente, lista de espera y espacios liberados forman parte del mismo flujo.</p></div><div className="grid-3">
-    <div className="card"><div className="iconbox"><BellRing/></div><h3>Estado en tiempo real</h3><p>El paciente puede saber si el médico está atendiendo normalmente o presenta retraso.</p></div>
-    <div className="card"><div className="iconbox"><Smartphone/></div><h3>Estoy en camino</h3><p>El paciente avisa que va rumbo a la consulta o que ya llegó. Recepción lo ve inmediatamente.</p></div>
-    <div className="card"><div className="iconbox"><ShieldCheck/></div><h3>MVP sin historia clínica</h3><p>La primera etapa se enfoca en agenda y operación. Los módulos clínicos sensibles quedan para una fase posterior.</p></div>
+   <section className="section" id="beneficios"><div className="section-title"><span className="eyebrow"><Clock3 size={15}/> Menos espera</span><h2>La experiencia empieza antes de llegar.</h2><p>Disponibilidad, reserva, pago, confirmación, cambios y atención forman parte del mismo flujo.</p></div><div className="grid-3">
+    <div className="card"><div className="iconbox"><BellRing/></div><h3>Estado en tiempo real</h3><p>El cliente puede consultar el estado de su reserva y recibir actualizaciones.</p></div>
+    <div className="card"><div className="iconbox"><Smartphone/></div><h3>Estoy en camino</h3><p>El cliente puede avisar que va en camino o que ya llegó cuando el tipo de servicio lo necesite.</p></div>
+    <div className="card"><div className="iconbox"><ShieldCheck/></div><h3>Núcleo adaptable</h3><p>El mismo núcleo se adapta por rubro y muestra solo las funciones necesarias para cada actividad.</p></div>
    </div></section>
-   <section className="section" id="clinicas"><div className="band"><div><h2>Una demo que ya se puede enseñar.</h2><p>Entra al sistema como médico, recepción, paciente o administrador y recorre el flujo completo del producto.</p></div><Link className="btn btn-primary" href="/demo">Abrir Turnavia <ArrowRight size={17}/></Link></div></section>
+   <section className="section" id="clinicas"><div className="band"><div><h2>Una demo que ya se puede enseñar.</h2><p>Entra como Master, profesional/negocio o cliente y recorre el flujo comercial completo del producto.</p></div><Link className="btn btn-primary" href="/demo">Abrir Turnavia <ArrowRight size={17}/></Link></div></section>
   </main>
-  <footer className="footer"><div className="container footer-inner"><div><strong>Turnavia</strong> · Tu consulta, a tu hora.</div><div>Demo MVP · Agenda médica inteligente</div></div></footer>
+  <footer className="footer"><div className="container footer-inner"><div><strong>Turnavia</strong> · Tu servicio, a tu hora.</div><div>Demo multirrubro · Reservas inteligentes</div></div></footer>
  </>
 }
