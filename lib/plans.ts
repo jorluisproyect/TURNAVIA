@@ -1,26 +1,29 @@
-export type PlanKey = 'DOCTOR' | 'CLINIC';
+export type PlanKey = 'PROFESSIONAL' | 'BUSINESS';
 
 export const PLANS = {
-  DOCTOR: {
-    key: 'DOCTOR' as const,
-    label: 'Médico independiente',
+  PROFESSIONAL: {
+    key: 'PROFESSIONAL' as const,
+    label: 'Profesional independiente',
     activation: 25,
     monthly: 15,
     initial: 40,
-    maxDoctors: 1,
+    maxProfessionals: 1,
     trialDays: 5,
   },
-  CLINIC: {
-    key: 'CLINIC' as const,
-    label: 'Clínica / consultorio',
+  BUSINESS: {
+    key: 'BUSINESS' as const,
+    label: 'Negocio / local',
     activation: 100,
     monthly: 49,
     initial: 149,
-    maxDoctors: 5,
+    maxProfessionals: 5,
     trialDays: 5,
   },
 };
 
 export function planFromType(type: string) {
-  return type.startsWith('Clínica') ? PLANS.CLINIC : PLANS.DOCTOR;
+  const normalized=String(type||'').toLowerCase();
+  return normalized.startsWith('negocio') || normalized.startsWith('clínica') || normalized.startsWith('clinica')
+    ? PLANS.BUSINESS
+    : PLANS.PROFESSIONAL;
 }
