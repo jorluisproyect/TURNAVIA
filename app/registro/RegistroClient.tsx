@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { registerUser } from './actions';
 import { Brand } from '@/components/Brand';
 import { Eye, EyeOff } from 'lucide-react';
+import { PASSWORD_HELP } from '@/lib/password-policy';
 
 const categories:Record<string,string[]>={
   'Salud':['Médico','Odontología','Psicología','Fisioterapia','Nutrición','Veterinaria','Otro'],
@@ -54,7 +55,7 @@ export default function RegistroClient(){
       <div className="field"><label>{provider?'Nombre profesional o del negocio':'Nombre completo'}</label><input name="name" required placeholder={provider?'Ej. Ana Pérez / Barbería Central':'Nombre y apellido'}/></div>
       <div className="field"><label>Correo</label><input name="email" type="email" required defaultValue={initialEmail} placeholder="correo@ejemplo.com"/></div>
       <div className="field"><label>Teléfono / WhatsApp</label><input name="phone" required placeholder="Número de contacto"/></div>
-      <div className="field"><label>Contraseña</label><div style={{position:'relative'}}><input name="password" type={showPassword?'text':'password'} minLength={8} required placeholder="Mínimo 8 caracteres" style={{paddingRight:46}}/><button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
+      <div className="field"><label>Contraseña</label><div style={{position:'relative'}}><input name="password" type={showPassword?'text':'password'} minLength={8} required placeholder="Crea una contraseña segura" style={{paddingRight:46}}/><button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div><div className="muted" style={{fontSize:12,marginTop:6}}>{PASSWORD_HELP}</div></div>
       {state?.error&&<div className="notice danger">{state.error}</div>}
       <button className="btn btn-primary" disabled={pending}>{pending?'Creando cuenta...':'Crear mi cuenta'}</button>
       <div className="muted" style={{fontSize:13}}>TURNAVIA usa tus datos únicamente para gestionar tu cuenta, reservas y notificaciones del servicio.</div>
