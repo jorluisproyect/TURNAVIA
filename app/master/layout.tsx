@@ -10,10 +10,10 @@ export default async function MasterLayout({children}:{children:React.ReactNode}
   if(!session?.user) redirect('/ingresar');
 
   const sessionEmail=String((session.user as any).email||'').toLowerCase();
-  if(sessionEmail===MASTER_EMAIL) return children;
-
   if(!sql) redirect('/ingresar');
-  const rows=await sql`SELECT role FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
-  if(String((rows[0] as any)?.role)!=='MASTER') redirect('/panel');
+  const rows=await sql`SELECT role,must_change_password FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
+  const profile=rows[0] as any;
+  if(sessionEmail!==MASTER_EMAIL && String(profile?.role)!=='MASTER') redirect('/panel');
+  if(Boolean(profile?.must_change_password)) redirect('/cuenta/seguridad');
   return children;
 }
