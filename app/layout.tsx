@@ -5,8 +5,8 @@ import { PwaRegister } from '@/components/PwaRegister';
 import { GlobalDemoBar } from '@/components/GlobalDemoBar';
 
 export const metadata: Metadata = {
-  title:'Turnavia · Tu consulta, a tu hora',
-  description:'Agenda médica inteligente',
+  title:'Turnavia · Tu servicio, a tu hora',
+  description:'Citas, turnos y reservas para profesionales, negocios y clientes',
   manifest:'/manifest.json'
 };
 
