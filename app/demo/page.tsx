@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
-import { ArrowLeft, Building2, CheckCircle2, Clock3, DollarSign, Eye, HeartPulse, Plus, RefreshCw, ShieldCheck, Sparkles, UserRound, MapPin, Users, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Building2, CheckCircle2, Clock3, DollarSign, Eye, HeartPulse, Plus, RefreshCw, ShieldCheck, Sparkles, UserRound, MapPin, Users, CalendarDays, PlayCircle, ChevronLeft, ChevronRight, X, Lightbulb } from 'lucide-react';
 
 type Service={name:string,price:number,duration:number};
 type Availability={days:number[],start:string,end:string};
@@ -125,6 +125,7 @@ export default function Demo(){
  const [msg,setMsg]=useState('');
  const [showCreate,setShowCreate]=useState(false);
  const [categoryFilter,setCategoryFilter]=useState('Todos');
+ const [tourStep,setTourStep]=useState(-1);
  const [newBiz,setNewBiz]=useState({name:'',category:'Belleza',activity:'Barbería',type:'Profesional independiente'});
 
  useEffect(()=>{
@@ -193,12 +194,37 @@ export default function Demo(){
  const statusLabel=(s:string)=>({TRIAL:'Prueba 5 días',ACTIVO:'Activo',SUSPENDIDO:'Suspendido',PAYMENT_REVIEW:'Pago en revisión',CONFIRMED:'Confirmada',REJECTED:'Pago rechazado',COMPLETED:'Completada'} as any)[s]||s;
  const tone=(s:string)=>['ACTIVO','CONFIRMED','COMPLETED'].includes(s)?'ok':['SUSPENDIDO','REJECTED'].includes(s)?'bad':'warn';
 
+ const tourSteps=[
+  {title:'1. Qué es TURNAVIA',text:'Primero enseña la idea general: una sola plataforma sirve para muchos rubros. Aquí puedes filtrar Salud, Belleza, Automotriz, Mascotas y más.',view:'home' as const,businessId:'med-1',service:''},
+  {title:'2. El negocio configura su operación',text:'Ahora mostramos una barbería. El dueño ve su horario semanal, personal, reservas y toda la operación desde un solo panel.',view:'professional' as const,businessId:'bar-1',service:''},
+  {title:'3. Cada servicio tiene tiempo y precio',text:'Un corte clásico puede durar 30 minutos y un corte + barba 60. TURNAVIA usa esa duración para evitar choques de horario.',view:'professional' as const,businessId:'bar-1',service:'Corte + barba'},
+  {title:'4. El mismo motor sirve para uñas',text:'En una manicurista cambian los servicios: acrílicas, semipermanente, jelly tips, pedicura, mantenimiento y más. Cada uno tiene precio y duración propios.',view:'professional' as const,businessId:'nail-1',service:'Acrílicas completas'},
+  {title:'5. Así reserva el cliente',text:'El cliente elige negocio, servicio, fecha y solo ve horas donde el servicio cabe completo dentro de la disponibilidad real.',view:'client' as const,businessId:'nail-1',service:'Acrílicas completas'},
+  {title:'6. Pago y comprobante',text:'Después registra método, referencia y comprobante. La reserva queda preagendada mientras el profesional revisa el pago.',view:'client' as const,businessId:'bar-1',service:'Corte + barba'},
+  {title:'7. El profesional confirma',text:'En el panel profesional aparecen las reservas y pagos por revisar. Puede aprobar, rechazar y luego marcar la atención como completada.',view:'professional' as const,businessId:'bar-1',service:'Corte + barba'},
+  {title:'8. Control desde Master',text:'Finalmente enseña tu panel Master: pruebas gratis, clientes, negocios activos, suscripciones y control comercial de toda la plataforma.',view:'master' as const,businessId:'bar-1',service:''}
+ ];
+
+ function goTour(index:number){
+   if(index<0){setTourStep(-1);return}
+   const bounded=Math.min(index,tourSteps.length-1);
+   const step=tourSteps[bounded];
+   setTourStep(bounded);
+   setView(step.view);
+   setSelectedBusiness(step.businessId);
+   setSelectedService(step.service);
+   setMsg('');
+   setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),50);
+ }
+
+
  return <main className="demo-chooser">
   <div className="container" style={{paddingTop:28,paddingBottom:50}}>
    <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
     <Brand/>
     <div className="row" style={{gap:8,flexWrap:'wrap'}}>
       {view!=='home'&&<button className="btn btn-secondary" onClick={()=>setView('home')}><ArrowLeft size={16}/> Demo</button>}
+      <button className="btn btn-primary" onClick={()=>goTour(0)}><PlayCircle size={16}/> Recorrido guiado</button>
       <button className="btn btn-secondary" onClick={reset}><RefreshCw size={16}/> Reiniciar</button>
       <Link href="/" className="btn btn-secondary">Inicio real</Link>
     </div>
@@ -211,6 +237,11 @@ export default function Demo(){
       <span className="eyebrow"><Sparkles size={15}/> DEMO COMERCIAL MULTIRRUBRO</span>
       <h1>Una agenda para prácticamente cualquier negocio por reserva.</h1>
       <p className="muted">TURNAVIA adapta servicios, duración, precio, disponibilidad, pagos y operación según el rubro. Este demo está precargado para mostrar la amplitud del producto sin tocar datos reales.</p>
+      <div className="hero-actions" style={{marginTop:18}}>
+        <button className="btn btn-primary" onClick={()=>goTour(0)}><PlayCircle size={17}/> Ver demo explicado paso a paso</button>
+        <button className="btn btn-secondary" onClick={()=>{setTourStep(-1);setCategoryFilter('Todos')}}><Eye size={17}/> Explorar libremente</button>
+      </div>
+      <div className="notice" style={{marginTop:14,textAlign:'left'}}><Lightbulb size={17} style={{verticalAlign:'middle',marginRight:7}}/><strong>Para vender TURNAVIA:</strong> usa “Recorrido guiado”. Va explicando qué problema resuelve cada pantalla mientras tú solo vas pulsando “Siguiente”.</div>
     </div>
     <div className="stat-grid">
       <div className="stat"><Building2 size={18}/><small>Negocios demo</small><div className="n">{businesses.length}</div></div>
@@ -343,6 +374,19 @@ export default function Demo(){
       <div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Cliente</th><th>Negocio</th><th>Servicio</th><th>Estado</th></tr></thead><tbody>{appointments.slice(0,10).map(a=>{const b=businesses.find(x=>x.id===a.businessId);return <tr key={a.id}><td>{a.client}</td><td>{b?.name}</td><td>{a.service}</td><td><span className={'status '+tone(a.status)}>{statusLabel(a.status)}</span></td></tr>})}</tbody></table></div>
     </section>
    </>}
+
+   {tourStep>=0&&<div style={{position:'fixed',right:18,bottom:18,zIndex:1000,width:'min(420px,calc(100vw - 36px))',background:'var(--surface)',border:'1px solid var(--line)',borderRadius:18,boxShadow:'0 18px 50px rgba(0,0,0,.22)',padding:18}}>
+     <div className="row space" style={{gap:12,alignItems:'flex-start'}}>
+       <div><span className="eyebrow">RECORRIDO GUIADO · {tourStep+1}/{tourSteps.length}</span><h3 style={{margin:'8px 0 6px'}}>{tourSteps[tourStep].title}</h3></div>
+       <button className="btn btn-secondary" style={{padding:8}} onClick={()=>setTourStep(-1)} aria-label="Cerrar recorrido"><X size={16}/></button>
+     </div>
+     <p className="muted" style={{margin:'0 0 14px'}}>{tourSteps[tourStep].text}</p>
+     <div style={{height:6,background:'var(--line)',borderRadius:99,overflow:'hidden',marginBottom:14}}><div style={{height:'100%',width:((tourStep+1)/tourSteps.length*100)+'%',background:'var(--primary)',borderRadius:99}}/></div>
+     <div className="row space" style={{gap:8}}>
+       <button className="btn btn-secondary" disabled={tourStep===0} onClick={()=>goTour(tourStep-1)}><ChevronLeft size={16}/> Anterior</button>
+       {tourStep<tourSteps.length-1?<button className="btn btn-primary" onClick={()=>goTour(tourStep+1)}>Siguiente <ChevronRight size={16}/></button>:<button className="btn btn-primary" onClick={()=>{setTourStep(-1);setView('home');window.scrollTo({top:0,behavior:'smooth'})}}><CheckCircle2 size={16}/> Finalizar</button>}
+     </div>
+   </div>}
   </div>
  </main>
 }
