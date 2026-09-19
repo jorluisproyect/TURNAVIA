@@ -161,6 +161,11 @@ export default function Demo(){
    return Array.from(new Set(result));
  },[biz,service,date,bizAppointments]);
 
+ useEffect(()=>{
+   if(availableSlots.length && !availableSlots.includes(time)) setTime(availableSlots[0]);
+   if(!availableSlots.length && time) setTime('');
+ },[availableSlots,time]);
+
  function reset(){
   setBusinesses(seedBusinesses);setAppointments(seedAppointments);setSelectedBusiness('med-1');setSelectedService('');setDate('2026-09-21');setTime('09:00');setCategoryFilter('Todos');setMsg('Demo reiniciada con el catálogo completo.');
   try{localStorage.removeItem('turnavia-demo-v4-businesses');localStorage.removeItem('turnavia-demo-v4-appointments')}catch{}
@@ -216,9 +221,19 @@ export default function Demo(){
       <button className="role-card" onClick={()=>setView('client')}><div className="iconbox"><UserRound/></div><h3>Cliente</h3><p>Elige servicio, horario, paga y reserva.</p><div className="go">Reservar ahora</div></button>
     </div>
     <section className="panel" style={{marginTop:20}}>
-      <h2>Rubros disponibles</h2>
-      <div className="row" style={{gap:8,flexWrap:'wrap',marginTop:12}}>{categories.map(c=><span className="pill" key={c}>{c}</span>)}</div>
-      <div className="notice" style={{marginTop:14}}>Servicios 18+ se muestra de forma discreta y está limitado a mayores de edad y actividades permitidas por la legislación aplicable.</div>
+      <div className="row space" style={{gap:12,flexWrap:'wrap'}}><div><h2>Vitrina completa por rubro</h2><p className="muted">Elige una categoría para enseñar ejemplos reales de servicios, tiempos, precios, personal y disponibilidad.</p></div><span className="pill">{businesses.reduce((n,b)=>n+b.services.length,0)} servicios demo</span></div>
+      <div className="row" style={{gap:8,flexWrap:'wrap',marginTop:12}}>
+        <button className={'btn '+(categoryFilter==='Todos'?'btn-primary':'btn-secondary')} onClick={()=>setCategoryFilter('Todos')}>Todos</button>
+        {categories.map(cat=><button className={'btn '+(categoryFilter===cat?'btn-primary':'btn-secondary')} onClick={()=>setCategoryFilter(cat)} key={cat}>{cat}</button>)}
+      </div>
+      <div className="grid-3" style={{marginTop:18}}>{filteredBusinesses.map(b=><button key={b.id} className="card" style={{textAlign:'left',cursor:'pointer'}} onClick={()=>{setSelectedBusiness(b.id);setSelectedService('');setView('professional')}}>
+        <div className="row space"><span className="eyebrow">{b.category}</span><span className={'status '+tone(b.status)}>{statusLabel(b.status)}</span></div>
+        <h3>{b.name}</h3>
+        <p>{b.activity} · {b.location}</p>
+        <div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{b.services.length} servicios</span><span className="pill">{b.staff} profesional{b.staff===1?'':'es'}</span></div>
+        <div className="muted" style={{fontSize:12,marginTop:10}}>{b.services.slice(0,3).map(s=>s.name).join(' · ')}{b.services.length>3?' · …':''}</div>
+      </button>)}</div>
+      <div className="notice" style={{marginTop:14}}>Servicios 18+ se presenta de forma discreta y únicamente para mayores de edad y actividades permitidas por la legislación aplicable.</div>
     </section>
    </>}
 
