@@ -2,19 +2,56 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { CalendarCheck2, CarFront, CheckCircle2, MapPin, RefreshCw, XCircle, ShieldCheck } from 'lucide-react';
-const label:any={AWAITING_PAYMENT:'Esperando pago',PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Ya llegaste',IN_CONSULTATION:'En consulta',COMPLETED:'Atendida',CANCELLED:'Cancelada',NO_SHOW:'No asististe'};
+import { CalendarCheck2, CarFront, CheckCircle2, MapPin, XCircle } from 'lucide-react';
+import { StatusPill } from '@/components/StatusPill';
+
+const label:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Ya llegaste',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asististe'};
+
 export default function Paciente(){
- const [data,setData]=useState<any>(null);const [msg,setMsg]=useState('');const load=()=>fetch('/api/demo').then(r=>r.json()).then(setData);useEffect(()=>{load()},[]);
- async function action(body:any){const r=await fetch('/api/demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok){setMsg(j.error||'No se pudo completar');return}setMsg('Listo');load()}
- const rescheduleSlots=useMemo(()=>data?.availability?.flatMap((a:any)=>(a.slots||[]).filter((s:any)=>s.available).map((s:any)=>({date:a.date,...s})))||[],[data]);
+ const [data,setData]=useState<any>(null);
+ const [error,setError]=useState('');
+ const [msg,setMsg]=useState('');
+
+ const load=()=>fetch('/api/me/patient').then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{if(!ok){setError(j.error||'No se pudo cargar tu cuenta');return}setData(j);setError('')}).catch(()=>setError('No se pudo conectar con TURNAVIA.'));
+ useEffect(()=>{load()},[]);
+ const active=useMemo(()=>data?.appointments?.filter((a:any)=>!['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
+ const history=useMemo(()=>data?.appointments?.filter((a:any)=>['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
+
+ async function action(id:string,status:string){
+   const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'appointment_status',id,status})});
+   const j=await r.json();if(!r.ok){setMsg(j.error||'No se pudo completar');return}setMsg('Actualizado');await load();setTimeout(()=>setMsg(''),1500);
+ }
+
+ if(error&&!data)return <div className="dashboard"><Sidebar role="paciente"/><main className="main"><section className="panel"><h1>Mi cuenta</h1><div className="notice danger">{error}</div></section></main></div>;
  if(!data)return <div className="dashboard"><Sidebar role="paciente"/><main className="main">Cargando…</main></div>;
- const appointments=Array.isArray(data.appointments)?data.appointments:[];
- const ap=[...appointments].reverse().find((x:any)=>x.patient==='María González'&&!['CANCELLED','PAYMENT_REJECTED'].includes(x.status))||appointments.find((x:any)=>!['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(x.status));
- return <div className="dashboard"><Sidebar role="paciente"/><main className="main"><div className="topbar"><div><div className="muted" style={{fontSize:13}}>Mi agenda</div><h1>Hola, María</h1></div><Link className="btn btn-primary" href="/reservar/sofia-mendoza?demo=1">Reservar nueva cita</Link></div>{ap?<div className="panel-grid" style={{gridTemplateColumns:'1fr .7fr'}}><section className="panel"><span className="eyebrow"><CalendarCheck2 size={15}/> Cita Premium Preagendada</span><div style={{padding:'20px 0 10px'}}><h2 style={{fontSize:27,marginBottom:8}}>Dra. Sofía Mendoza</h2><div className="muted">Cardiología</div></div><div className="card" style={{boxShadow:'none',background:'#f9fcfb'}}><div className="row space"><div><strong>{new Date(ap.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}</strong><div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/> {ap.location}</div></div><span className="pill"><CheckCircle2 size={14}/> {label[ap.status]||ap.status}</span></div></div>
- {ap.status==='PAYMENT_REVIEW'?<div className="notice" style={{marginTop:15}}><strong>Tu comprobante está en revisión.</strong> La hora está preagendada, pero la cita se confirma cuando la doctora o recepción valide el pago.</div>:ap.status==='CONFIRMED'?<div className="notice" style={{marginTop:15}}><strong>Pago aprobado y cita confirmada.</strong> Por favor no faltes. Si no puedes asistir, cuentas con una sola reprogramación sujeta a disponibilidad.</div>:<div className="notice" style={{marginTop:15}}>{data.doctorStatus==='DELAYED'?`La doctora presenta un retraso aproximado de ${data.delayMinutes} minutos.`:data.doctorStatus==='SUSPENDED'?'La consulta fue marcada como suspendida. Recepción se pondrá en contacto contigo.':'La doctora está atendiendo normalmente. Te recomendamos llegar 10 minutos antes.'}</div>}
- {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<div className="hero-actions" style={{marginTop:16}}><button className="btn btn-primary" onClick={()=>action({action:'appointment_status',id:ap.id,status:'ON_THE_WAY'})}><CarFront size={17}/> Estoy en camino</button><button className="btn btn-secondary" onClick={()=>action({action:'appointment_status',id:ap.id,status:'ARRIVED'})}><CheckCircle2 size={17}/> Ya llegué</button></div>}
- {ap.status==='NO_SHOW'&&!ap.rescheduleUsed&&<div className="notice" style={{marginTop:16}}><strong>Tienes 1 reprogramación disponible.</strong><div className="booking-slots" style={{marginTop:10}}>{rescheduleSlots.slice(0,8).map((s:any)=><button key={s.startsAt} onClick={()=>action({action:'reschedule_once',id:ap.id,startsAt:s.startsAt})}>{new Date(s.startsAt).toLocaleString('es-VE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</button>)}</div></div>}
- {ap.rescheduleUsed&&<div className="notice" style={{marginTop:16}}><ShieldCheck size={16}/> Esta cita ya utilizó su única reprogramación permitida.</div>}
- </section><aside style={{display:'grid',gap:18}}><section className="panel"><h2>Pago</h2><div className="stat" style={{padding:0,border:0}}><small>Monto</small><div className="n">{ap.currency} {ap.consultationPrice}</div><div className="muted" style={{fontSize:13}}>{ap.paymentMethod||'—'} · Ref. {ap.paymentReference||'—'}</div></div></section><section className="panel"><h2>Gestionar cita</h2><div className="quick-grid"><Link className="quick" href="/reservar/sofia-mendoza?demo=1"><RefreshCw size={18}/><strong>Nueva cita</strong><small>Elegir otro horario</small></Link><button className="quick" disabled={['COMPLETED','CANCELLED'].includes(ap.status)} onClick={()=>action({action:'appointment_status',id:ap.id,status:'CANCELLED'})}><XCircle size={18}/><strong>Cancelar</strong><small>Liberar el cupo</small></button></div></section></aside></div>:<section className="panel"><div className="empty">No tienes citas activas. <Link href="/reservar/sofia-mendoza?demo=1">Reservar una ahora</Link>.</div></section>}{msg&&<div className="toast">{msg}</div>}</main></div>
+
+ return <div className="dashboard"><Sidebar role="paciente"/><main className="main">
+   <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Mis reservas</div><h1>Hola, {data.patient.name}</h1></div><Link className="btn btn-primary" href="/explorar">Reservar servicio</Link></div>
+
+   {active.length===0?<section className="panel"><div className="empty">No tienes reservas activas. <Link href="/explorar">Explorar profesionales y negocios</Link>.</div></section>:
+   <div style={{display:'grid',gap:18}}>{active.map((ap:any)=><section className="panel" key={ap.id}>
+      <span className="eyebrow"><CalendarCheck2 size={15}/> Reserva preagendada</span>
+      <div className="row space" style={{padding:'18px 0 10px',gap:14,alignItems:'flex-start',flexWrap:'wrap'}}>
+        <div><h2 style={{fontSize:25,marginBottom:6}}>{ap.providerName}</h2><div className="muted">{ap.activity} · {ap.category}</div></div>
+        <StatusPill tone={ap.status==='PAYMENT_REVIEW'?'warn':ap.status==='PAYMENT_REJECTED'?'bad':['CONFIRMED','ARRIVED','IN_CONSULTATION'].includes(ap.status)?'ok':''}>{label[ap.status]||ap.status}</StatusPill>
+      </div>
+      <div className="card" style={{boxShadow:'none',background:'#f9fcfb'}}>
+       <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
+        <div><strong>{ap.serviceName}</strong><div style={{marginTop:6}}>{new Date(ap.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}</div><div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{ap.location||'Ubicación por confirmar'}</div></div>
+        <div style={{textAlign:'right'}}><strong>{ap.currency} {ap.price}</strong><div className="muted" style={{fontSize:12}}>{ap.paymentMethod||'—'} · {ap.paymentReference||'—'}</div></div>
+       </div>
+      </div>
+      {ap.status==='PAYMENT_REVIEW'&&<div className="notice" style={{marginTop:14}}><strong>Tu pago está en revisión.</strong> La reserva se confirmará cuando el profesional o negocio valide el comprobante.</div>}
+      {ap.status==='CONFIRMED'&&<div className="notice" style={{marginTop:14}}><strong>Reserva confirmada.</strong> Puedes avisar cuando vayas en camino o cuando hayas llegado.</div>}
+      <div className="hero-actions" style={{marginTop:14}}>
+        {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<button className="btn btn-primary" onClick={()=>action(ap.id,'ON_THE_WAY')}><CarFront size={17}/> Estoy en camino</button>}
+        {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>action(ap.id,'ARRIVED')}><CheckCircle2 size={17}/> Ya llegué</button>}
+        {!['COMPLETED','CANCELLED','IN_CONSULTATION'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>action(ap.id,'CANCELLED')}><XCircle size={17}/> Cancelar</button>}
+        <Link className="btn btn-secondary" href={'/reservar/'+ap.providerSlug}>Reservar otra</Link>
+      </div>
+   </section>)}</div>}
+
+   {history.length>0&&<section className="panel" style={{marginTop:18}}><h2>Historial</h2><div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Profesional / negocio</th><th>Servicio</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{history.map((a:any)=><tr key={a.id}><td><strong>{a.providerName}</strong><div className="muted" style={{fontSize:12}}>{a.activity}</div></td><td>{a.serviceName}</td><td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'})}</td><td><StatusPill tone={a.status==='COMPLETED'?'ok':a.status==='PAYMENT_REJECTED'?'bad':''}>{label[a.status]||a.status}</StatusPill></td></tr>)}</tbody></table></div></section>}
+   {msg&&<div className="toast">{msg}</div>}
+ </main></div>;
 }
