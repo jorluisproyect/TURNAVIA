@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { authClient } from '@/lib/auth/client';
 import { Brand } from '@/components/Brand';
 import { CheckCircle2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { passwordIssues, PASSWORD_HELP } from '@/lib/password-policy';
 
 export default function SeguridadCuenta(){
   const router=useRouter();
@@ -20,7 +21,8 @@ export default function SeguridadCuenta(){
 
   async function submit(e:React.FormEvent){
     e.preventDefault();
-    if(newPassword.length<8){setError('La nueva contraseña debe tener al menos 8 caracteres.');return}
+    const issues=passwordIssues(newPassword);
+    if(issues.length){setError('La nueva contraseña necesita '+issues.join(', ')+'.');return}
     if(newPassword!==confirm){setError('Las contraseñas nuevas no coinciden.');return}
     setBusy(true);setError('');
     try{
@@ -39,9 +41,9 @@ export default function SeguridadCuenta(){
     <section className="profile-card">
       {done&&<div className="notice"><CheckCircle2 size={16}/> Contraseña actualizada correctamente.</div>}
       <form className="form" onSubmit={submit}>
-        <div className="field"><label>Contraseña actual</label><div style={{position:'relative'}}><input type={showCurrent?'text':'password'} required value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showCurrent?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowCurrent(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center'}}>{showCurrent?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
-        <div className="field"><label>Nueva contraseña</label><div style={{position:'relative'}}><input type={showNew?'text':'password'} required minLength={8} value={newPassword} onChange={e=>setNewPassword(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showNew?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowNew(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center'}}>{showNew?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
-        <div className="field"><label>Repite la nueva contraseña</label><div style={{position:'relative'}}><input type={showConfirm?'text':'password'} required minLength={8} value={confirm} onChange={e=>setConfirm(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showConfirm?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowConfirm(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center'}}>{showConfirm?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
+        <div className="field"><label>Contraseña actual</label><div style={{position:'relative'}}><input type={showCurrent?'text':'password'} required value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showCurrent?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowCurrent(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showCurrent?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
+        <div className="field"><label>Nueva contraseña</label><div style={{position:'relative'}}><input type={showNew?'text':'password'} required minLength={8} value={newPassword} onChange={e=>setNewPassword(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showNew?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowNew(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showNew?<EyeOff size={18}/>:<Eye size={18}/>}</button></div><div className="muted" style={{fontSize:12,marginTop:6}}>{PASSWORD_HELP}</div></div>
+        <div className="field"><label>Repite la nueva contraseña</label><div style={{position:'relative'}}><input type={showConfirm?'text':'password'} required minLength={8} value={confirm} onChange={e=>setConfirm(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showConfirm?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowConfirm(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showConfirm?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
         {error&&<div className="notice danger">{error}</div>}
         <button className="btn btn-primary" disabled={busy}>{busy?'Actualizando...':'Cambiar contraseña'}</button>
       </form>
