@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { Brand } from "./Brand";
 import { LogoutButton } from "./LogoutButton";
-import { CalendarDays, LayoutDashboard, Users, Clock3, Building2, Settings, HeartPulse, UserRound, BarChart3, BriefcaseBusiness, Search } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Users, Clock3, Building2, Settings, HeartPulse, UserRound, BarChart3, BriefcaseBusiness, Search, Megaphone } from "lucide-react";
 
 const config = {
   medico: [
@@ -34,6 +34,7 @@ const config = {
     ["/master/clientes", "Clientes", Building2],
     ["/master/profesionales", "Profesionales", HeartPulse],
     ["/master/suscripciones", "Suscripciones", BarChart3],
+    ["/master/estrategia", "Estrategia", Megaphone],
     ["/master/configuracion", "Configuración", Settings],
     ["/cuenta/seguridad", "Seguridad", Settings],
   ],
