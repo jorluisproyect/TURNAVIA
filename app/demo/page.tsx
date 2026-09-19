@@ -172,7 +172,7 @@ export default function Demo(){
  },[availableSlots,time]);
 
  function reset(){
-  setBusinesses(seedBusinesses);setAppointments(seedAppointments);setSelectedBusiness('med-1');setSelectedService('');setDate(demoDate());setTime('');setCategoryFilter('Todos');setMsg('Demo reiniciada con todo el catálogo precargado.');
+  setBusinesses(seedBusinesses);setAppointments(seedAppointments);setSelectedBusiness('med-1');setSelectedService('');setDate(demoDate());setTime('');setCategoryFilter('Todos');setTourBusinessId('bar-1');setTourStep(-1);setMsg('Demo reiniciada con todo el catálogo precargado.');
   try{localStorage.removeItem('turnavia-demo-v5-businesses');localStorage.removeItem('turnavia-demo-v5-appointments')}catch{}
  }
  function changeAppointment(id:string,status:Appointment['status']){
@@ -252,6 +252,29 @@ export default function Demo(){
       </div>
       <div className="notice" style={{marginTop:14,textAlign:'left'}}><Lightbulb size={17} style={{verticalAlign:'middle',marginRight:7}}/><strong>Para vender TURNAVIA:</strong> usa “Recorrido guiado”. Va explicando qué problema resuelve cada pantalla mientras tú solo vas pulsando “Siguiente”.</div>
     </div>
+
+    <section className="panel" style={{marginTop:18}}>
+      <div className="row space" style={{gap:16,flexWrap:'wrap',alignItems:'flex-end'}}>
+        <div style={{flex:'1 1 420px'}}>
+          <span className="eyebrow">VERLO COMO MI NEGOCIO</span>
+          <h2 style={{marginTop:8}}>Personaliza el recorrido antes de empezar</h2>
+          <p className="muted">Elige el ejemplo más parecido al negocio de la persona. El recorrido cambiará automáticamente los servicios, duración, precio y explicación.</p>
+          <div className="field" style={{marginTop:12}}>
+            <label>¿Qué tipo de negocio quieres mostrar?</label>
+            <select value={tourBusinessId} onChange={e=>setTourBusinessId(e.target.value)}>
+              {categories.filter(cat=>cat!=='Servicios 18+').map(cat=><optgroup label={cat} key={cat}>{businesses.filter(b=>b.category===cat).map(b=><option key={b.id} value={b.id}>{b.activity} · {b.name}</option>)}</optgroup>)}
+              <optgroup label="Servicios 18+">{businesses.filter(b=>b.category==='Servicios 18+').map(b=><option key={b.id} value={b.id}>{b.activity} · {b.name}</option>)}</optgroup>
+            </select>
+          </div>
+        </div>
+        <div className="card" style={{flex:'0 1 330px'}}>
+          <strong>{tourBiz?.name}</strong>
+          <p>{tourBiz?.activity} · {tourBiz?.category}</p>
+          <div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{tourBiz?.services.length||0} servicios</span><span className="pill">{tourBiz?.staff||1} profesional{(tourBiz?.staff||1)===1?'':'es'}</span></div>
+          <button className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:14}} onClick={()=>goTour(0)}><PlayCircle size={17}/> Mostrar TURNAVIA para este rubro</button>
+        </div>
+      </div>
+    </section>
     <div className="stat-grid">
       <div className="stat"><Building2 size={18}/><small>Negocios demo</small><div className="n">{businesses.length}</div></div>
       <div className="stat"><BriefcaseBusinessIcon/><small>Servicios cargados</small><div className="n">{businesses.reduce((n,b)=>n+b.services.length,0)}</div></div>
@@ -384,6 +407,81 @@ export default function Demo(){
     </section>
    </>}
 
+   {view==='offer'&&<>
+    <div className="demo-head" style={{paddingBottom:10}}>
+      <span className="eyebrow"><CheckCircle2 size={15}/> RESULTADO PARA EL NEGOCIO</span>
+      <h1>Menos mensajes desordenados. Más reservas organizadas.</h1>
+      <p className="muted">Así se traduce TURNAVIA para {tourBiz?.activity||'este negocio'} después de ver el recorrido completo.</p>
+    </div>
+
+    <div className="panel-grid" style={{marginTop:18}}>
+      <section className="panel">
+        <h2>Antes de TURNAVIA</h2>
+        <div style={{display:'grid',gap:10,marginTop:14}}>
+          <div className="notice">❌ Clientes preguntando por WhatsApp qué horarios quedan.</div>
+          <div className="notice">❌ Precios, servicios y duración explicados una y otra vez.</div>
+          <div className="notice">❌ Citas cruzadas o espacios muertos en la agenda.</div>
+          <div className="notice">❌ Referencias y comprobantes mezclados entre chats.</div>
+          <div className="notice">❌ Difícil saber qué reservas están pendientes o confirmadas.</div>
+        </div>
+      </section>
+      <section className="panel">
+        <h2>Con TURNAVIA</h2>
+        <div style={{display:'grid',gap:10,marginTop:14}}>
+          <div className="notice"><CheckCircle2 size={16}/> Disponibilidad publicada y reservas 24/7.</div>
+          <div className="notice"><CheckCircle2 size={16}/> Cada servicio muestra precio y duración.</div>
+          <div className="notice"><CheckCircle2 size={16}/> Horas calculadas automáticamente sin solapamientos.</div>
+          <div className="notice"><CheckCircle2 size={16}/> Pago, referencia y comprobante dentro de la reserva.</div>
+          <div className="notice"><CheckCircle2 size={16}/> Profesional, cliente y Master ven el estado correcto.</div>
+        </div>
+      </section>
+    </div>
+
+    <section className="panel" style={{marginTop:18}}>
+      <div className="row space" style={{gap:14,flexWrap:'wrap'}}>
+        <div><span className="eyebrow">PLANES TURNAVIA</span><h2 style={{marginTop:8}}>Empieza con 5 días de prueba</h2><p className="muted">Sin tarjeta para probar el flujo antes de activar el servicio.</p></div>
+        <span className="pill">5 días gratis</span>
+      </div>
+      <div className="panel-grid" style={{marginTop:16}}>
+        <div className="card">
+          <span className="eyebrow">PROFESIONAL INDEPENDIENTE</span>
+          <h2 style={{fontSize:32,margin:'10px 0 4px'}}>$40 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
+          <p>$25 activación + $15 primer mes.</p>
+          <div className="notice"><strong>Después: $15/mes</strong><br/>Para una agenda profesional individual.</div>
+          <Link href="/registro?role=DOCTOR" className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:12}}>Iniciar prueba profesional</Link>
+        </div>
+        <div className="card">
+          <span className="eyebrow">NEGOCIO / LOCAL</span>
+          <h2 style={{fontSize:32,margin:'10px 0 4px'}}>$149 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
+          <p>$100 activación + $49 primer mes.</p>
+          <div className="notice"><strong>Después: $49/mes</strong><br/>Pensado para negocios de hasta 5 profesionales.</div>
+          <Link href="/registro?role=DOCTOR" className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:12}}>Iniciar prueba de negocio</Link>
+        </div>
+      </div>
+    </section>
+
+    <section className="panel" style={{marginTop:18}}>
+      <div className="panel-grid" style={{alignItems:'center'}}>
+        <div>
+          <span className="eyebrow">SIGUIENTE PASO</span>
+          <h2 style={{marginTop:8}}>¿Quieres TURNAVIA para tu negocio?</h2>
+          <p className="muted">Puedes iniciar la prueba ahora o escribir directamente por WhatsApp con un mensaje ya preparado para {tourBiz?.activity||'tu negocio'}.</p>
+          <div className="button-row" style={{marginTop:16}}>
+            <Link href="/registro?role=DOCTOR" className="btn btn-primary"><CheckCircle2 size={17}/> Iniciar prueba gratis</Link>
+            <a href={whatsappHref} target="_blank" rel="noreferrer" className="btn btn-secondary">Hablar por WhatsApp</a>
+          </div>
+          <div className="notice" style={{marginTop:14}}><strong>Mensaje preparado:</strong><br/>“Hola, vi el demo de TURNAVIA para {tourBiz?.activity||'mi negocio'} y quiero información para configurarlo.”</div>
+        </div>
+        <div className="card" style={{textAlign:'center'}}>
+          <h3>Pruébalo en tu teléfono</h3>
+          <p className="muted">Escanea el QR para abrir este mismo demo.</p>
+          <img src={'https://quickchart.io/qr?size=220&text='+encodeURIComponent(demoUrl)} alt="QR del demo TURNAVIA" width="220" height="220" style={{maxWidth:'100%',borderRadius:12,background:'#fff',padding:8}}/>
+          <div style={{marginTop:10}}><a href={demoUrl} target="_blank" rel="noreferrer" className="btn btn-secondary">Abrir demo</a></div>
+        </div>
+      </div>
+    </section>
+   </>}
+
    {tourStep>=0&&<div style={{position:'fixed',right:18,bottom:18,zIndex:1000,width:'min(420px,calc(100vw - 36px))',background:'var(--surface)',border:'1px solid var(--line)',borderRadius:18,boxShadow:'0 18px 50px rgba(0,0,0,.22)',padding:18}}>
      <div className="row space" style={{gap:12,alignItems:'flex-start'}}>
        <div><span className="eyebrow">RECORRIDO GUIADO · {tourStep+1}/{tourSteps.length}</span><h3 style={{margin:'8px 0 6px'}}>{tourSteps[tourStep].title}</h3></div>
@@ -393,7 +491,7 @@ export default function Demo(){
      <div style={{height:6,background:'var(--line)',borderRadius:99,overflow:'hidden',marginBottom:14}}><div style={{height:'100%',width:((tourStep+1)/tourSteps.length*100)+'%',background:'var(--primary)',borderRadius:99}}/></div>
      <div className="row space" style={{gap:8}}>
        <button className="btn btn-secondary" disabled={tourStep===0} onClick={()=>goTour(tourStep-1)}><ChevronLeft size={16}/> Anterior</button>
-       {tourStep<tourSteps.length-1?<button className="btn btn-primary" onClick={()=>goTour(tourStep+1)}>Siguiente <ChevronRight size={16}/></button>:<button className="btn btn-primary" onClick={()=>{setTourStep(-1);setView('home');window.scrollTo({top:0,behavior:'smooth'})}}><CheckCircle2 size={16}/> Finalizar</button>}
+       {tourStep<tourSteps.length-1?<button className="btn btn-primary" onClick={()=>goTour(tourStep+1)}>Siguiente <ChevronRight size={16}/></button>:<button className="btn btn-primary" onClick={()=>{setTourStep(-1);setView('offer');window.scrollTo({top:0,behavior:'smooth'})}}><CheckCircle2 size={16}/> Ver planes y comenzar</button>}
      </div>
    </div>}
   </div>
