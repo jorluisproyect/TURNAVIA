@@ -11,6 +11,7 @@ const config = {
     ["/medico#servicios", "Servicios", BriefcaseBusiness],
     ["/medico#pagos", "Pagos", BarChart3],
     ["/medico#perfil", "Perfil", Settings],
+    ["/cuenta/seguridad", "Seguridad", Settings],
   ],
   recepcion: [
     ["/recepcion", "Resumen", LayoutDashboard],
@@ -24,6 +25,7 @@ const config = {
     ["/explorar", "Reservar", Search],
     ["/paciente/profesionales", "Mis profesionales", UserRound],
     ["/paciente/perfil", "Perfil", Settings],
+    ["/cuenta/seguridad", "Seguridad", Settings],
   ],
   master: [
     ["/master", "Resumen", LayoutDashboard],
@@ -31,6 +33,7 @@ const config = {
     ["/master/profesionales", "Profesionales", HeartPulse],
     ["/master/suscripciones", "Suscripciones", BarChart3],
     ["/master/configuracion", "Configuración", Settings],
+    ["/cuenta/seguridad", "Seguridad", Settings],
   ],
 } as const;
 
