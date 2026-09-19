@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { planFromType } from '@/lib/plans';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { auth } from '@/lib/auth/server';
+
+
+const MASTER_EMAIL='jorgeluisananguren@gmail.com';
+async function isMaster(){
+  if(!sql) return false;
+  const {data:session}=await auth.getSession();
+  if(!session?.user) return false;
+  const email=String((session.user as any).email||'').toLowerCase();
+  if(email===MASTER_EMAIL) return true;
+  const rows=await sql`SELECT role FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
+  return String((rows[0] as any)?.role)==='MASTER';
+}
 
 function mapClient(r:any){
   return {
@@ -15,6 +28,7 @@ function mapClient(r:any){
 
 export async function GET(req:Request){
   if(!sql) return NextResponse.json({clients:[]});
+  if(!(await isMaster())) return NextResponse.json({error:'No autorizado'},{status:403});
   await sql`UPDATE commercial_clients SET status='PAGO_PENDIENTE' WHERE status='TRIAL' AND trial_ends_at IS NOT NULL AND trial_ends_at < now()`;
   const url=new URL(req.url);
   const id=url.searchParams.get('id');
@@ -41,6 +55,7 @@ export async function POST(req:Request){
 
 export async function PATCH(req:Request){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
+  if(!(await isMaster())) return NextResponse.json({error:'No autorizado'},{status:403});
   const body=await req.json();
   const before=await sql`SELECT * FROM commercial_clients WHERE id=${body.id}::uuid LIMIT 1`;
   if(!before.length) return NextResponse.json({error:'Cliente no encontrado'},{status:404});
