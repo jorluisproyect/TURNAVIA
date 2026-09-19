@@ -1,9 +1,9 @@
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { redirect } from 'next/navigation';
+import { MASTER_EMAIL } from '@/lib/access';
 
 export const dynamic='force-dynamic';
-const MASTER_EMAIL='jorgeluisananguren@gmail.com';
 
 export default async function MasterLayout({children}:{children:React.ReactNode}){
   const {data:session}=await auth.getSession();
