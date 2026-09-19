@@ -209,3 +209,7 @@ ALTER TABLE doctors ADD COLUMN IF NOT EXISTS provider_type text NOT NULL DEFAULT
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS auth_user_id text;
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_id uuid REFERENCES provider_services(id) ON DELETE SET NULL;
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_name text;
+
+
+-- Account security
+ALTER TABLE app_user_profiles ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
