@@ -110,7 +110,7 @@ const categories=['Salud','Belleza','Bienestar','Servicios profesionales','Educa
 const demoDate=()=>new Date(Date.now()+2*86400000).toISOString().slice(0,10);
 
 export default function Demo(){
- const [view,setView]=useState<'home'|'master'|'professional'|'client'>('home');
+ const [view,setView]=useState<'home'|'master'|'professional'|'client'|'offer'>('home');
  const [businesses,setBusinesses]=useState<Business[]>(seedBusinesses);
  const [appointments,setAppointments]=useState<Appointment[]>(seedAppointments);
  const [selectedBusiness,setSelectedBusiness]=useState('med-1');
@@ -125,6 +125,7 @@ export default function Demo(){
  const [msg,setMsg]=useState('');
  const [showCreate,setShowCreate]=useState(false);
  const [categoryFilter,setCategoryFilter]=useState('Todos');
+ const [tourBusinessId,setTourBusinessId]=useState('bar-1');
  const [tourStep,setTourStep]=useState(-1);
  const [newBiz,setNewBiz]=useState({name:'',category:'Belleza',activity:'Barbería',type:'Profesional independiente'});
 
@@ -194,16 +195,24 @@ export default function Demo(){
  const statusLabel=(s:string)=>({TRIAL:'Prueba 5 días',ACTIVO:'Activo',SUSPENDIDO:'Suspendido',PAYMENT_REVIEW:'Pago en revisión',CONFIRMED:'Confirmada',REJECTED:'Pago rechazado',COMPLETED:'Completada'} as any)[s]||s;
  const tone=(s:string)=>['ACTIVO','CONFIRMED','COMPLETED'].includes(s)?'ok':['SUSPENDIDO','REJECTED'].includes(s)?'bad':'warn';
 
+ const tourBiz=businesses.find(b=>b.id===tourBusinessId)||businesses.find(b=>b.id==='bar-1')||businesses[0];
+ const tourService=tourBiz?.services[1]||tourBiz?.services[0];
+ const tourServiceName=tourService?.name||'Servicio';
  const tourSteps=[
-  {title:'1. Qué es TURNAVIA',text:'Primero enseña la idea general: una sola plataforma sirve para muchos rubros. Aquí puedes filtrar Salud, Belleza, Automotriz, Mascotas y más.',view:'home' as const,businessId:'med-1',service:''},
-  {title:'2. El negocio configura su operación',text:'Ahora mostramos una barbería. El dueño ve su horario semanal, personal, reservas y toda la operación desde un solo panel.',view:'professional' as const,businessId:'bar-1',service:''},
-  {title:'3. Cada servicio tiene tiempo y precio',text:'Un corte clásico puede durar 30 minutos y un corte + barba 60. TURNAVIA usa esa duración para evitar choques de horario.',view:'professional' as const,businessId:'bar-1',service:'Corte + barba'},
-  {title:'4. El mismo motor sirve para uñas',text:'En una manicurista cambian los servicios: acrílicas, semipermanente, jelly tips, pedicura, mantenimiento y más. Cada uno tiene precio y duración propios.',view:'professional' as const,businessId:'nail-1',service:'Acrílicas completas'},
-  {title:'5. Así reserva el cliente',text:'El cliente elige negocio, servicio, fecha y solo ve horas donde el servicio cabe completo dentro de la disponibilidad real.',view:'client' as const,businessId:'nail-1',service:'Acrílicas completas'},
-  {title:'6. Pago y comprobante',text:'Después registra método, referencia y comprobante. La reserva queda preagendada mientras el profesional revisa el pago.',view:'client' as const,businessId:'bar-1',service:'Corte + barba'},
-  {title:'7. El profesional confirma',text:'En el panel profesional aparecen las reservas y pagos por revisar. Puede aprobar, rechazar y luego marcar la atención como completada.',view:'professional' as const,businessId:'bar-1',service:'Corte + barba'},
-  {title:'8. Control desde Master',text:'Finalmente enseña tu panel Master: pruebas gratis, clientes, negocios activos, suscripciones y control comercial de toda la plataforma.',view:'master' as const,businessId:'bar-1',service:''}
+  {title:'1. TURNAVIA adaptado a tu rubro',text:`Vamos a mostrar TURNAVIA usando el ejemplo “${tourBiz?.name} · ${tourBiz?.activity}”. El mismo sistema cambia servicios, tiempos y agenda según el negocio.`,view:'home' as const,businessId:tourBiz?.id||'bar-1',service:''},
+  {title:'2. Configuración del negocio',text:`Aquí ${tourBiz?.name} controla disponibilidad, equipo y operación diaria. Cada negocio publica exactamente cuándo puede recibir reservas.`,view:'professional' as const,businessId:tourBiz?.id||'bar-1',service:''},
+  {title:'3. Servicios con tiempo y precio',text:`Ejemplo: “${tourServiceName}” dura ${tourService?.duration||30} minutos y cuesta $${tourService?.price||0}. TURNAVIA usa esos datos para calcular la agenda sin cruces.`,view:'professional' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
+  {title:'4. Reserva del cliente',text:'El cliente selecciona servicio, fecha y hora. Solo aparecen horarios donde el servicio cabe completo dentro de la disponibilidad publicada.',view:'client' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
+  {title:'5. Pago y comprobante',text:'El cliente registra método de pago, referencia y comprobante. La reserva queda preagendada mientras el profesional revisa el pago.',view:'client' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
+  {title:'6. Confirmación del profesional',text:'La reserva llega al panel profesional. Desde aquí se puede aprobar o rechazar el pago y después completar la atención.',view:'professional' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
+  {title:'7. Control comercial Master',text:'El Master controla pruebas gratis, clientes, activaciones, suspensiones, planes y el crecimiento de toda la plataforma.',view:'master' as const,businessId:tourBiz?.id||'bar-1',service:''},
+  {title:'8. Resultado y planes',text:'Cerramos mostrando el cambio para el negocio, los planes de TURNAVIA y las opciones para iniciar una prueba o contactar por WhatsApp.',view:'offer' as const,businessId:tourBiz?.id||'bar-1',service:''}
  ];
+
+ const whatsappText=encodeURIComponent(`Hola, vi el demo de TURNAVIA para ${tourBiz?.activity||'mi negocio'} y quiero información para configurarlo.`);
+ const whatsappHref='https://wa.me/584129365637?text='+whatsappText;
+ const demoUrl='https://turnavia.vercel.app/demo';
+
 
  function goTour(index:number){
    if(index<0){setTourStep(-1);return}
