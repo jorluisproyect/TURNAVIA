@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Suspense } from 'react';
 import './globals.css';
 import { PwaRegister } from '@/components/PwaRegister';
-import { GlobalDemoBar } from '@/components/GlobalDemoBar';
 
 export const metadata: Metadata = {
   title:'Turnavia · Tu servicio, a tu hora',
@@ -17,9 +15,6 @@ export default function RootLayout({children}:{children:React.ReactNode}){
     <html lang="es">
       <body>
         <PwaRegister/>
-        <Suspense fallback={null}>
-          <GlobalDemoBar/>
-        </Suspense>
         {children}
       </body>
     </html>
