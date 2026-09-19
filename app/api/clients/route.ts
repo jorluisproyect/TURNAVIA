@@ -28,15 +28,16 @@ function mapClient(r:any){
 
 export async function GET(req:Request){
   if(!sql) return NextResponse.json({clients:[]});
-  if(!(await isMaster())) return NextResponse.json({error:'No autorizado'},{status:403});
   await sql`UPDATE commercial_clients SET status='PAGO_PENDIENTE' WHERE status='TRIAL' AND trial_ends_at IS NOT NULL AND trial_ends_at < now()`;
   const url=new URL(req.url);
   const id=url.searchParams.get('id');
   if(id){
     const rows=await sql`SELECT * FROM commercial_clients WHERE id=${id}::uuid LIMIT 1`;
     if(!rows.length) return NextResponse.json({error:'Cliente no encontrado'},{status:404});
-    return NextResponse.json({client:mapClient(rows[0])});
+    const x=mapClient(rows[0]);
+    return NextResponse.json({client:{id:x.id,name:x.name,type:x.type,category:x.category,subcategory:x.subcategory,status:x.status,trialEndsAt:x.trialEndsAt}});
   }
+  if(!(await isMaster())) return NextResponse.json({error:'No autorizado'},{status:403});
   const rows=await sql`SELECT * FROM commercial_clients ORDER BY created_at DESC`;
   return NextResponse.json({clients:rows.map(mapClient)});
 }
