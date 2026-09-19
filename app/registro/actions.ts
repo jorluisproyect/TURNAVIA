@@ -21,6 +21,8 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const requestedRole=rawRole==='DOCTOR'?'DOCTOR':'PATIENT';
   const role=email===MASTER_EMAIL?'MASTER':requestedRole;
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
+  const buyIntent=String(formData.get('buyIntent')||'0')==='1';
+  let commercialClientId='';
 
   if(!name||!email||!phone||password.length<8) return {error:'Completa nombre, correo, teléfono y usa una contraseña de al menos 8 caracteres.'};
 
@@ -85,13 +87,16 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
 
       const existingCommercial=await sql`SELECT id,status,trial_ends_at FROM commercial_clients WHERE lower(email)=lower(${email}) ORDER BY created_at DESC LIMIT 1`;
       if(existingCommercial.length){
+        commercialClientId=String((existingCommercial[0] as any).id);
         await sql`UPDATE commercial_clients SET name=${name},type=${providerType},category=${category},subcategory=${activity},specialty=${activity||category},phone=${phone},auth_user_id=${String(authUserId)},
           status=CASE WHEN status IN ('SUSPENDIDO','ACTIVO','REVISION_BINANCE') THEN status ELSE 'TRIAL' END,
           trial_ends_at=CASE WHEN status IN ('SUSPENDIDO','ACTIVO','REVISION_BINANCE') THEN trial_ends_at ELSE GREATEST(COALESCE(trial_ends_at,now()),now()+interval '5 days') END
           WHERE id=${(existingCommercial[0] as any).id}`;
       }else{
-        await sql`INSERT INTO commercial_clients(name,type,category,subcategory,specialty,phone,email,status,trial_ends_at,auth_user_id)
-          VALUES(${name},${providerType},${category},${activity},${activity||category},${phone},${email},'TRIAL',now()+interval '5 days',${String(authUserId)})`;
+        const commercial=await sql`INSERT INTO commercial_clients(name,type,category,subcategory,specialty,phone,email,status,trial_ends_at,auth_user_id)
+          VALUES(${name},${providerType},${category},${activity},${activity||category},${phone},${email},'TRIAL',now()+interval '5 days',${String(authUserId)})
+          RETURNING id`;
+        commercialClientId=String((commercial[0] as any)?.id||'');
       }
 
     }else if(role==='PATIENT'){
@@ -118,5 +123,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     html:turnaviaEmail('Bienvenido a TURNAVIA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p><p><a href="${process.env.APP_URL||'https://turnavia.vercel.app'}/ingresar">Entrar a TURNAVIA</a></p>`)
   });
 
-  redirect(role==='MASTER'?'/master':'/panel');
+  if(role==='MASTER') redirect('/master');
+  if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId));
+  redirect('/panel');
 }
