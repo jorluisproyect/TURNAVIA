@@ -27,3 +27,5 @@ jobs:
             git commit -m "Sync package lock"
             git push
           fi
+
+# verify latest multirubro integration
