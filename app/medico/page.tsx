@@ -53,7 +53,7 @@ export default function Medico(){
  const p=data.provider;
 
  return <div className="dashboard"><Sidebar role="medico"/><main className="main">
-  <div className="topbar"><div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1></div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':'Prueba gratis'}</span><button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
+  <div id="perfil" className="topbar"><div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1></div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':'Prueba gratis'}</span><button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
 
   <div className="stat-grid">
     <div className="stat"><small>Reservas activas</small><div className="n">{confirmed.length}</div></div>
