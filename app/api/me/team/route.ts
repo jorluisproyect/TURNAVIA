@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
+import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -56,13 +57,19 @@ export async function GET(){
   for(const m of members as any[]){
     const services=await sql`SELECT id,name,description,duration_minutes,price,currency,active FROM provider_services WHERE doctor_id=${m.doctor_id} ORDER BY active DESC,created_at`;
     const availability=await sql`SELECT id,starts_at,ends_at,slot_minutes,published FROM availability_blocks WHERE doctor_id=${m.doctor_id} AND ends_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 50`;
+    const appointments=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.service_name,a.consultation_price,a.consultation_currency,
+        a.payment_method,a.payment_reference,a.payment_proof_url,p.full_name AS client_name,p.phone AS client_phone,p.email AS client_email
+      FROM appointments a JOIN patients p ON p.id=a.patient_id
+      WHERE a.doctor_id=${m.doctor_id} AND a.starts_at>=now()-interval '1 day'
+      ORDER BY a.starts_at ASC LIMIT 100`;
     team.push({
       id:String(m.doctor_id),userId:String(m.user_id),name:m.full_name,email:m.email||'',phone:m.phone||'',slug:m.public_slug,
       category:m.provider_category||'',activity:m.provider_activity||m.specialty||'Servicio',
       isOwner:String(m.doctor_id)===String(ctx.doctor_id),
       location:{id:m.location_id?String(m.location_id):'',name:m.location_name||'',address:m.address||'',city:m.city||'',state:m.state||'',country:m.country||'Venezuela'},
       services:services.map((s:any)=>({id:String(s.id),name:s.name,description:s.description||'',durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD',active:Boolean(s.active)})),
-      availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published)}))
+      availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published)})),
+      appointments:appointments.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceName:a.service_name||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofUrl:a.payment_proof_url||'',clientName:a.client_name,clientPhone:a.client_phone,clientEmail:a.client_email||''}))
     });
   }
 
@@ -114,6 +121,30 @@ export async function POST(req:Request){
   if(!doctorId) return NextResponse.json({error:'Falta identificar al profesional.'},{status:400});
   const member=await memberAllowed(ctx,doctorId);
   if(!member) return NextResponse.json({error:'Profesional no encontrado en tu negocio.'},{status:404});
+
+  if(['approve_payment','reject_payment','appointment_status'].includes(action)){
+    const appointmentId=String(body.appointmentId||'');
+    const rows=await sql`SELECT a.id,a.status,a.starts_at,a.service_name,p.email,p.full_name
+      FROM appointments a JOIN patients p ON p.id=a.patient_id
+      WHERE a.id=${appointmentId}::uuid AND a.doctor_id=${doctorId}::uuid LIMIT 1`;
+    const ap=rows[0] as any;
+    if(!ap) return NextResponse.json({error:'Reserva no encontrada'},{status:404});
+    if(action==='approve_payment'){
+      await sql`UPDATE appointments SET status='CONFIRMED',payment_approved_at=now() WHERE id=${appointmentId}::uuid AND doctor_id=${doctorId}::uuid`;
+      if(ap.email){
+        const when=new Date(ap.starts_at).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
+        await sendTransactionalEmail({to:ap.email,subject:'Tu reserva TURNAVIA fue confirmada',html:turnaviaEmail('Reserva confirmada',`<p>Hola <strong>${ap.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${ap.service_name||member.provider_activity}<br/><strong>Con:</strong> ${member.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+      }
+    }else if(action==='reject_payment'){
+      await sql`UPDATE appointments SET status='PAYMENT_REJECTED' WHERE id=${appointmentId}::uuid AND doctor_id=${doctorId}::uuid`;
+    }else{
+      const next=String(body.status||'');
+      const allowed=['CONFIRMED','ARRIVED','IN_CONSULTATION','COMPLETED','CANCELLED','NO_SHOW'];
+      if(!allowed.includes(next)) return NextResponse.json({error:'Estado inválido'},{status:400});
+      await sql`UPDATE appointments SET status=${next}::appointment_status WHERE id=${appointmentId}::uuid AND doctor_id=${doctorId}::uuid`;
+    }
+    return NextResponse.json({ok:true});
+  }
 
   if(action==='update_member'){
     const name=String(body.name||member.full_name).trim();
