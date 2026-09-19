@@ -16,7 +16,11 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
 
   const {data,error}=await auth.signUp.email({name,email,password});
   if(error) return {error:error.message||'No se pudo crear la cuenta.'};
-  const userId=(data as any)?.user?.id || (data as any)?.id;
+  let userId=(data as any)?.user?.id || (data as any)?.id;
+  if(!userId && sql){
+    const found=await sql`SELECT id FROM neon_auth.user WHERE lower(email)=lower(${email}) LIMIT 1`;
+    userId=(found[0] as any)?.id;
+  }
   if(userId && sql){
     await sql`INSERT INTO app_user_profiles(auth_user_id,role,full_name,email,phone)
       VALUES(${String(userId)},${role}::user_role,${name},${email},${phone||null})
