@@ -102,7 +102,9 @@ const seedAppointments:Appointment[]=[
  {id:'apt-3',businessId:'spa-1',client:'Ana Torres',email:'ana@example.com',service:'Masaje relajante',date:'2026-09-20',time:'15:00',amount:35,payment:'PayPal',reference:'PP-21098',proof:'paypal_demo.png',status:'PAYMENT_REVIEW'}
 ];
 
-const slots=['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30','16:00','16:30'];
+const dayNames=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const toMinutes=(v:string)=>{const [h,m]=v.split(':').map(Number);return h*60+m};
+const toClock=(m:number)=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 const categories=['Salud','Belleza','Bienestar','Servicios profesionales','Educación','Automotriz','Hogar y técnicos','Mascotas','Deporte','Espacios y alquiler','Eventos','Servicios 18+','Otro'];
 
 export default function Demo(){
@@ -111,7 +113,7 @@ export default function Demo(){
  const [appointments,setAppointments]=useState<Appointment[]>(seedAppointments);
  const [selectedBusiness,setSelectedBusiness]=useState('med-1');
  const [selectedService,setSelectedService]=useState('');
- const [date,setDate]=useState('2026-09-20');
+ const [date,setDate]=useState('2026-09-21');
  const [time,setTime]=useState('09:00');
  const [client,setClient]=useState('');
  const [email,setEmail]=useState('');
@@ -120,32 +122,55 @@ export default function Demo(){
  const [proof,setProof]=useState('');
  const [msg,setMsg]=useState('');
  const [showCreate,setShowCreate]=useState(false);
+ const [categoryFilter,setCategoryFilter]=useState('Todos');
  const [newBiz,setNewBiz]=useState({name:'',category:'Belleza',activity:'Barbería',type:'Profesional independiente'});
 
  useEffect(()=>{
   try{
-   const b=localStorage.getItem('turnavia-demo-businesses');
-   const a=localStorage.getItem('turnavia-demo-appointments');
+   const b=localStorage.getItem('turnavia-demo-v4-businesses');
+   const a=localStorage.getItem('turnavia-demo-v4-appointments');
    if(b)setBusinesses(JSON.parse(b));
    if(a)setAppointments(JSON.parse(a));
   }catch{}
  },[]);
- useEffect(()=>{try{localStorage.setItem('turnavia-demo-businesses',JSON.stringify(businesses))}catch{}},[businesses]);
- useEffect(()=>{try{localStorage.setItem('turnavia-demo-appointments',JSON.stringify(appointments))}catch{}},[appointments]);
+ useEffect(()=>{try{localStorage.setItem('turnavia-demo-v4-businesses',JSON.stringify(businesses))}catch{}},[businesses]);
+ useEffect(()=>{try{localStorage.setItem('turnavia-demo-v4-appointments',JSON.stringify(appointments))}catch{}},[appointments]);
 
  const biz=useMemo(()=>businesses.find(b=>b.id===selectedBusiness)||businesses[0],[businesses,selectedBusiness]);
  const service=useMemo(()=>biz?.services.find(s=>s.name===selectedService)||biz?.services[0],[biz,selectedService]);
  const bizAppointments=useMemo(()=>appointments.filter(a=>a.businessId===biz?.id),[appointments,biz]);
+ const filteredBusinesses=useMemo(()=>categoryFilter==='Todos'?businesses:businesses.filter(b=>b.category===categoryFilter),[businesses,categoryFilter]);
+ const availableSlots=useMemo(()=>{
+   if(!biz||!service||!date)return [];
+   const day=new Date(date+'T12:00:00').getDay();
+   const duration=service.duration;
+   const result:string[]=[];
+   for(const window of biz.availability||[]){
+     if(!window.days.includes(day))continue;
+     for(let m=toMinutes(window.start);m+duration<=toMinutes(window.end);m+=15){
+       const start=m,end=m+duration;
+       const busy=bizAppointments.some(a=>{
+         if(a.date!==date||['REJECTED'].includes(a.status))return false;
+         const other=biz.services.find(s=>s.name===a.service);
+         const aStart=toMinutes(a.time),aEnd=aStart+(other?.duration||30);
+         return aStart<end&&aEnd>start;
+       });
+       if(!busy)result.push(toClock(m));
+     }
+   }
+   return Array.from(new Set(result));
+ },[biz,service,date,bizAppointments]);
 
  function reset(){
-  setBusinesses(seedBusinesses);setAppointments(seedAppointments);setSelectedBusiness('med-1');setSelectedService('');setMsg('Demo reiniciada.');
-  try{localStorage.removeItem('turnavia-demo-businesses');localStorage.removeItem('turnavia-demo-appointments')}catch{}
+  setBusinesses(seedBusinesses);setAppointments(seedAppointments);setSelectedBusiness('med-1');setSelectedService('');setDate('2026-09-21');setTime('09:00');setCategoryFilter('Todos');setMsg('Demo reiniciada con el catálogo completo.');
+  try{localStorage.removeItem('turnavia-demo-v4-businesses');localStorage.removeItem('turnavia-demo-v4-appointments')}catch{}
  }
  function changeAppointment(id:string,status:Appointment['status']){
   setAppointments(v=>v.map(a=>a.id===id?{...a,status}:a));
  }
  function book(){
   if(!client.trim()||!email.trim()||!reference.trim()){setMsg('Completa nombre, correo y referencia de pago.');return}
+  if(!availableSlots.includes(time)){setMsg('Selecciona una hora disponible para la duración de ese servicio.');return}
   const s=service||biz.services[0];
   const a:Appointment={id:'apt-'+Date.now(),businessId:biz.id,client:client.trim(),email:email.trim(),service:s.name,date,time,amount:s.price,payment,reference:reference.trim(),proof:proof||'comprobante_demo.png',status:'PAYMENT_REVIEW'};
   setAppointments(v=>[a,...v]);setMsg('Reserva creada. El pago quedó en revisión y ya aparece en el panel del profesional.');
@@ -154,7 +179,7 @@ export default function Demo(){
   if(!newBiz.name.trim()){setMsg('Escribe el nombre del negocio o profesional.');return}
   const id='biz-'+Date.now();
   const end=new Date(Date.now()+5*86400000).toISOString().slice(0,10);
-  const b:Business={id,name:newBiz.name.trim(),category:newBiz.category,activity:newBiz.activity||'Otro',type:newBiz.type,status:'TRIAL',trialEnds:end,services:[{name:'Servicio inicial',price:20,duration:30}]};
+  const b:Business={id,name:newBiz.name.trim(),category:newBiz.category,activity:newBiz.activity||'Otro',type:newBiz.type,status:'TRIAL',trialEnds:end,location:'Por configurar',staff:newBiz.type.startsWith('Negocio')?3:1,availability:[{days:[1,2,3,4,5],start:'09:00',end:'17:00'}],services:[{name:'Servicio inicial',price:20,duration:30}]};
   setBusinesses(v=>[b,...v]);setSelectedBusiness(id);setShowCreate(false);setMsg('Nueva prueba creada con 5 días gratis.');
  }
  const statusLabel=(s:string)=>({TRIAL:'Prueba 5 días',ACTIVO:'Activo',SUSPENDIDO:'Suspendido',PAYMENT_REVIEW:'Pago en revisión',CONFIRMED:'Confirmada',REJECTED:'Pago rechazado',COMPLETED:'Completada'} as any)[s]||s;
