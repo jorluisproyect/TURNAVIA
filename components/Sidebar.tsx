@@ -9,6 +9,7 @@ const config = {
     ["/medico", "Resumen", LayoutDashboard],
     ["/medico#agenda", "Agenda", CalendarDays],
     ["/medico#servicios", "Servicios", BriefcaseBusiness],
+    ["/medico/equipo", "Equipo", Users],
     ["/medico#pagos", "Pagos", BarChart3],
     ["/medico#perfil", "Perfil", Settings],
     ["/cuenta/seguridad", "Seguridad", Settings],
