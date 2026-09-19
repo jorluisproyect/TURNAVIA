@@ -14,7 +14,7 @@ function PagoContent(){
   const [busy,setBusy]=useState('');
   const [msg,setMsg]=useState('');
   useEffect(()=>{if(id)fetch('/api/clients?id='+encodeURIComponent(id)).then(r=>r.json()).then(j=>setC(j.client))},[id]);
-  const clinic=c?.type?.startsWith('Clínica');
+  const clinic=String(c?.type||'').startsWith('Negocio')||String(c?.type||'').startsWith('Clínica');
   const initial=clinic?149:40;
   const monthly=clinic?49:15;
   const paypalUser='jorgeluisananguren@gmail.com';
