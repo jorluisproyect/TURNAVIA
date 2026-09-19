@@ -4,6 +4,7 @@ import { sql } from '@/lib/db';
 import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
 import { redirect } from 'next/navigation';
 import { MASTER_EMAIL } from '@/lib/access';
+import { passwordIssues } from '@/lib/password-policy';
 
 function slugify(input:string){
   return input.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,42)||'profesional';
@@ -24,7 +25,9 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const buyIntent=String(formData.get('buyIntent')||'0')==='1';
   let commercialClientId='';
 
-  if(!name||!email||!phone||password.length<8) return {error:'Completa nombre, correo, teléfono y usa una contraseña de al menos 8 caracteres.'};
+  if(!name||!email||!phone) return {error:'Completa nombre, correo y teléfono.'};
+  const passwordProblems=passwordIssues(password);
+  if(passwordProblems.length) return {error:'La contraseña necesita '+passwordProblems.join(', ')+'.'};
 
   const {data,error}=await auth.signUp.email({name,email,password});
   if(error) return {error:error.message||'No se pudo crear la cuenta.'};
