@@ -2,19 +2,7 @@ import { NextResponse } from 'next/server';
 import { planFromType } from '@/lib/plans';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
-import { auth } from '@/lib/auth/server';
-
-
-const MASTER_EMAIL='jorgeluisananguren@gmail.com';
-async function isMaster(){
-  if(!sql) return false;
-  const {data:session}=await auth.getSession();
-  if(!session?.user) return false;
-  const email=String((session.user as any).email||'').toLowerCase();
-  if(email===MASTER_EMAIL) return true;
-  const rows=await sql`SELECT role FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
-  return String((rows[0] as any)?.role)==='MASTER';
-}
+import { isMasterSession, commercialClientAccess } from '@/lib/access';
 
 function mapClient(r:any){
   return {
@@ -32,18 +20,20 @@ export async function GET(req:Request){
   const url=new URL(req.url);
   const id=url.searchParams.get('id');
   if(id){
-    const rows=await sql`SELECT * FROM commercial_clients WHERE id=${id}::uuid LIMIT 1`;
-    if(!rows.length) return NextResponse.json({error:'Cliente no encontrado'},{status:404});
-    const x=mapClient(rows[0]);
-    return NextResponse.json({client:{id:x.id,name:x.name,type:x.type,category:x.category,subcategory:x.subcategory,status:x.status,trialEndsAt:x.trialEndsAt}});
+    const access=await commercialClientAccess(id);
+    if(!access.client) return NextResponse.json({error:'Cliente no encontrado'},{status:404});
+    if(!access.allowed) return NextResponse.json({error:'No autorizado'},{status:403});
+    const x=mapClient(access.client);
+    return NextResponse.json({client:{id:x.id,name:x.name,type:x.type,category:x.category,subcategory:x.subcategory,status:x.status,trialEndsAt:x.trialEndsAt,paymentSubmittedAt:x.paymentSubmittedAt,paymentRejectionReason:x.paymentRejectionReason}});
   }
-  if(!(await isMaster())) return NextResponse.json({error:'No autorizado'},{status:403});
+  if(!(await isMasterSession())) return NextResponse.json({error:'No autorizado'},{status:403});
   const rows=await sql`SELECT * FROM commercial_clients ORDER BY created_at DESC`;
   return NextResponse.json({clients:rows.map(mapClient)});
 }
 
 export async function POST(req:Request){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
+  if(!(await isMasterSession())) return NextResponse.json({error:'No autorizado'},{status:403});
   const body=await req.json();
   const plan=planFromType(body.type||'Médico independiente');
   const existing=await sql`SELECT * FROM commercial_clients WHERE lower(email)=lower(${body.email}) ORDER BY created_at DESC LIMIT 1`;
@@ -56,7 +46,7 @@ export async function POST(req:Request){
 
 export async function PATCH(req:Request){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
-  if(!(await isMaster())) return NextResponse.json({error:'No autorizado'},{status:403});
+  if(!(await isMasterSession())) return NextResponse.json({error:'No autorizado'},{status:403});
   const body=await req.json();
   const before=await sql`SELECT * FROM commercial_clients WHERE id=${body.id}::uuid LIMIT 1`;
   if(!before.length) return NextResponse.json({error:'Cliente no encontrado'},{status:404});
