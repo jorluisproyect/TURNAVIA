@@ -1,9 +1,10 @@
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { redirect } from 'next/navigation';
+import { MASTER_EMAIL } from '@/lib/access';
+import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 
 export const dynamic='force-dynamic';
-const MASTER_EMAIL='jorgeluisananguren@gmail.com';
 
 export default async function MedicoLayout({children}:{children:React.ReactNode}){
   const {data:session}=await auth.getSession();
@@ -16,5 +17,10 @@ export default async function MedicoLayout({children}:{children:React.ReactNode}
   if(role==='PATIENT') redirect('/paciente');
   if(role==='CLINIC_ADMIN'||role==='RECEPTION') redirect('/recepcion');
   if(role!=='DOCTOR') redirect('/panel');
+
+  const commercial=await refreshCommercialClientByEmail(email);
+  if(commercial && !subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)){
+    redirect('/pago?client='+String(commercial.id));
+  }
   return children;
 }
