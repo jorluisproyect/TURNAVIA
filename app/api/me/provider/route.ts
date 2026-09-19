@@ -119,8 +119,17 @@ export async function PATCH(req:Request){
     if(!provider.location_id) return NextResponse.json({error:'Configura una ubicación primero'},{status:400});
     const date=String(body.date||''); const start=String(body.start||''); const end=String(body.end||'');
     if(!date||!start||!end) return NextResponse.json({error:'Completa fecha y horario'},{status:400});
+    const startsAt=new Date(`${date}T${start}:00-04:00`);
+    const endsAt=new Date(`${date}T${end}:00-04:00`);
+    if(Number.isNaN(startsAt.getTime())||Number.isNaN(endsAt.getTime())||endsAt<=startsAt) return NextResponse.json({error:'La hora final debe ser posterior a la hora inicial.'},{status:400});
     await sql`INSERT INTO availability_blocks(doctor_id,location_id,starts_at,ends_at,slot_minutes,published)
-      VALUES(${provider.doctor_id},${provider.location_id},(${date}||' '||${start}||' America/Caracas')::timestamptz,(${date}||' '||${end}||' America/Caracas')::timestamptz,${Math.max(5,Number(body.slotMinutes||30))},true)`;
+      VALUES(${provider.doctor_id},${provider.location_id},${startsAt.toISOString()}::timestamptz,${endsAt.toISOString()}::timestamptz,${Math.max(5,Number(body.slotMinutes||15))},true)`;
+    return NextResponse.json({ok:true});
+  }
+
+  if(action==='delete_availability'){
+    const rows=await sql`DELETE FROM availability_blocks WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id} RETURNING id`;
+    if(!rows.length) return NextResponse.json({error:'Horario no encontrado'},{status:404});
     return NextResponse.json({ok:true});
   }
 
