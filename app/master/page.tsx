@@ -1,28 +1,97 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { Building2, HeartPulse, DollarSign, CheckCircle2, UserPlus, Clock3, Eye, XCircle } from 'lucide-react';
+import { Building2, HeartPulse, DollarSign, CheckCircle2, UserPlus, Clock3, Eye, XCircle, RefreshCw } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
-import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 
 type ClientStatus='TRIAL'|'PAGO_PENDIENTE'|'REVISION_BINANCE'|'ACTIVO'|'SUSPENDIDO';
-type Client={id:string;name:string;type:string;specialty?:string;phone:string;email:string;status:ClientStatus;trialEndsAt?:string;paymentMethod?:string;paymentReference?:string;paymentComment?:string;hasProof?:boolean;paymentSubmittedAt?:string;paymentRejectionReason?:string};
-const label:Record<ClientStatus,string>={TRIAL:'Prueba gratis',PAGO_PENDIENTE:'Pago pendiente',REVISION_BINANCE:'Pago en revisión',ACTIVO:'Activo',SUSPENDIDO:'Suspendido'};
+type Client={id:string;name?:string;type?:string;specialty?:string;phone?:string;email?:string;status?:ClientStatus;trialEndsAt?:string;paymentMethod?:string;paymentReference?:string;paymentComment?:string;hasProof?:boolean;paymentSubmittedAt?:string;paymentRejectionReason?:string};
+const labels:Record<ClientStatus,string>={TRIAL:'Prueba gratis',PAGO_PENDIENTE:'Pago pendiente',REVISION_BINANCE:'Pago en revisión',ACTIVO:'Activo',SUSPENDIDO:'Suspendido'};
 
 export default function Master(){
- const [clients,setClients]=useState<Client[]>([]);
- async function load(){const c=await fetch('/api/clients',{cache:'no-store'}).then(r=>r.json());setClients(c.clients||[])}
- useEffect(()=>{load()},[]);
- async function setStatus(id:string,status:ClientStatus,rejectionReason?:string){
-   await fetch('/api/clients',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,status,rejectionReason})});load();
- }
- async function reject(id:string){
-   const reason=window.prompt('Motivo del rechazo:','Referencia, monto o comprobante no válido.');
-   if(reason===null)return;
-   await setStatus(id,'PAGO_PENDIENTE',reason||'Pago rechazado.');
- }
- const active=clients.filter(c=>c.status==='ACTIVO'); const doctors=active.filter(c=>c.type.startsWith('Médico')).length; const clinics=active.filter(c=>c.type.startsWith('Clínica')).length; const mrr=doctors*15+clinics*49; const trials=clients.filter(c=>c.status==='TRIAL').length;
- function tone(s:ClientStatus){return s==='ACTIVO'?'ok':s==='SUSPENDIDO'?'bad':'warn'}
- return <div className="dashboard"><Sidebar role="master"/><main className="main"><div className="topbar"><div><div className="muted" style={{fontSize:13}}>TURNAVIA · Administración comercial</div><h1>Panel Master</h1></div><div className="row"><Link href="/operacion" className="btn btn-secondary">Cómo operarlo</Link><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Nueva prueba</Link></div></div><div className="stat-grid"><div className="stat"><Building2 size={18}/><small style={{display:'block',marginTop:8}}>Clínicas activas</small><div className="n">{clinics}</div></div><div className="stat"><HeartPulse size={18}/><small style={{display:'block',marginTop:8}}>Médicos activos</small><div className="n">{doctors}</div></div><div className="stat"><Clock3 size={18}/><small style={{display:'block',marginTop:8}}>Pruebas de 5 días</small><div className="n">{trials}</div></div><div className="stat"><DollarSign size={18}/><small style={{display:'block',marginTop:8}}>MRR actual</small><div className="n">${mrr}</div></div></div><section className="panel"><div className="row space"><div><h2>Clientes, pruebas y pagos</h2><div className="muted" style={{fontSize:13}}>Revisa referencia + comprobante antes de aprobar. Al aprobar, la cuenta se activa automáticamente.</div></div><span className="pill"><CheckCircle2 size={14}/> Solo Master</span></div><table className="table"><thead><tr><th>Cliente</th><th>Plan</th><th>Pago</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{clients.map(c=><tr key={c.id}><td><strong>{c.name}</strong><div className="muted" style={{fontSize:12}}>{c.email} · {c.phone}</div>{c.trialEndsAt&&c.status==='TRIAL'&&<div className="muted" style={{fontSize:12}}>Prueba hasta {new Date(c.trialEndsAt).toLocaleDateString('es-VE')}</div>}</td><td>{c.type}<div className="muted" style={{fontSize:12}}>{c.specialty||''}</div></td><td>{c.paymentMethod||'—'}{c.paymentReference&&<div><strong>Ref: {c.paymentReference}</strong></div>}{c.paymentSubmittedAt&&<div className="muted" style={{fontSize:12}}>Enviado: {new Date(c.paymentSubmittedAt).toLocaleString('es-VE')}</div>}{c.hasProof&&<a className="btn btn-secondary" style={{marginTop:8}} href={`/api/payments/proof?id=${c.id}`} target="_blank" rel="noreferrer"><Eye size={15}/> Ver comprobante</a>}{c.paymentRejectionReason&&<div className="notice danger" style={{marginTop:8,fontSize:12}}>{c.paymentRejectionReason}</div>}</td><td><StatusPill tone={tone(c.status) as any}>{label[c.status]}</StatusPill></td><td><div className="button-row">{c.status==='REVISION_BINANCE'&&<><button className="btn btn-primary" onClick={()=>setStatus(c.id,'ACTIVO')}>Aprobar pago</button><button className="btn btn-danger" onClick={()=>reject(c.id)}><XCircle size={15}/> Rechazar</button></>}{c.status==='TRIAL'&&<Link className="btn btn-secondary" href={`/pago?client=${c.id}`}>Cobrar</Link>}{c.status==='PAGO_PENDIENTE'&&<Link className="btn btn-secondary" href={`/pago?client=${c.id}`}>Reintentar pago</Link>}{c.status==='ACTIVO'&&<button className="btn btn-danger" onClick={()=>setStatus(c.id,'SUSPENDIDO')}>Suspender</button>}{c.status==='SUSPENDIDO'&&<button className="btn btn-secondary" onClick={()=>setStatus(c.id,'ACTIVO')}>Reactivar</button>}</div></td></tr>)}</tbody></table></section><PaymentMethodsManager scope="MASTER"/><section className="panel" style={{marginTop:18}}><h2>Regla comercial definida</h2><p className="muted">5 días gratis sin tarjeta. Después: médico $40 inicial y $15/mes; clínica hasta 5 médicos $149 inicial y $49/mes. Los pagos son manuales y requieren aprobación Master.</p></section></main></div>
+  const [clients,setClients]=useState<Client[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+
+  async function load(){
+    try{
+      setLoading(true); setError('');
+      const r=await fetch('/api/clients',{cache:'no-store'});
+      const j=await r.json();
+      if(!r.ok) throw new Error(j?.error||'No se pudieron cargar los clientes');
+      setClients(Array.isArray(j?.clients)?j.clients:[]);
+    }catch(e:any){
+      setClients([]); setError(e?.message||'Error al cargar el panel');
+    }finally{setLoading(false)}
+  }
+  useEffect(()=>{load()},[]);
+
+  async function setStatus(id:string,status:ClientStatus,rejectionReason?:string){
+    try{
+      const r=await fetch('/api/clients',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,status,rejectionReason})});
+      const j=await r.json();
+      if(!r.ok) throw new Error(j?.error||'No se pudo actualizar el pago');
+      await load();
+    }catch(e:any){alert(e?.message||'No se pudo actualizar')}
+  }
+  async function reject(id:string){
+    const reason=window.prompt('Motivo del rechazo:','Referencia, monto o comprobante no válido.');
+    if(reason===null)return;
+    await setStatus(id,'PAGO_PENDIENTE',reason||'Pago rechazado.');
+  }
+
+  const stats=useMemo(()=>{
+    const active=clients.filter(c=>c.status==='ACTIVO');
+    const doctors=active.filter(c=>(c.type||'').startsWith('Médico')).length;
+    const clinics=active.filter(c=>(c.type||'').startsWith('Clínica')).length;
+    return {doctors,clinics,trials:clients.filter(c=>c.status==='TRIAL').length,mrr:doctors*15+clinics*49};
+  },[clients]);
+
+  const tone=(s?:ClientStatus)=>s==='ACTIVO'?'ok':s==='SUSPENDIDO'?'bad':'warn';
+
+  return <div className="dashboard">
+    <Sidebar role="master"/>
+    <main className="main">
+      <div className="topbar">
+        <div><div className="muted" style={{fontSize:13}}>TURNAVIA · Administración comercial</div><h1>Panel Master</h1></div>
+        <div className="row"><button className="btn btn-secondary" onClick={load}><RefreshCw size={16}/> Actualizar</button><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Nueva prueba</Link></div>
+      </div>
+
+      <div className="stat-grid">
+        <div className="stat"><Building2 size={18}/><small style={{display:'block',marginTop:8}}>Clínicas activas</small><div className="n">{stats.clinics}</div></div>
+        <div className="stat"><HeartPulse size={18}/><small style={{display:'block',marginTop:8}}>Médicos activos</small><div className="n">{stats.doctors}</div></div>
+        <div className="stat"><Clock3 size={18}/><small style={{display:'block',marginTop:8}}>Pruebas de 5 días</small><div className="n">{stats.trials}</div></div>
+        <div className="stat"><DollarSign size={18}/><small style={{display:'block',marginTop:8}}>MRR actual</small><div className="n">${stats.mrr}</div></div>
+      </div>
+
+      <section className="panel">
+        <div className="row space"><div><h2>Clientes, pruebas y pagos</h2><div className="muted" style={{fontSize:13}}>Verifica referencia y comprobante antes de aprobar.</div></div><span className="pill"><CheckCircle2 size={14}/> Solo Master</span></div>
+        {loading&&<div className="notice" style={{marginTop:16}}>Cargando panel...</div>}
+        {error&&<div className="notice danger" style={{marginTop:16}}>{error}</div>}
+        {!loading&&!error&&clients.length===0&&<div className="notice" style={{marginTop:16}}>Aún no hay médicos o clínicas registrados como clientes. Cuando registremos uno nuevo aparecerá aquí.</div>}
+        {!loading&&!error&&clients.length>0&&<div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Cliente</th><th>Plan</th><th>Pago</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{clients.map(c=>{
+          const status=(c.status||'TRIAL') as ClientStatus;
+          return <tr key={c.id}>
+            <td><strong>{c.name||'Sin nombre'}</strong><div className="muted" style={{fontSize:12}}>{c.email||'—'} · {c.phone||'—'}</div>{c.trialEndsAt&&status==='TRIAL'&&<div className="muted" style={{fontSize:12}}>Prueba hasta {new Date(c.trialEndsAt).toLocaleDateString('es-VE')}</div>}</td>
+            <td>{c.type||'—'}<div className="muted" style={{fontSize:12}}>{c.specialty||''}</div></td>
+            <td>{c.paymentMethod||'—'}{c.paymentReference&&<div><strong>Ref: {c.paymentReference}</strong></div>}{c.paymentSubmittedAt&&<div className="muted" style={{fontSize:12}}>Enviado: {new Date(c.paymentSubmittedAt).toLocaleString('es-VE')}</div>}{c.hasProof&&<a className="btn btn-secondary" style={{marginTop:8}} href={`/api/payments/proof?id=${c.id}`} target="_blank" rel="noreferrer"><Eye size={15}/> Ver comprobante</a>}{c.paymentRejectionReason&&<div className="notice danger" style={{marginTop:8,fontSize:12}}>{c.paymentRejectionReason}</div>}</td>
+            <td><StatusPill tone={tone(status)}>{labels[status]||status}</StatusPill></td>
+            <td><div className="button-row">
+              {status==='REVISION_BINANCE'&&<><button className="btn btn-primary" onClick={()=>setStatus(c.id,'ACTIVO')}>Aprobar pago</button><button className="btn btn-danger" onClick={()=>reject(c.id)}><XCircle size={15}/> Rechazar</button></>}
+              {status==='TRIAL'&&<Link className="btn btn-secondary" href={`/pago?client=${c.id}`}>Cobrar</Link>}
+              {status==='PAGO_PENDIENTE'&&<Link className="btn btn-secondary" href={`/pago?client=${c.id}`}>Reintentar pago</Link>}
+              {status==='ACTIVO'&&<button className="btn btn-danger" onClick={()=>setStatus(c.id,'SUSPENDIDO')}>Suspender</button>}
+              {status==='SUSPENDIDO'&&<button className="btn btn-secondary" onClick={()=>setStatus(c.id,'ACTIVO')}>Reactivar</button>}
+            </div></td>
+          </tr>
+        })}</tbody></table></div>}
+      </section>
+
+      <section className="panel" style={{marginTop:18}}>
+        <h2>Regla comercial</h2>
+        <p className="muted">5 días gratis sin tarjeta. Después: médico $40 inicial y $15/mes; clínica hasta 5 médicos $149 inicial y $49/mes. PayPal y Binance se validan manualmente.</p>
+      </section>
+    </main>
+  </div>
 }
