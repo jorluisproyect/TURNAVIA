@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -35,8 +36,9 @@ async function providerBySlug(slug:string){
   if(!sql) return null;
   const rows=await sql`SELECT d.id,d.public_slug,d.specialty,d.provider_category,d.provider_activity,d.provider_type,
       d.consultation_price,d.consultation_currency,d.payment_instructions,d.default_appointment_minutes,d.accepts_online_booking,
-      u.full_name,u.phone,u.email,u.organization_id,l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
+      u.full_name,u.phone,u.email,u.organization_id,o.email AS organization_email,l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
     FROM doctors d JOIN users u ON u.id=d.user_id
+    LEFT JOIN organizations o ON o.id=u.organization_id
     LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
     LEFT JOIN locations l ON l.id=dl.location_id
     WHERE d.public_slug=${slug} AND u.active=true LIMIT 1`;
@@ -48,6 +50,8 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
   const {slug}=await ctx.params;
   const p=await providerBySlug(slug);
   if(!p) return NextResponse.json({error:'Profesional o negocio no encontrado'},{status:404});
+  const commercial=await refreshCommercialClientByEmail(String(p.organization_email||p.email||''));
+  if(commercial&&!subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)) return NextResponse.json({error:'Esta agenda está temporalmente fuera de servicio.'},{status:403});
   if(!p.accepts_online_booking) return NextResponse.json({error:'Las reservas en línea están pausadas'},{status:403});
 
   const services=await sql`SELECT id,name,description,duration_minutes,price,currency FROM provider_services WHERE doctor_id=${p.id} AND active=true ORDER BY created_at`;
@@ -87,6 +91,8 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   const {slug}=await ctx.params;
   const p=await providerBySlug(slug);
   if(!p) return NextResponse.json({error:'Profesional o negocio no encontrado'},{status:404});
+  const commercial=await refreshCommercialClientByEmail(String(p.organization_email||p.email||''));
+  if(commercial&&!subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)) return NextResponse.json({error:'Esta agenda está temporalmente fuera de servicio.'},{status:403});
   const body=await req.json();
   const startsAt=String(body.startsAt||'');
   const clientName=String(body.clientName||'').trim();
