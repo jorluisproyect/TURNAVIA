@@ -2,12 +2,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { CalendarPlus, Copy, Plus, Trash2, Users, BriefcaseBusiness, ExternalLink } from 'lucide-react';
+import { CalendarPlus, Copy, Plus, Trash2, Users, BriefcaseBusiness, ExternalLink, Eye } from 'lucide-react';
 
 type Member={
   id:string;name:string;email:string;phone:string;slug:string;category:string;activity:string;isOwner:boolean;
   services:{id:string;name:string;description:string;durationMinutes:number;price:number;currency:string;active:boolean}[];
   availability:{id:string;startsAt:string;endsAt:string;slotMinutes:number;published:boolean}[];
+  appointments:{id:string;startsAt:string;endsAt:string;status:string;serviceName:string;price:number;currency:string;paymentMethod:string;paymentReference:string;paymentProofUrl:string;clientName:string;clientPhone:string;clientEmail:string}[];
 };
 
 export default function EquipoPage(){
@@ -124,6 +125,23 @@ export default function EquipoPage(){
           </div>
         </section>
       </div>
+
+      <section className="panel" style={{marginTop:18}}>
+        <div className="row space" style={{gap:12,flexWrap:'wrap'}}><div><h2>Reservas de {current.name}</h2><p className="muted">El propietario puede revisar pagos y operar la agenda de cada integrante del equipo.</p></div><span className="pill">{current.appointments?.length||0} reservas</span></div>
+        {!current.appointments?.length?<div className="notice" style={{marginTop:12}}>Este profesional todavía no tiene reservas próximas.</div>:<div style={{overflowX:'auto',marginTop:12}}><table className="table"><thead><tr><th>Cliente</th><th>Servicio</th><th>Fecha</th><th>Pago</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{current.appointments.map(a=><tr key={a.id}>
+          <td><strong>{a.clientName}</strong><div className="muted" style={{fontSize:12}}>{a.clientPhone} · {a.clientEmail}</div></td>
+          <td>{a.serviceName}<div className="muted" style={{fontSize:12}}>{a.currency} {a.price}</div></td>
+          <td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short',timeZone:'America/Caracas'})}</td>
+          <td>{a.paymentMethod||'—'}{a.paymentReference&&<div><strong>Ref: {a.paymentReference}</strong></div>}{a.paymentProofUrl&&<a href={a.paymentProofUrl} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{padding:'6px 8px',marginTop:5}}><Eye size={14}/> Ver</a>}</td>
+          <td><span className={'status '+(a.status==='PAYMENT_REVIEW'?'warn':['CONFIRMED','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)?'ok':a.status==='PAYMENT_REJECTED'?'bad':'')}>{a.status==='PAYMENT_REVIEW'?'Pago en revisión':a.status==='PAYMENT_REJECTED'?'Pago rechazado':a.status==='CONFIRMED'?'Confirmada':a.status==='ARRIVED'?'Llegó':a.status==='IN_CONSULTATION'?'En atención':a.status==='COMPLETED'?'Completada':a.status}</span></td>
+          <td><div className="row" style={{gap:6,flexWrap:'wrap'}}>
+            {a.status==='PAYMENT_REVIEW'&&<><button className="btn btn-primary" onClick={()=>action({action:'approve_payment',doctorId:current.id,appointmentId:a.id})}>Aprobar</button><button className="btn btn-secondary" onClick={()=>action({action:'reject_payment',doctorId:current.id,appointmentId:a.id})}>Rechazar</button></>}
+            {a.status==='CONFIRMED'&&<button className="btn btn-secondary" onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'ARRIVED'})}>Llegó</button>}
+            {a.status==='ARRIVED'&&<button className="btn btn-secondary" onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'IN_CONSULTATION'})}>Atender</button>}
+            {a.status==='IN_CONSULTATION'&&<button className="btn btn-primary" onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'COMPLETED'})}>Completar</button>}
+          </div></td>
+        </tr>)}</tbody></table></div>}
+      </section>
     </>}
     {msg&&<div className="toast">{msg}</div>}
   </main></div>;
