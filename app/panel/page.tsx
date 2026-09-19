@@ -9,7 +9,13 @@ export default async function Panel(){
   const {data:session}=await auth.getSession();
   if(!session?.user) redirect('/ingresar');
   const sessionEmail=String((session.user as any).email||'').toLowerCase();
-  if(sessionEmail===MASTER_EMAIL) redirect('/master');
+  if(sessionEmail===MASTER_EMAIL){
+    if(sql){
+      const masterRows=await sql`SELECT must_change_password FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
+      if(Boolean((masterRows[0] as any)?.must_change_password)) redirect('/cuenta/seguridad');
+    }
+    redirect('/master');
+  }
 
   let role='PATIENT';
   if(sql){
