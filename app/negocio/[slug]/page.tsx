@@ -9,9 +9,11 @@ export const dynamic='force-dynamic';
 export default async function NegocioPublico({params}:{params:Promise<{slug:string}>}){
   if(!sql) notFound();
   const {slug}=await params;
-  const orgRows=await sql`SELECT id,name,slug,type FROM organizations WHERE slug=${slug} LIMIT 1`;
+  const orgRows=await sql`SELECT o.id,o.name,o.slug,o.type,c.status,c.trial_ends_at,c.payment_reviewed_at,c.created_at AS client_created_at FROM organizations o LEFT JOIN commercial_clients c ON lower(c.email)=lower(o.email) WHERE o.slug=${slug} ORDER BY c.created_at DESC NULLS LAST LIMIT 1`;
   const org=orgRows[0] as any;
   if(!org) notFound();
+  const active=org.status==null || (org.status==='TRIAL'&&(!org.trial_ends_at||new Date(org.trial_ends_at).getTime()>Date.now())) || (org.status==='ACTIVO'&&new Date(org.payment_reviewed_at||org.client_created_at).getTime()+31*86400000>Date.now());
+  if(!active) return <main className="demo-chooser"><div className="container booking-wrap"><Brand/><section className="profile-card" style={{marginTop:32}}><h1>{org.name}</h1><div className="notice">Las reservas en línea de este negocio están temporalmente pausadas.</div></section></div></main>;
 
   const members=await sql`SELECT d.id,d.public_slug,d.provider_category,d.provider_activity,u.full_name,
       l.name AS location_name,l.address,l.city
