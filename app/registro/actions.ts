@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
 import { redirect } from 'next/navigation';
+import { MASTER_EMAIL } from '@/lib/access';
 
 function slugify(input:string){
   return input.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,42)||'profesional';
@@ -18,7 +19,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const category=String(formData.get('category')||'Salud').trim();
   const activity=String(formData.get('activity')||'Médico').trim();
   const requestedRole=rawRole==='DOCTOR'?'DOCTOR':'PATIENT';
-  const role=email==='jorgeluisananguren@gmail.com'?'MASTER':requestedRole;
+  const role=email===MASTER_EMAIL?'MASTER':requestedRole;
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
 
   if(!name||!email||!phone||password.length<8) return {error:'Completa nombre, correo, teléfono y usa una contraseña de al menos 8 caracteres.'};
@@ -82,8 +83,16 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
           VALUES(${doctorId},${activity||'Servicio'},30,0,'USD',true)`;
       }
 
-      await sql`INSERT INTO commercial_clients(name,type,category,subcategory,specialty,phone,email,status,trial_ends_at,auth_user_id)
-        VALUES(${name},${providerType},${category},${activity},${activity||category},${phone},${email},'TRIAL',now()+interval '5 days',${String(authUserId)})`;
+      const existingCommercial=await sql`SELECT id,status,trial_ends_at FROM commercial_clients WHERE lower(email)=lower(${email}) ORDER BY created_at DESC LIMIT 1`;
+      if(existingCommercial.length){
+        await sql`UPDATE commercial_clients SET name=${name},type=${providerType},category=${category},subcategory=${activity},specialty=${activity||category},phone=${phone},auth_user_id=${String(authUserId)},
+          status=CASE WHEN status IN ('SUSPENDIDO','ACTIVO','REVISION_BINANCE') THEN status ELSE 'TRIAL' END,
+          trial_ends_at=CASE WHEN status IN ('SUSPENDIDO','ACTIVO','REVISION_BINANCE') THEN trial_ends_at ELSE GREATEST(COALESCE(trial_ends_at,now()),now()+interval '5 days') END
+          WHERE id=${(existingCommercial[0] as any).id}`;
+      }else{
+        await sql`INSERT INTO commercial_clients(name,type,category,subcategory,specialty,phone,email,status,trial_ends_at,auth_user_id)
+          VALUES(${name},${providerType},${category},${activity},${activity||category},${phone},${email},'TRIAL',now()+interval '5 days',${String(authUserId)})`;
+      }
 
     }else if(role==='PATIENT'){
       let internalUser=await sql`SELECT id FROM users WHERE lower(email)=lower(${email}) LIMIT 1`;
