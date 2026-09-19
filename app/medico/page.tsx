@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
 import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2 } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
@@ -73,7 +74,7 @@ export default function Medico(){
  const serviceHint=activity.includes('barber')?'Ej.: Corte clásico, Fade, Corte + barba, Barba completa':activity.includes('manicur')||activity.includes('uña')?'Ej.: Manicura, Semipermanente, Acrílicas, Jelly, Nail art, Retiro, Mantenimiento':'Crea cada servicio por separado con su duración y precio.';
 
  return <div className="dashboard"><Sidebar role="medico"/><main className="main">
-  <div id="perfil" className="topbar"><div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1></div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':'Prueba gratis'}</span><button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
+  <div id="perfil" className="topbar"><div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1>{p.subscriptionStatus==='TRIAL'&&p.trialEndsAt&&<div className="muted" style={{fontSize:12}}>Prueba disponible hasta {new Date(p.trialEndsAt).toLocaleDateString('es-VE')}</div>}{p.subscriptionStatus==='ACTIVO'&&p.renewalDueAt&&<div className="muted" style={{fontSize:12}}>Próxima renovación aproximada: {new Date(p.renewalDueAt).toLocaleDateString('es-VE')}</div>}</div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':p.subscriptionStatus==='REVISION_BINANCE'?'Pago en revisión':'Prueba gratis'}</span>{p.clientId&&p.subscriptionStatus!=='ACTIVO'&&<Link className="btn btn-primary" href={'/pago?client='+p.clientId}>Activar / pagar</Link>}{p.clientId&&p.subscriptionStatus==='ACTIVO'&&<Link className="btn btn-secondary" href={'/pago?client='+p.clientId}>Renovación</Link>}<button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
 
   <div className="stat-grid">
     <div className="stat"><small>Reservas activas</small><div className="n">{confirmed.length}</div></div>
