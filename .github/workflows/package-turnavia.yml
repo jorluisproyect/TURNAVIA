@@ -4,6 +4,8 @@ on:
     branches: [main]
 jobs:
   build-and-package:
+    env:
+      NEON_AUTH_COOKIE_SECRET: turnavia-demo-build-secret-2026-change-in-production-1234567890
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
