@@ -107,21 +107,6 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(Number.isNaN(requestedStart.getTime())) return NextResponse.json({error:'Horario inválido'},{status:400});
   const requestedEnd=new Date(requestedStart.getTime()+duration*60000);
 
-  const available=await sql`SELECT id FROM availability_blocks
-    WHERE doctor_id=${p.id} AND published=true
-      AND starts_at<=${requestedStart.toISOString()}::timestamptz
-      AND ends_at>=${requestedEnd.toISOString()}::timestamptz
-    LIMIT 1`;
-  if(!available.length) return NextResponse.json({error:'Ese horario ya no está disponible para la duración de este servicio.'},{status:409});
-
-  const taken=await sql`SELECT id FROM appointments
-    WHERE doctor_id=${p.id}
-      AND status NOT IN ('CANCELLED','PAYMENT_REJECTED')
-      AND starts_at<${requestedEnd.toISOString()}::timestamptz
-      AND ends_at>${requestedStart.toISOString()}::timestamptz
-    LIMIT 1`;
-  if(taken.length) return NextResponse.json({error:'Ese horario acaba de ser reservado. Elige otro.'},{status:409});
-
   let patientRows=await sql`SELECT id FROM patients WHERE lower(email)=lower(${email}) OR phone=${phone} ORDER BY created_at DESC LIMIT 1`;
   let patientId=(patientRows[0] as any)?.id;
   if(patientId){
@@ -132,8 +117,37 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   }
 
   if(!p.location_id) return NextResponse.json({error:'Este profesional aún no configuró su ubicación.'},{status:409});
-  const rows=await sql`INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted)
-    VALUES(${p.id},${patientId},${p.location_id},${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,'PAYMENT_REVIEW','PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${String(body.paymentMethod||'')},${reference},${proof},now(),false,true)
-    RETURNING id`;
+
+  // One SQL statement + advisory lock serializes bookings for the same provider.
+  // This prevents two clients from taking overlapping slots at the same instant.
+  const rows=await sql`
+    WITH provider_lock AS (
+      SELECT pg_advisory_xact_lock(hashtext(${String(p.id)})::bigint)
+    ),
+    valid_block AS (
+      SELECT ab.id
+      FROM availability_blocks ab, provider_lock
+      WHERE ab.doctor_id=${p.id}
+        AND ab.published=true
+        AND ab.starts_at<=${requestedStart.toISOString()}::timestamptz
+        AND ab.ends_at>=${requestedEnd.toISOString()}::timestamptz
+      LIMIT 1
+    ),
+    inserted AS (
+      INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted)
+      SELECT ${p.id},${patientId},${p.location_id},${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,'PAYMENT_REVIEW','PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${String(body.paymentMethod||'')},${reference},${proof},now(),false,true
+      FROM valid_block
+      WHERE NOT EXISTS (
+        SELECT 1 FROM appointments a
+        WHERE a.doctor_id=${p.id}
+          AND a.status NOT IN ('CANCELLED','PAYMENT_REJECTED')
+          AND a.starts_at<${requestedEnd.toISOString()}::timestamptz
+          AND a.ends_at>${requestedStart.toISOString()}::timestamptz
+      )
+      RETURNING id
+    )
+    SELECT id FROM inserted`;
+
+  if(!rows.length) return NextResponse.json({error:'Ese horario ya no está disponible o acaba de ser reservado. Elige otro.'},{status:409});
   return NextResponse.json({ok:true,appointmentId:String((rows[0] as any)?.id)},{status:201});
 }
