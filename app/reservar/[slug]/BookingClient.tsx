@@ -21,17 +21,30 @@ export default function BookingClient({slug}:{slug:string}){
  const [proof,setProof]=useState<{name:string;dataUrl:string}|null>(null);
  const [form,setForm]=useState({clientName:'',nationalId:'',phone:'',email:'',note:'',paymentMethod:'',paymentReference:'',policyAccepted:false});
 
+ async function loadProvider(selectedServiceId?:string){
+   const qs=selectedServiceId?'?serviceId='+encodeURIComponent(selectedServiceId):'';
+   const r=await fetch('/api/public/provider/'+encodeURIComponent(slug)+qs);
+   const j=await r.json();
+   if(!r.ok){setError(j.error||'No se pudo cargar esta agenda');return}
+   setData(j);setError('');
+   const firstService=j.services?.[0];
+   if(!selectedServiceId&&firstService)setServiceId(firstService.id);
+   const first=j.availability?.find((a:Availability)=>a.slots?.some((s:Slot)=>s.available))||j.availability?.[0];
+   setDate(first?.date||'');
+   setStartsAt(first?.slots?.find((s:Slot)=>s.available)?.startsAt||'');
+ }
+
  useEffect(()=>{
-   fetch('/api/public/provider/'+encodeURIComponent(slug)).then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{
-     if(!ok){setError(j.error||'No se pudo cargar esta agenda');return}
-     setData(j);
-     const firstService=j.services?.[0]; if(firstService)setServiceId(firstService.id);
-     const first=j.availability?.[0]; setDate(first?.date||''); setStartsAt(first?.slots?.find((s:Slot)=>s.available)?.startsAt||'');
-   }).catch(()=>setError('No se pudo cargar esta agenda.'));
+   loadProvider().catch(()=>setError('No se pudo cargar esta agenda.'));
    fetch('/api/payment-methods?scope=DOCTOR&slug='+encodeURIComponent(slug)+'&active=1').then(r=>r.json()).then(j=>{
      const ms=j.methods||[];setMethods(ms);if(ms[0])setForm(f=>({...f,paymentMethod:ms[0].name}));
    }).catch(()=>{});
  },[slug]);
+
+ useEffect(()=>{
+   if(!serviceId)return;
+   loadProvider(serviceId).catch(()=>setError('No se pudo actualizar la disponibilidad para este servicio.'));
+ },[serviceId]);
 
  const current=useMemo(()=>data?.availability.find(a=>a.date===date),[data,date]);
  const service=useMemo(()=>data?.services.find(s=>s.id===serviceId)||data?.services[0],[data,serviceId]);
@@ -71,12 +84,12 @@ export default function BookingClient({slug}:{slug:string}){
      <strong>1. Elige el servicio</strong>
      <div className="form" style={{marginTop:10}}>
        <div className="field"><select value={serviceId} onChange={e=>setServiceId(e.target.value)}>{data.services.map(s=><option key={s.id} value={s.id}>{s.name} · {s.currency} {s.price} · {s.durationMinutes} min</option>)}</select></div>
-       {service?.description&&<div className="notice">{service.description}</div>}
+       {service&&<div className="notice"><strong>{service.name}</strong> · {service.durationMinutes} min · {service.currency} {service.price}{service.description?<><br/>{service.description}</>:null}</div>}
      </div>
 
-     <div style={{marginTop:22}}><strong>2. Selecciona el día</strong><div className="date-tabs">{data.availability.map(a=><button key={a.id} className={'date-tab '+(date===a.date?'active':'')} onClick={()=>{setDate(a.date);setStartsAt(a.slots.find(s=>s.available)?.startsAt||'')}}><strong>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11,marginTop:3}}>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div>{!data.availability.length&&<div className="notice" style={{marginTop:10}}>Todavía no hay horarios publicados.</div>}</div>
+     <div style={{marginTop:22}}><strong>2. Selecciona el día disponible</strong><div className="date-tabs">{data.availability.map(a=><button key={a.id} className={'date-tab '+(date===a.date?'active':'')} onClick={()=>{setDate(a.date);setStartsAt(a.slots.find(s=>s.available)?.startsAt||'')}}><strong>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11,marginTop:3}}>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div>{!data.availability.length&&<div className="notice" style={{marginTop:10}}>Todavía no hay horarios publicados.</div>}</div>
 
-     <div style={{marginTop:22}}><strong>3. Selecciona la hora</strong><div className="booking-slots">{current?.slots.map(s=><button disabled={!s.available} type="button" className={startsAt===s.startsAt?'selected':''} onClick={()=>setStartsAt(s.startsAt)} key={s.startsAt}>{s.time}</button>)}</div></div>
+     <div style={{marginTop:22}}><strong>3. Selecciona la hora</strong><div className="muted" style={{fontSize:12,marginTop:5}}>Solo mostramos horas donde cabe completo el servicio seleccionado.</div><div className="booking-slots">{current?.slots.map(s=><button disabled={!s.available} type="button" className={startsAt===s.startsAt?'selected':''} onClick={()=>setStartsAt(s.startsAt)} key={s.startsAt}>{s.time}</button>)}</div></div>
 
      <div style={{marginTop:26}}><strong>4. Tus datos</strong><div className="form">
        <div className="field"><label>Nombre completo</label><input value={form.clientName} onChange={e=>setForm({...form,clientName:e.target.value})} placeholder="Escribe tu nombre real"/></div>
