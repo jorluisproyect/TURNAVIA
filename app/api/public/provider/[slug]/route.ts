@@ -4,15 +4,28 @@ import { sql } from '@/lib/db';
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
 
-function slotList(block:any,appointments:any[]){
+function slotList(block:any,appointments:any[],durationMinutes:number){
   const out:any[]=[];
-  const start=new Date(block.starts_at).getTime();
-  const end=new Date(block.ends_at).getTime();
-  const step=Math.max(5,Number(block.slot_minutes||30))*60000;
-  for(let t=start;t+step<=end;t+=step){
-    const iso=new Date(t).toISOString();
-    const busy=appointments.some(a=>new Date(a.starts_at).getTime()===t && !['CANCELLED','PAYMENT_REJECTED'].includes(String(a.status)));
-    out.push({startsAt:iso,time:new Date(t).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'}),available:!busy});
+  const blockStart=new Date(block.starts_at).getTime();
+  const blockEnd=new Date(block.ends_at).getTime();
+  const step=Math.max(5,Number(block.slot_minutes||15))*60000;
+  const duration=Math.max(5,durationMinutes)*60000;
+  const now=Date.now();
+
+  for(let t=blockStart;t+duration<=blockEnd;t+=step){
+    const slotEnd=t+duration;
+    const busy=appointments.some(a=>{
+      if(['CANCELLED','PAYMENT_REJECTED'].includes(String(a.status))) return false;
+      const aStart=new Date(a.starts_at).getTime();
+      const aEnd=new Date(a.ends_at).getTime();
+      return aStart<slotEnd && aEnd>t;
+    });
+    out.push({
+      startsAt:new Date(t).toISOString(),
+      endsAt:new Date(slotEnd).toISOString(),
+      time:new Date(t).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'}),
+      available:t>=now&&!busy
+    });
   }
   return out;
 }
@@ -29,7 +42,7 @@ async function providerBySlug(slug:string){
   return rows[0] as any || null;
 }
 
-export async function GET(_req:Request,ctx:{params:Promise<{slug:string}>}){
+export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const {slug}=await ctx.params;
   const p=await providerBySlug(slug);
@@ -37,14 +50,20 @@ export async function GET(_req:Request,ctx:{params:Promise<{slug:string}>}){
   if(!p.accepts_online_booking) return NextResponse.json({error:'Las reservas en línea están pausadas'},{status:403});
 
   const services=await sql`SELECT id,name,description,duration_minutes,price,currency FROM provider_services WHERE doctor_id=${p.id} AND active=true ORDER BY created_at`;
-  const blocks=await sql`SELECT id,starts_at,ends_at,slot_minutes FROM availability_blocks WHERE doctor_id=${p.id} AND published=true AND ends_at>=now() ORDER BY starts_at LIMIT 40`;
-  const aps=await sql`SELECT starts_at,status FROM appointments WHERE doctor_id=${p.id} AND starts_at>=now()-interval '1 day'`;
+  const requestedServiceId=new URL(req.url).searchParams.get('serviceId');
+  const chosen=(services as any[]).find(s=>String(s.id)===requestedServiceId)||(services as any[])[0];
+  const durationMinutes=Math.max(5,Number(chosen?.duration_minutes||p.default_appointment_minutes||30));
+
+  const blocks=await sql`SELECT id,starts_at,ends_at,slot_minutes FROM availability_blocks WHERE doctor_id=${p.id} AND published=true AND ends_at>=now() ORDER BY starts_at LIMIT 60`;
+  const aps=await sql`SELECT starts_at,ends_at,status FROM appointments WHERE doctor_id=${p.id} AND ends_at>=now()-interval '1 day'`;
   const statusRows=await sql`SELECT status,delay_minutes FROM doctor_status_updates WHERE doctor_id=${p.id} ORDER BY updated_at DESC LIMIT 1`;
 
   const availability=blocks.map((b:any)=>({
     id:String(b.id),
     date:new Date(b.starts_at).toLocaleDateString('en-CA',{timeZone:'America/Caracas'}),
-    slots:slotList(b,aps as any[])
+    startsAt:new Date(b.starts_at).toISOString(),
+    endsAt:new Date(b.ends_at).toISOString(),
+    slots:slotList(b,aps as any[],durationMinutes)
   }));
   const initials=String(p.full_name||'T').replace(/^(Dr\.?|Dra\.?)\s*/i,'').split(/\s+/).slice(0,2).map((x:string)=>x[0]||'').join('').toUpperCase();
 
@@ -57,6 +76,7 @@ export async function GET(_req:Request,ctx:{params:Promise<{slug:string}>}){
     },
     services:services.map((s:any)=>({id:String(s.id),name:s.name,description:s.description||'',durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'})),
     availability,
+    selectedServiceDuration:durationMinutes,
     paymentInstructions:p.payment_instructions||''
   });
 }
@@ -82,7 +102,24 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   const service=serviceRows[0] as any;
   if(!service) return NextResponse.json({error:'Servicio no disponible'},{status:404});
 
-  const taken=await sql`SELECT id FROM appointments WHERE doctor_id=${p.id} AND starts_at=${startsAt}::timestamptz AND status NOT IN ('CANCELLED','PAYMENT_REJECTED') LIMIT 1`;
+  const duration=Math.max(5,Number(service.duration_minutes||30));
+  const requestedStart=new Date(startsAt);
+  if(Number.isNaN(requestedStart.getTime())) return NextResponse.json({error:'Horario inválido'},{status:400});
+  const requestedEnd=new Date(requestedStart.getTime()+duration*60000);
+
+  const available=await sql`SELECT id FROM availability_blocks
+    WHERE doctor_id=${p.id} AND published=true
+      AND starts_at<=${requestedStart.toISOString()}::timestamptz
+      AND ends_at>=${requestedEnd.toISOString()}::timestamptz
+    LIMIT 1`;
+  if(!available.length) return NextResponse.json({error:'Ese horario ya no está disponible para la duración de este servicio.'},{status:409});
+
+  const taken=await sql`SELECT id FROM appointments
+    WHERE doctor_id=${p.id}
+      AND status NOT IN ('CANCELLED','PAYMENT_REJECTED')
+      AND starts_at<${requestedEnd.toISOString()}::timestamptz
+      AND ends_at>${requestedStart.toISOString()}::timestamptz
+    LIMIT 1`;
   if(taken.length) return NextResponse.json({error:'Ese horario acaba de ser reservado. Elige otro.'},{status:409});
 
   let patientRows=await sql`SELECT id FROM patients WHERE lower(email)=lower(${email}) OR phone=${phone} ORDER BY created_at DESC LIMIT 1`;
@@ -95,9 +132,8 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   }
 
   if(!p.location_id) return NextResponse.json({error:'Este profesional aún no configuró su ubicación.'},{status:409});
-  const duration=Math.max(5,Number(service.duration_minutes||30));
   const rows=await sql`INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted)
-    VALUES(${p.id},${patientId},${p.location_id},${startsAt}::timestamptz,${startsAt}::timestamptz + (${duration}||' minutes')::interval,'PAYMENT_REVIEW','PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${String(body.paymentMethod||'')},${reference},${proof},now(),false,true)
+    VALUES(${p.id},${patientId},${p.location_id},${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,'PAYMENT_REVIEW','PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${String(body.paymentMethod||'')},${reference},${proof},now(),false,true)
     RETURNING id`;
   return NextResponse.json({ok:true,appointmentId:String((rows[0] as any)?.id)},{status:201});
 }
