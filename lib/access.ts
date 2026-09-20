@@ -3,6 +3,10 @@ import { sql } from '@/lib/db';
 
 export const MASTER_EMAIL=(process.env.MASTER_EMAIL||'jorgeluisananguren@gmail.com').toLowerCase();
 
+export function validUuid(value:string){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export async function currentSession(){
   const {data:session}=await auth.getSession();
   return session||null;
@@ -19,7 +23,7 @@ export async function isMasterSession(){
 }
 
 export async function commercialClientAccess(clientId:string){
-  if(!sql) return {allowed:false,master:false,session:null,client:null as any};
+  if(!sql||!validUuid(clientId)) return {allowed:false,master:false,session:null,client:null as any};
   const session=await currentSession();
   if(!session?.user) return {allowed:false,master:false,session:null,client:null as any};
   const email=String((session.user as any).email||'').toLowerCase();
