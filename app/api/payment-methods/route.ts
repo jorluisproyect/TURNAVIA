@@ -102,6 +102,7 @@ export async function GET(req:Request){
     return NextResponse.json({methods:rows});
   }
 
+  if(process.env.NODE_ENV==='production') return NextResponse.json({error:'Base de datos no disponible',methods:[]},{status:503});
   const rows=fallback().filter(m=>m.scope===scope && (scope==='MASTER'||m.doctorId===slug) && (!activeOnly||m.active));
   return NextResponse.json({methods:rows});
 }
@@ -123,6 +124,7 @@ export async function POST(req:Request){
     return NextResponse.json({ok:true,id:rows[0]?.id},{status:201});
   }
 
+  if(process.env.NODE_ENV==='production') return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const item:Method={id:crypto.randomUUID(),scope,doctorId:scope==='DOCTOR'?slug:null,name:body.name,type:body.type||'OTRO',accountLabel:body.accountLabel||'',accountValue:body.accountValue||'',instructions:body.instructions||'',currency:body.currency||'USD',requiresProof:body.requiresProof!==false,active:true,isPrimary:false};
   fallback().push(item);
   return NextResponse.json({ok:true,id:item.id},{status:201});
@@ -153,6 +155,7 @@ export async function PATCH(req:Request){
     return NextResponse.json({ok:true});
   }
 
+  if(process.env.NODE_ENV==='production') return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const m=fallback().find(x=>x.id===body.id);
   if(!m)return NextResponse.json({error:'Método no encontrado'},{status:404});
   Object.assign(m,Object.fromEntries(Object.entries(body).filter(([k,v])=>k!=='id'&&v!==undefined)));
