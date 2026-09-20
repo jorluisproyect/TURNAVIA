@@ -58,7 +58,6 @@ export async function PATCH(req:Request){
     const phone=String(body.phone||'').trim();
     const nationalId=String(body.nationalId||'').trim();
     if(!name||!phone) return NextResponse.json({error:'Nombre y teléfono son obligatorios'},{status:400});
-    await sql`UPDATE neon_auth.user SET name=${name} WHERE lower(email)=lower(${email})`;
     await sql`UPDATE app_user_profiles SET full_name=${name},phone=${phone},updated_at=now() WHERE lower(email)=lower(${email})`;
     await sql`UPDATE users SET full_name=${name},phone=${phone} WHERE lower(email)=lower(${email})`;
     if(p){
