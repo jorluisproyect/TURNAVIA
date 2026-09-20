@@ -62,7 +62,17 @@ export async function PATCH(req:Request){
     WHERE id=${body.id}::uuid RETURNING *`;
   const client=mapClient(rows[0]);
   if(body.status==='ACTIVO' && prev.status!=='ACTIVO'){
-    await sendTransactionalEmail({to:client.email,subject:'Pago aprobado - TURNAVIA',html:turnaviaEmail('Tu cuenta TURNAVIA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu pago fue revisado y aprobado.</p><p>Ya puedes ingresar y continuar usando TURNAVIA.</p><p><a href="${process.env.APP_URL||'https://turnavia.vercel.app'}/ingresar">Ingresar a TURNAVIA</a></p>`)});
+    const appUrl=process.env.APP_URL||'https://turnavia.vercel.app';
+    const linkRows=await sql`SELECT d.public_slug,o.slug AS organization_slug
+      FROM users u
+      JOIN doctors d ON d.user_id=u.id
+      LEFT JOIN organizations o ON o.id=u.organization_id
+      WHERE lower(u.email)=lower(${client.email})
+      ORDER BY u.created_at
+      LIMIT 1`;
+    const linkRow=linkRows[0] as any;
+    const publicPath=linkRow?.organization_slug?'/negocio/'+linkRow.organization_slug:linkRow?.public_slug?'/reservar/'+linkRow.public_slug:'';
+    await sendTransactionalEmail({to:client.email,subject:'Pago aprobado - TURNAVIA',html:turnaviaEmail('Tu cuenta TURNAVIA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu pago fue revisado y aprobado. Tu cuenta ya está activa.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TURNAVIA</a></p>`)});
   }
   return NextResponse.json({ok:true,client});
 }
