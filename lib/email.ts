@@ -20,5 +20,5 @@ export async function sendTransactionalEmail({to,subject,html}:MailArgs){
 }
 
 export function turnaviaEmail(title:string,body:string){
-  return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5fbf9;padding:24px;color:#173b37"><div style="max-width:620px;margin:auto;background:white;border:1px solid #d8e8e4;border-radius:18px;padding:28px"><div style="font-weight:800;color:#0f766e;font-size:20px">TURNAVIA</div><h1 style="font-size:24px">${title}</h1><div style="line-height:1.6">${body}</div><p style="color:#607873;font-size:12px;margin-top:24px">TURNAVIA · Tu consulta, a tu hora.</p></div></body></html>`;
+  return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5fbf9;padding:24px;color:#173b37"><div style="max-width:620px;margin:auto;background:white;border:1px solid #d8e8e4;border-radius:18px;padding:28px"><div style="font-weight:800;color:#0f766e;font-size:20px">TURNAVIA</div><h1 style="font-size:24px">${title}</h1><div style="line-height:1.6">${body}</div><p style="color:#607873;font-size:12px;margin-top:24px">TURNAVIA · Tu servicio, a tu hora.</p></div></body></html>`;
 }
