@@ -18,24 +18,25 @@ export async function POST(req:Request){
   const paymentMethodId=String(form.get('paymentMethodId')||'').trim();
   const proof=form.get('proof');
   if(!reference) return NextResponse.json({error:'Indica la referencia o ID de transacción'},{status:400});
-  if(!(proof instanceof File) || proof.size===0) return NextResponse.json({error:'Adjunta el comprobante del pago'},{status:400});
-  if(proof.size>5*1024*1024) return NextResponse.json({error:'El comprobante debe pesar máximo 5 MB'},{status:400});
-  const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
-  if(!allowed.includes(proof.type)) return NextResponse.json({error:'Formato de comprobante no permitido'},{status:400});
   const methodRows=paymentMethodId
-    ? await sql`SELECT id,name,type FROM payment_methods WHERE id=${paymentMethodId}::uuid AND scope='MASTER' AND active=true LIMIT 1`
-    : await sql`SELECT id,name,type FROM payment_methods WHERE scope='MASTER' AND active=true AND upper(type)=upper(${paymentMethod}) ORDER BY is_primary DESC,created_at LIMIT 1`;
+    ? await sql`SELECT id,name,type,requires_proof FROM payment_methods WHERE id=${paymentMethodId}::uuid AND scope='MASTER' AND active=true LIMIT 1`
+    : await sql`SELECT id,name,type,requires_proof FROM payment_methods WHERE scope='MASTER' AND active=true AND upper(type)=upper(${paymentMethod}) ORDER BY is_primary DESC,created_at LIMIT 1`;
   const selectedMethod=methodRows[0] as any;
   if(!selectedMethod) return NextResponse.json({error:'Método de pago no disponible'},{status:409});
   const methodLabel=String(selectedMethod.type||selectedMethod.name||paymentMethod).toUpperCase();
-  const bytes=Buffer.from(await proof.arrayBuffer());
+  const requiresProof=selectedMethod.requires_proof!==false;
+  if(requiresProof && (!(proof instanceof File) || proof.size===0)) return NextResponse.json({error:'Adjunta el comprobante del pago'},{status:400});
+  if(proof instanceof File && proof.size>5*1024*1024) return NextResponse.json({error:'El comprobante debe pesar máximo 5 MB'},{status:400});
+  const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
+  if(proof instanceof File && proof.size>0 && !allowed.includes(proof.type)) return NextResponse.json({error:'Formato de comprobante no permitido'},{status:400});
+  const bytes=proof instanceof File && proof.size>0 ? Buffer.from(await proof.arrayBuffer()) : null;
   const rows=await sql`UPDATE commercial_clients
     SET payment_method=${methodLabel},
         payment_reference=${reference},
         payment_comment=${comment||null},
         payment_proof=${bytes},
-        payment_proof_name=${proof.name},
-        payment_proof_mime=${proof.type},
+        payment_proof_name=${proof instanceof File?proof.name:null},
+        payment_proof_mime=${proof instanceof File?proof.type:null},
         payment_submitted_at=now(),
         payment_rejection_reason=NULL,
         status='REVISION_BINANCE'
