@@ -23,6 +23,8 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
   const buyIntent=String(formData.get('buyIntent')||'0')==='1';
   let commercialClientId='';
+  let providerPublicPath='';
+  let businessPublicPath='';
 
   if(!name||!email||!phone) return {error:'Completa nombre, correo y teléfono.'};
   const passwordProblems=passwordIssues(password);
@@ -49,6 +51,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
 
       if(accountType==='BUSINESS'){
         const orgSlug=slugify(name)+'-'+String(authUserId).slice(0,6);
+        businessPublicPath='/negocio/'+orgSlug;
         const org=await sql`INSERT INTO organizations(name,slug,type,phone,email,subscription_status,monthly_price,activation_price,trial_ends_at)
           VALUES(${name},${orgSlug},'BUSINESS',${phone},${email},'TRIAL',49,100,now()+interval '5 days')
           ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name,phone=EXCLUDED.phone,email=EXCLUDED.email
@@ -66,6 +69,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
       }
 
       const slug=slugify(name)+'-'+String(authUserId).slice(0,6);
+      providerPublicPath='/reservar/'+slug;
       const doctorRows=await sql`INSERT INTO doctors(user_id,public_slug,specialty,provider_category,provider_activity,provider_type,consultation_price,consultation_currency)
         VALUES(${internalUserId},${slug},${activity||category},${category},${activity},${providerType},0,'USD')
         ON CONFLICT(user_id) DO UPDATE SET specialty=EXCLUDED.specialty,provider_category=EXCLUDED.provider_category,provider_activity=EXCLUDED.provider_activity,provider_type=EXCLUDED.provider_type
@@ -119,10 +123,12 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     }
   }
 
+  const appUrl=process.env.APP_URL||'https://turnavia.vercel.app';
+  const publicPath=businessPublicPath||providerPublicPath;
   await sendTransactionalEmail({
     to:email,
     subject:'Tu cuenta TURNAVIA fue creada',
-    html:turnaviaEmail('Bienvenido a TURNAVIA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p><p><a href="${process.env.APP_URL||'https://turnavia.vercel.app'}/ingresar">Entrar a TURNAVIA</a></p>`)
+    html:turnaviaEmail('Bienvenido a TURNAVIA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${role==='DOCTOR'&&publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para que vean tus servicios, precios y horarios disponibles.</p>`:''}<p><a href="${appUrl}/ingresar">Entrar a mi panel TURNAVIA</a></p>${role==='DOCTOR'&&buyIntent&&commercialClientId?`<p><a href="${appUrl}/pago?client=${encodeURIComponent(commercialClientId)}">Completar activación / pago</a></p>`:''}`)
   });
 
   if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId));
