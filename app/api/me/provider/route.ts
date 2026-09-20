@@ -83,7 +83,6 @@ export async function PATCH(req:Request){
     const type=String(body.type||provider.provider_type||'Profesional independiente').trim();
     const email=String(provider.email||'').toLowerCase();
     await sql`UPDATE users SET full_name=${name},phone=${phone} WHERE id=${provider.user_id}`;
-    await sql`UPDATE neon_auth.user SET name=${name} WHERE lower(email)=lower(${email})`;
     await sql`UPDATE app_user_profiles SET full_name=${name},phone=${phone},updated_at=now() WHERE lower(email)=lower(${email})`;
     await sql`UPDATE doctors SET specialty=${activity},provider_category=${category},provider_activity=${activity},provider_type=${type} WHERE id=${provider.doctor_id}`;
     await sql`UPDATE commercial_clients SET name=${name},phone=${phone},type=${type},category=${category},subcategory=${activity},specialty=${activity} WHERE lower(email)=lower(${email})`;
