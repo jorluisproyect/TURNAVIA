@@ -7,16 +7,21 @@ export async function sendTransactionalEmail({to,subject,html}:MailArgs){
     console.warn('TURNAVIA email skipped: RESEND_API_KEY is not configured', {to,subject});
     return {ok:false,skipped:true};
   }
-  const r=await fetch('https://api.resend.com/emails',{
-    method:'POST',
-    headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
-    body:JSON.stringify({from,to:[to],subject,html}),
-  });
-  if(!r.ok){
-    console.error('TURNAVIA email error', await r.text());
+  try{
+    const r=await fetch('https://api.resend.com/emails',{
+      method:'POST',
+      headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
+      body:JSON.stringify({from,to:[to],subject,html}),
+    });
+    if(!r.ok){
+      console.error('TURNAVIA email error', await r.text());
+      return {ok:false};
+    }
+    return {ok:true};
+  }catch(error){
+    console.error('TURNAVIA email transport error', error);
     return {ok:false};
   }
-  return {ok:true};
 }
 
 export function turnaviaEmail(title:string,body:string){
