@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
 import { Building2, HeartPulse, DollarSign, CheckCircle2, UserPlus, Clock3, Eye } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
-import { sql } from '@/lib/db';
+import { sql, hasDatabase } from '@/lib/db';
 import MasterActions from './MasterActions';
 import { refreshAllCommercialStatuses } from '@/lib/subscription';
 
@@ -37,6 +37,7 @@ export default async function Master(){
         <div><div className="muted" style={{fontSize:13}}>TURNAVIA · Administración comercial</div><h1>Panel Master</h1></div>
         <div className="row"><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Nueva prueba</Link></div>
       </div>
+      {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TURNAVIA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
 
       <div className="stat-grid">
         <div className="stat"><Building2 size={18}/><small style={{display:'block',marginTop:8}}>Negocios activos</small><div className="n">{businesses}</div></div>
