@@ -64,6 +64,13 @@ export async function GET(req:Request){
 
   if(sql){
     if(scope==='MASTER'){
+      if(activeOnly){
+        const rows=await sql`SELECT id,scope,doctor_id,name,type,account_label,account_value,instructions,currency,requires_proof,active,is_primary
+          FROM payment_methods
+          WHERE scope='MASTER' AND active=true
+          ORDER BY is_primary DESC, created_at`;
+        return NextResponse.json({methods:rows});
+      }
       const a=await access();
       if(!a.master) return NextResponse.json({error:'No autorizado'},{status:403});
       const rows=await sql`SELECT id,scope,doctor_id,name,type,account_label,account_value,instructions,currency,requires_proof,active,is_primary FROM payment_methods WHERE scope='MASTER' ORDER BY is_primary DESC, created_at`;
