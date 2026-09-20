@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
 import { redirect } from 'next/navigation';
-import { MASTER_EMAIL } from '@/lib/access';
 import { passwordIssues } from '@/lib/password-policy';
 
 function slugify(input:string){
@@ -20,7 +19,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const category=String(formData.get('category')||'Salud').trim();
   const activity=String(formData.get('activity')||'Médico').trim();
   const requestedRole=rawRole==='DOCTOR'?'DOCTOR':'PATIENT';
-  const role=email===MASTER_EMAIL?'MASTER':requestedRole;
+  const role=requestedRole;
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
   const buyIntent=String(formData.get('buyIntent')||'0')==='1';
   let commercialClientId='';
@@ -126,7 +125,6 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     html:turnaviaEmail('Bienvenido a TURNAVIA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p><p><a href="${process.env.APP_URL||'https://turnavia.vercel.app'}/ingresar">Entrar a TURNAVIA</a></p>`)
   });
 
-  if(role==='MASTER') redirect('/master');
   if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId));
   redirect('/panel');
 }
