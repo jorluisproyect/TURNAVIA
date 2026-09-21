@@ -213,3 +213,18 @@ ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_name text;
 
 -- Account security
 ALTER TABLE app_user_profiles ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
+
+
+-- In-app notifications
+CREATE TABLE IF NOT EXISTS app_notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_user_id text NOT NULL,
+  type text NOT NULL DEFAULT 'INFO',
+  title text NOT NULL,
+  message text NOT NULL,
+  link text,
+  read_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS app_notifications_user_created_idx ON app_notifications(auth_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS app_notifications_user_unread_idx ON app_notifications(auth_user_id, read_at);
