@@ -2,6 +2,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 import { hasDatabase, sql, databaseEnvName } from '@/lib/db';
 import { CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { neonAuthConfigured } from '@/lib/auth/config';
 
 export const dynamic='force-dynamic';
 
@@ -10,7 +11,7 @@ function State({ok,label}:{ok:boolean;label:string}){
 }
 
 export default async function ConfiguracionMaster(){
- const authReady=Boolean(process.env.NEON_AUTH_BASE_URL);
+ const authReady=neonAuthConfigured;
  const appUrlReady=Boolean(process.env.APP_URL);
  const emailReady=Boolean(process.env.RESEND_API_KEY);
  const cookieReady=Boolean(process.env.NEON_AUTH_COOKIE_SECRET);
