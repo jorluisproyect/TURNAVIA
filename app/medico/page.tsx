@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2 } from 'lucide-react';
+import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 
@@ -39,13 +39,15 @@ export default function Medico(){
    setModal(null);setToast('Cambios guardados');await load();setTimeout(()=>setToast(''),1800);return true;
  }
  async function copy(){
-   if(!data?.provider?.slug)return;
-   await navigator.clipboard.writeText(location.origin+'/reservar/'+data.provider.slug);
-   setToast('Enlace copiado');setTimeout(()=>setToast(''),1800);
+   const path=data?.provider?.publicPath||(data?.provider?.slug?'/reservar/'+data.provider.slug:'');
+   if(!path)return;
+   await navigator.clipboard.writeText(location.origin+path);
+   setToast('Enlace para clientes copiado');setTimeout(()=>setToast(''),1800);
  }
  async function share(){
-   if(!data?.provider?.slug)return;
-   const url=location.origin+'/reservar/'+data.provider.slug;
+   const path=data?.provider?.publicPath||(data?.provider?.slug?'/reservar/'+data.provider.slug:'');
+   if(!path)return;
+   const url=location.origin+path;
    if(navigator.share)await navigator.share({title:'Reserva en TURNAVIA',text:'Reserva tu cita o servicio conmigo en TURNAVIA',url});else copy();
  }
  function openAvailability(){
@@ -70,11 +72,29 @@ export default function Medico(){
  if(error&&!data)return <div className="dashboard"><Sidebar role="medico"/><main className="main"><section className="panel"><h1>Tu panel profesional</h1><div className="notice danger">{error}</div></section></main></div>;
  if(!data)return <div className="dashboard"><Sidebar role="medico"/><main className="main">Cargando tu cuenta…</main></div>;
  const p=data.provider;
+ const publicPath=p.publicPath||('/reservar/'+p.slug);
+ const publicUrl='https://turnavia.vercel.app'+publicPath;
  const activity=String(p.activity||'').toLowerCase();
  const serviceHint=activity.includes('barber')?'Ej.: Corte clásico, Fade, Corte + barba, Barba completa':activity.includes('manicur')||activity.includes('uña')?'Ej.: Manicura, Semipermanente, Acrílicas, Jelly, Nail art, Retiro, Mantenimiento':'Crea cada servicio por separado con su duración y precio.';
 
  return <div className="dashboard"><Sidebar role="medico"/><main className="main">
   <div id="perfil" className="topbar"><div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1>{p.subscriptionStatus==='TRIAL'&&p.trialEndsAt&&<div className="muted" style={{fontSize:12}}>Prueba disponible hasta {new Date(p.trialEndsAt).toLocaleDateString('es-VE')}</div>}{p.subscriptionStatus==='ACTIVO'&&p.renewalDueAt&&<div className="muted" style={{fontSize:12}}>Próxima renovación aproximada: {new Date(p.renewalDueAt).toLocaleDateString('es-VE')}</div>}</div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':p.subscriptionStatus==='REVISION_BINANCE'?'Pago en revisión':'Prueba gratis'}</span>{p.clientId&&p.subscriptionStatus!=='ACTIVO'&&<Link className="btn btn-primary" href={'/pago?client='+p.clientId}>Activar / pagar</Link>}{p.clientId&&p.subscriptionStatus==='ACTIVO'&&<Link className="btn btn-secondary" href={'/pago?client='+p.clientId}>Renovación</Link>}<button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
+
+  {p.subscriptionStatus==='ACTIVO'&&<section className="panel" style={{marginBottom:18,border:'1px solid #7dd3c7',background:'linear-gradient(135deg,#f0fdfa,#ffffff)'}}>
+    <div className="row space" style={{gap:16,flexWrap:'wrap'}}>
+      <div style={{minWidth:0,flex:1}}>
+        <span className="eyebrow"><CheckCircle2 size={15}/> CUENTA ACTIVA</span>
+        <h2 style={{margin:'10px 0 6px'}}>Tu enlace para recibir clientes</h2>
+        <p className="muted" style={{margin:'0 0 10px'}}>Este es el enlace que debes enviar por WhatsApp, Instagram, redes sociales o colocar en tu perfil.</p>
+        <div className="notice" style={{wordBreak:'break-all'}}><strong>{publicUrl}</strong></div>
+      </div>
+      <div className="button-row" style={{flexWrap:'wrap'}}>
+        <button className="btn btn-primary" onClick={copy}><Link2 size={16}/> Copiar enlace</button>
+        <button className="btn btn-secondary" onClick={share}><Share2 size={16}/> Compartir</button>
+        <a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer"><ExternalLink size={16}/> Ver mi página</a>
+      </div>
+    </div>
+  </section>}
 
   <div className="stat-grid">
     <div className="stat"><small>Reservas activas</small><div className="n">{confirmed.length}</div></div>
@@ -124,7 +144,7 @@ export default function Medico(){
    </section>
 
    <aside style={{display:'grid',gap:18}}>
-    <section className="panel"><h2>Tu página pública</h2><div className="notice"><strong>{p.name}</strong><br/>{p.activity} · {p.category}</div><div className="quick-grid" style={{marginTop:12}}><button className="quick" onClick={copy}><Link2 size={18}/><strong>Copiar enlace</strong><small>/reservar/{p.slug}</small></button><button className="quick" onClick={share}><Share2 size={18}/><strong>Compartir</strong><small>Enviar a clientes</small></button></div></section>
+    <section className="panel"><h2>Tu página pública</h2><div className="notice"><strong>{p.name}</strong><br/>{p.activity} · {p.category}<br/><span style={{wordBreak:'break-all',fontSize:12}}>{publicUrl}</span></div><div className="quick-grid" style={{marginTop:12}}><button className="quick" onClick={copy}><Link2 size={18}/><strong>Copiar enlace</strong><small>{publicPath}</small></button><button className="quick" onClick={share}><Share2 size={18}/><strong>Compartir</strong><small>Enviar a clientes</small></button></div><a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer" style={{marginTop:12}}><ExternalLink size={15}/> Abrir mi página pública</a></section>
     <section className="panel"><h2>Estado de atención</h2><div className="muted" style={{fontSize:13,marginBottom:10}}>{p.dayStatus==='DELAYED'?'Retraso de '+p.delayMinutes+' min':p.dayStatus==='SUSPENDED'?'Atención suspendida':'Atendiendo normalmente'}</div><button className="btn btn-secondary" onClick={()=>setModal('status')}>Cambiar estado</button></section>
    </aside>
   </div>
