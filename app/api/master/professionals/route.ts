@@ -53,10 +53,14 @@ export async function DELETE(req:Request){
     FROM commercial_clients WHERE lower(email)=lower(${p.email}) ORDER BY created_at DESC LIMIT 1`;
   const commercial=commercialRows[0] as any;
   const hasCommercialHistory=Boolean(commercial?.payment_submitted_at||commercial?.payment_reviewed_at);
+  const profileRows=await sql`SELECT auth_user_id FROM app_user_profiles WHERE lower(email)=lower(${p.email}) LIMIT 1`;
+  const hasAuthAccount=profileRows.length>0;
 
-  if(appointments>0||hasCommercialHistory){
+  if(appointments>0||hasCommercialHistory||hasAuthAccount){
     return NextResponse.json({
-      error:'Este profesional tiene historial real de citas o pagos. Por seguridad no se elimina; desactívalo para conservar el historial.',
+      error:hasAuthAccount
+        ? 'Esta es una cuenta real con acceso. Para no dejar un usuario de autenticación huérfano, TURNAVIA la desactiva en lugar de borrarla definitivamente.'
+        : 'Este profesional tiene historial real de citas o pagos. Por seguridad no se elimina; desactívalo para conservar el historial.',
       canDeactivate:true
     },{status:409});
   }
@@ -67,7 +71,6 @@ export async function DELETE(req:Request){
   if(commercial?.id) await sql`DELETE FROM commercial_clients WHERE id=${commercial.id}::uuid`;
   await sql`DELETE FROM doctors WHERE id=${p.doctor_id}::uuid`;
   await sql`DELETE FROM users WHERE id=${p.user_id}::uuid`;
-  await sql`DELETE FROM app_user_profiles WHERE lower(email)=lower(${p.email})`;
 
   return NextResponse.json({ok:true});
 }
