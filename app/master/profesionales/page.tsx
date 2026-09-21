@@ -2,6 +2,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { sql } from '@/lib/db';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
+import ProfessionalActions from './ProfessionalActions';
 
 export const dynamic='force-dynamic';
 const labels:any={TRIAL:'Prueba',PAGO_PENDIENTE:'Pago pendiente',REVISION_BINANCE:'Pago en revisión',ACTIVO:'Activo',SUSPENDIDO:'Suspendido',DEMO:'Demo'};
@@ -10,7 +11,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
   const sp=await searchParams;
   const q=String(sp.q||'').trim().toLowerCase();
   const status=String(sp.status||'TODOS');
-  const rows=sql?await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.accepts_online_booking,u.full_name,u.email,u.phone,
+  const rows=sql?await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.accepts_online_booking,u.full_name,u.email,u.phone,u.active,
     COUNT(ps.id) FILTER (WHERE ps.active=true)::int AS services,
     COALESCE(cc.status,CASE WHEN lower(COALESCE(u.email,'')) LIKE '%@turnavia.app' THEN 'DEMO' ELSE 'SIN_SUSCRIPCION' END) AS commercial_status,
     cc.id AS commercial_client_id
@@ -41,6 +42,6 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       <div className="muted" style={{fontSize:12,marginTop:10}}>{realCount} profesional{realCount===1?'':'es'} real{realCount===1?'':'es'} en el resultado. Los demos no cuentan en métricas.</div>
     </section>
 
-    <section className="panel" style={{marginTop:18}}>{filtered.length===0?<div className="notice">No hay profesionales con esos filtros.</div>:<div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Nombre</th><th>Rubro</th><th>Tipo</th><th>Servicios</th><th>Estado</th><th>Reserva pública</th></tr></thead><tbody>{filtered.map((r:any)=><tr key={r.public_slug}><td><strong>{r.full_name}</strong>{String(r.commercial_status)==='DEMO'&&<span className="pill" style={{marginLeft:8}}>Demo</span>}<div className="muted" style={{fontSize:12}}>{r.email} · {r.phone}</div></td><td>{r.provider_category}<div className="muted" style={{fontSize:12}}>{r.provider_activity}</div></td><td>{r.provider_type}</td><td>{r.services}</td><td><span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>{r.commercial_client_id&&<div style={{marginTop:6}}><Link href={'/master/clientes/'+r.commercial_client_id} className="muted" style={{fontSize:12}}>Abrir ficha comercial</Link></div>}</td><td>{r.accepts_online_booking?<a className="btn btn-secondary" href={'/reservar/'+r.public_slug} target="_blank" rel="noreferrer">Ver página</a>:<span className="muted">Pausada</span>}</td></tr>)}</tbody></table></div>}</section>
+    <section className="panel" style={{marginTop:18}}>{filtered.length===0?<div className="notice">No hay profesionales con esos filtros.</div>:<div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Nombre</th><th>Rubro</th><th>Tipo</th><th>Servicios</th><th>Estado</th><th>Reserva pública</th><th>Administrar</th></tr></thead><tbody>{filtered.map((r:any)=><tr key={r.public_slug}><td><strong>{r.full_name}</strong>{String(r.commercial_status)==='DEMO'&&<span className="pill" style={{marginLeft:8}}>Demo</span>}<div className="muted" style={{fontSize:12}}>{r.email} · {r.phone}</div></td><td>{r.provider_category}<div className="muted" style={{fontSize:12}}>{r.provider_activity}</div></td><td>{r.provider_type}</td><td>{r.services}</td><td><span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>{r.commercial_client_id&&<div style={{marginTop:6}}><Link href={'/master/clientes/'+r.commercial_client_id} className="muted" style={{fontSize:12}}>Abrir ficha comercial</Link></div>}</td><td>{r.accepts_online_booking&&r.active?<a className="btn btn-secondary" href={'/reservar/'+r.public_slug} target="_blank" rel="noreferrer">Ver página</a>:<span className="muted">Pausada</span>}</td><td><ProfessionalActions slug={r.public_slug} active={Boolean(r.active)} name={r.full_name}/></td></tr>)}</tbody></table></div>}</section>
   </main></div>;
 }
