@@ -76,7 +76,8 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     provider:{
       slug:p.public_slug,name:p.full_name,initials,category:p.provider_category||'Otro',activity:p.provider_activity||p.specialty||'Servicio',
       type:p.provider_type||'Profesional independiente',phone:p.phone||'',specialty:p.specialty||'',
-      location:[p.location_name,p.address,p.city].filter(Boolean).join(' · '),
+      location:[p.location_name,p.address,p.city,p.state,p.country].filter(Boolean).join(' · '),
+      country:p.country||'',
       dayStatus:(statusRows[0] as any)?.status||'NORMAL',delayMinutes:Number((statusRows[0] as any)?.delay_minutes||0)
     },
     services:services.map((s:any)=>({id:String(s.id),name:s.name,description:s.description||'',durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'})),
