@@ -161,3 +161,29 @@ export async function PATCH(req:Request){
   Object.assign(m,Object.fromEntries(Object.entries(body).filter(([k,v])=>k!=='id'&&v!==undefined)));
   return NextResponse.json({ok:true});
 }
+
+
+export async function DELETE(req:Request){
+  const body=await req.json();
+  const id=String(body.id||'');
+  if(!id) return NextResponse.json({error:'Método no identificado'},{status:400});
+
+  if(sql){
+    const rows=await sql`SELECT pm.scope,d.public_slug FROM payment_methods pm LEFT JOIN doctors d ON d.id=pm.doctor_id WHERE pm.id=${id}::uuid LIMIT 1`;
+    if(!rows.length) return NextResponse.json({error:'Método no encontrado'},{status:404});
+    const row=rows[0] as any;
+    const a=await access(row.scope==='DOCTOR'?row.public_slug:undefined);
+    if(row.scope==='MASTER'&&!a.master) return NextResponse.json({error:'No autorizado'},{status:403});
+    if(row.scope==='DOCTOR'&&!a.master&&!a.owner) return NextResponse.json({error:'No autorizado'},{status:403});
+
+    await sql`DELETE FROM payment_methods WHERE id=${id}::uuid`;
+    return NextResponse.json({ok:true});
+  }
+
+  if(process.env.NODE_ENV==='production') return NextResponse.json({error:'Base de datos no disponible'},{status:503});
+  const list=fallback();
+  const index=list.findIndex(x=>x.id===id);
+  if(index<0) return NextResponse.json({error:'Método no encontrado'},{status:404});
+  list.splice(index,1);
+  return NextResponse.json({ok:true});
+}
