@@ -43,6 +43,11 @@ export async function POST(req:Request){
     WHERE id=${clientId}::uuid RETURNING *`;
   if(!rows.length)return NextResponse.json({error:'Cliente no encontrado'},{status:404});
   const r=rows[0] as any;
+  const monthly=String(r.type||'').startsWith('Negocio')?49:15;
+  const initial=String(r.type||'').startsWith('Negocio')?149:40;
+  const amount=Boolean((access.client as any)?.payment_reviewed_at)?monthly:initial;
+  await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+    VALUES('PAYMENT_SUBMITTED','COMMERCIAL_CLIENT',${clientId},CAST(${JSON.stringify({source:'TURNAVIA_SUBSCRIPTION'})} AS jsonb) || jsonb_build_object('method',${methodLabel},'reference',${reference},'amount',${amount},'currency','USD'))`;
   await sendTransactionalEmail({to:MASTER_EMAIL,subject:'Nuevo pago TURNAVIA por revisar',html:turnaviaEmail('Pago pendiente de verificación',`<p><strong>${r.name}</strong> envió un pago de TURNAVIA.</p><p><strong>Método:</strong> ${methodLabel}<br/><strong>Referencia:</strong> ${reference}</p><p>Ingresa al Panel Master para revisar el comprobante y aprobar o rechazar el pago.</p><p><a href="${process.env.APP_URL||'https://turnavia.vercel.app'}/master">Abrir Panel Master</a></p>`) });
   if(r.email){await sendTransactionalEmail({to:r.email,subject:'Recibimos tu pago TURNAVIA',html:turnaviaEmail('Pago recibido',`<p>Hola <strong>${r.name}</strong>.</p><p>Recibimos tu referencia y comprobante. El pago está en revisión y te avisaremos cuando sea aprobado.</p>`) });}
   return NextResponse.json({ok:true,client:{id:String(r.id),name:r.name,type:r.type,specialty:r.specialty||'',phone:r.phone||'',email:r.email,status:r.status,trialEndsAt:r.trial_ends_at?new Date(r.trial_ends_at).toISOString():undefined,paymentMethod:r.payment_method,paymentReference:r.payment_reference,paymentComment:r.payment_comment,hasProof:Boolean(r.payment_proof)}});
