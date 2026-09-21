@@ -5,6 +5,7 @@ import { StatusPill } from '@/components/StatusPill';
 import { sql } from '@/lib/db';
 import { validUuid } from '@/lib/access';
 import MasterActions from '../../MasterActions';
+import ClientEmailActions from './ClientEmailActions';
 import { CalendarDays, CheckCircle2, CreditCard, ExternalLink, History, Mail, Phone, Users } from 'lucide-react';
 
 export const dynamic='force-dynamic';
@@ -88,6 +89,7 @@ export default async function ClienteMasterDetalle({params}:{params:Promise<{id:
           {client.trial_ends_at&&<div className="notice"><CalendarDays size={16}/><span><strong>Fin de prueba</strong><br/>{new Date(client.trial_ends_at).toLocaleString('es-VE')}</span></div>}
         </div>
         <div style={{marginTop:16}}><MasterActions id={id} status={client.status}/></div>
+        <div style={{marginTop:12}}><ClientEmailActions id={id} active={client.status==='ACTIVO'}/></div>
       </section>
 
       <section className="panel">
