@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
+import { COUNTRY_SUGGESTIONS } from '@/lib/provider-catalog';
 
 const labels:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Llegó',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asistió'};
 
@@ -144,7 +145,7 @@ export default function Medico(){
    </section>
 
    <aside style={{display:'grid',gap:18}}>
-    <section className="panel"><h2>Tu página pública</h2><div className="notice"><strong>{p.name}</strong><br/>{p.activity} · {p.category}<br/><span style={{wordBreak:'break-all',fontSize:12}}>{publicUrl}</span></div><div className="quick-grid" style={{marginTop:12}}><button className="quick" onClick={copy}><Link2 size={18}/><strong>Copiar enlace</strong><small>{publicPath}</small></button><button className="quick" onClick={share}><Share2 size={18}/><strong>Compartir</strong><small>Enviar a clientes</small></button></div><a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer" style={{marginTop:12}}><ExternalLink size={15}/> Abrir mi página pública</a></section>
+    <section className="panel"><h2>Tu página pública</h2><div className="notice"><strong>{p.name}</strong><br/>{p.activity} · {p.category}<br/>{[p.location?.city,p.location?.state,p.location?.country].filter(Boolean).join(' · ')||'Ubicación por configurar'}<br/><span style={{wordBreak:'break-all',fontSize:12}}>{publicUrl}</span></div><div className="quick-grid" style={{marginTop:12}}><button className="quick" onClick={copy}><Link2 size={18}/><strong>Copiar enlace</strong><small>{publicPath}</small></button><button className="quick" onClick={share}><Share2 size={18}/><strong>Compartir</strong><small>Enviar a clientes</small></button></div><a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer" style={{marginTop:12}}><ExternalLink size={15}/> Abrir mi página pública</a></section>
     <section className="panel"><h2>Estado de atención</h2><div className="muted" style={{fontSize:13,marginBottom:10}}>{p.dayStatus==='DELAYED'?'Retraso de '+p.delayMinutes+' min':p.dayStatus==='SUSPENDED'?'Atención suspendida':'Atendiendo normalmente'}</div><button className="btn btn-secondary" onClick={()=>setModal('status')}>Cambiar estado</button></section>
    </aside>
   </div>
@@ -162,7 +163,7 @@ export default function Medico(){
    <div className="field"><label>Tipo</label><select value={profile.type||'Profesional independiente'} onChange={e=>setProfile({...profile,type:e.target.value})}><option>Profesional independiente</option><option>Negocio / local</option></select></div>
    <div className="field"><label>Nombre de ubicación</label><input value={profile.locationName||''} onChange={e=>setProfile({...profile,locationName:e.target.value})}/></div>
    <div className="field"><label>Dirección</label><input value={profile.address||''} onChange={e=>setProfile({...profile,address:e.target.value})}/></div>
-   <div className="row" style={{gap:12,alignItems:'stretch'}}><div className="field" style={{flex:1}}><label>Ciudad</label><input value={profile.city||''} onChange={e=>setProfile({...profile,city:e.target.value})}/></div><div className="field" style={{flex:1}}><label>Estado</label><input value={profile.state||''} onChange={e=>setProfile({...profile,state:e.target.value})}/></div></div>
+   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>Ciudad</label><input value={profile.city||''} onChange={e=>setProfile({...profile,city:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>Estado / Provincia</label><input value={profile.state||''} onChange={e=>setProfile({...profile,state:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>País</label><input list="profile-countries" value={profile.country||''} onChange={e=>setProfile({...profile,country:e.target.value})}/><datalist id="profile-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div></div>
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile})}>Guardar perfil</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='service'&&<div className="modal-backdrop"><div className="modal"><h2>{service.id?'Editar servicio':'Nuevo servicio'}</h2><div className="form">
