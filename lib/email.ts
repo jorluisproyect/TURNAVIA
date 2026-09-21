@@ -23,9 +23,17 @@ export async function sendTransactionalEmail({to,subject,html}:MailArgs):Promise
       signal:AbortSignal.timeout(8000),
     });
     if(!r.ok){
-      const error=await r.text();
-      console.error('TURNAVIA email error', error);
-      return {ok:false,status:r.status,error};
+      const raw=await r.text();
+      console.error('TURNAVIA email error', raw);
+      let message=raw;
+      try{
+        const parsed=JSON.parse(raw);
+        message=String(parsed?.message||raw);
+      }catch{}
+      if(r.status===403 && /only send testing emails|verify a domain/i.test(message)){
+        message='Resend está en modo de prueba. Verifica un dominio propio en Resend y configura EMAIL_FROM con una dirección de ese dominio para enviar correos a clientes.';
+      }
+      return {ok:false,status:r.status,error:message};
     }
     return {ok:true,status:r.status};
   }catch(error){
