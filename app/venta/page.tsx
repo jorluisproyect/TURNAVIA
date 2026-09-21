@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
-import { ArrowRight, CheckCircle2, CreditCard, Eye, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowRight, CheckCircle2, CreditCard, Eye, ShieldCheck, Sparkles } from 'lucide-react';
 
 export const dynamic='force-static';
 
@@ -17,10 +17,14 @@ export default function Venta(){
     <div className="demo-head" style={{marginTop:42}}>
       <span className="eyebrow"><Sparkles size={15}/> TURNAVIA PARA TU NEGOCIO</span>
       <h1>Empieza hoy: prueba gratis o activa tu plan de una vez.</h1>
-      <p className="muted">Puedes explorar el demo sin registrarte. Si ya decidiste usar TURNAVIA, crea tu cuenta y pasa directamente al pago. El pago se verifica antes de activar la suscripción.</p>
+      <p className="muted">Primero puedes ver los costos y elegir el plan que te conviene. Puedes comenzar con 5 días de prueba gratis o activar TURNAVIA de una vez.</p>
+      <a href="#planes" className="trial-cta">
+        <span><strong>Regístrate y disfruta 5 días de prueba gratis</strong><small>Elige tu plan abajo. No necesitas pagar para comenzar la prueba.</small></span>
+        <span className="trial-arrow"><ArrowDown size={24}/></span>
+      </a>
     </div>
 
-    <div className="panel-grid" style={{marginTop:18}}>
+    <div id="planes" className="panel-grid" style={{marginTop:18,scrollMarginTop:24}}>
       <section className="panel">
         <span className="eyebrow">PROFESIONAL INDEPENDIENTE</span>
         <h2 style={{fontSize:34,margin:'14px 0 4px'}}>$40 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
