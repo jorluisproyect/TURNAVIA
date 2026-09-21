@@ -23,7 +23,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       WHERE lower(c.email)=lower(u.email)
       ORDER BY c.created_at DESC LIMIT 1
     ) cc ON true
-    GROUP BY d.id,u.full_name,u.email,u.phone,cc.status,cc.id
+    GROUP BY d.id,u.full_name,u.email,u.phone,u.active,cc.status,cc.id
     ORDER BY u.full_name`:[];
   const filtered=(rows as any[]).filter(r=>{
     const hay=[r.full_name,r.email,r.phone,r.provider_category,r.provider_activity,r.provider_type].filter(Boolean).join(' ').toLowerCase();
