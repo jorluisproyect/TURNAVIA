@@ -14,11 +14,13 @@ async function currentProvider(){
   const email=String((session.user as any).email||'').toLowerCase();
   const rows=await sql`SELECT d.id AS doctor_id,d.public_slug,d.specialty,d.provider_category,d.provider_activity,d.provider_type,
       d.consultation_price,d.consultation_currency,d.payment_instructions,d.default_appointment_minutes,d.accepts_online_booking,
-      u.id AS user_id,u.full_name,u.email,u.phone,
+      u.id AS user_id,u.full_name,u.email,u.phone,u.organization_id,
+      o.slug AS organization_slug,o.name AS organization_name,
       l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room,
       c.id AS commercial_client_id,c.status AS subscription_status,c.trial_ends_at,c.payment_reviewed_at
     FROM users u
     JOIN doctors d ON d.user_id=u.id
+    LEFT JOIN organizations o ON o.id=u.organization_id
     LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
     LEFT JOIN locations l ON l.id=dl.location_id
     LEFT JOIN commercial_clients c ON lower(c.email)=lower(u.email)
@@ -51,6 +53,8 @@ export async function GET(){
   return NextResponse.json({
     provider:{
       id:String(provider.doctor_id),slug:provider.public_slug,name:provider.full_name,email:provider.email||'',phone:provider.phone||'',
+      organizationSlug:provider.organization_slug||'',organizationName:provider.organization_name||'',
+      publicPath:provider.organization_slug?'/negocio/'+provider.organization_slug:'/reservar/'+provider.public_slug,
       category:provider.provider_category||'Salud',activity:provider.provider_activity||provider.specialty||'Servicio',
       type:provider.provider_type||'Profesional independiente',specialty:provider.specialty||'',
       price:Number(provider.consultation_price||0),currency:provider.consultation_currency||'USD',
