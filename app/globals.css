@@ -72,3 +72,13 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
 .reception-note{background:#f8fbfa;border:1px solid var(--line);border-radius:16px;padding:14px}.card .row svg{flex:none}
 @media(max-width:900px){.grid-3{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.grid-3{grid-template-columns:1fr}}
+
+
+/* Sales free-trial CTA */
+.trial-cta{margin:22px auto 0;max-width:640px;display:flex;align-items:center;justify-content:space-between;gap:18px;text-align:left;text-decoration:none;background:linear-gradient(135deg,#e8f8f4,#fff);border:1px solid #9bd8cc;border-radius:20px;padding:16px 18px;color:var(--brand);box-shadow:0 10px 35px rgba(11,111,105,.08);animation:trialPulse 2.2s ease-in-out infinite}
+.trial-cta strong{display:block;font-size:17px}
+.trial-cta small{display:block;color:var(--muted);margin-top:4px;line-height:1.45}
+.trial-arrow{width:42px;height:42px;border-radius:14px;background:var(--brand);color:white;display:grid;place-items:center;flex:none;animation:trialArrow 1.15s ease-in-out infinite}
+@keyframes trialArrow{0%,100%{transform:translateY(-3px)}50%{transform:translateY(5px)}}
+@keyframes trialPulse{0%,100%{box-shadow:0 10px 35px rgba(11,111,105,.08)}50%{box-shadow:0 14px 42px rgba(11,111,105,.18)}}
+@media(prefers-reduced-motion:reduce){.trial-cta,.trial-arrow{animation:none}}
