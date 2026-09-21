@@ -53,6 +53,21 @@ export async function POST(req:Request){
     console.error('TURNAVIA payment audit error',error);
   }
 
+  try{
+    if(r.auth_user_id){
+      await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+        VALUES(${String(r.auth_user_id)},'PAYMENT','Pago enviado','Recibimos tu pago y está esperando aprobación del administrador de TURNAVIA.','/panel')`;
+    }
+    const masterRows=await sql`SELECT auth_user_id FROM app_user_profiles WHERE role='MASTER' ORDER BY updated_at DESC LIMIT 1`;
+    const masterAuthId=String((masterRows[0] as any)?.auth_user_id||'');
+    if(masterAuthId){
+      await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+        VALUES(${masterAuthId},'PAYMENT','Nuevo pago por revisar',${r.name+' envió un pago por '+methodLabel+' · Ref. '+reference},'/master')`;
+    }
+  }catch(error){
+    console.error('TURNAVIA in-app payment notification error',error);
+  }
+
   const masterMail=await sendTransactionalEmail({
     to:MASTER_EMAIL,
     subject:'Nuevo pago TURNAVIA por revisar',
