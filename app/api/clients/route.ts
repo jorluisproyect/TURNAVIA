@@ -61,6 +61,23 @@ export async function PATCH(req:Request){
     payment_rejection_reason=CASE WHEN ${body.status||null}='PAGO_PENDIENTE' THEN ${body.rejectionReason||'Pago rechazado. Verifica los datos e intenta nuevamente.'} ELSE payment_rejection_reason END
     WHERE id=${body.id}::uuid RETURNING *`;
   const client=mapClient(rows[0]);
+  if(body.status && body.status!==prev.status){
+    const action=body.status==='ACTIVO'
+      ? (prev.status==='SUSPENDIDO'?'CLIENT_REACTIVATED':'PAYMENT_APPROVED')
+      : body.status==='SUSPENDIDO'
+        ? 'CLIENT_SUSPENDED'
+        : body.status==='PAGO_PENDIENTE' && body.rejectionReason
+          ? 'PAYMENT_REJECTED'
+          : 'CLIENT_STATUS_CHANGED';
+    await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+      VALUES(${action},'COMMERCIAL_CLIENT',${String(client.id)},jsonb_build_object(
+        'previousStatus',${String(prev.status||'')},
+        'nextStatus',${String(body.status||'')},
+        'reason',${body.rejectionReason||null},
+        'paymentMethod',${client.paymentMethod||null},
+        'paymentReference',${client.paymentReference||null}
+      ))`;
+  }
   if(body.status==='ACTIVO' && prev.status!=='ACTIVO'){
     const appUrl=process.env.APP_URL||'https://turnavia.vercel.app';
     const linkRows=await sql`SELECT d.public_slug,o.slug AS organization_slug
