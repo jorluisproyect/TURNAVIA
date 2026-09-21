@@ -1,26 +1,37 @@
 type MailArgs={to:string;subject:string;html:string};
+type MailResult={ok:boolean;skipped?:boolean;status?:number;error?:string};
 
-export async function sendTransactionalEmail({to,subject,html}:MailArgs){
+export async function sendTransactionalEmail({to,subject,html}:MailArgs):Promise<MailResult>{
   const key=process.env.RESEND_API_KEY;
-  const from=process.env.EMAIL_FROM || 'TURNAVIA <onboarding@resend.dev>';
+  const configuredFrom=process.env.EMAIL_FROM;
+  const from=configuredFrom || (process.env.NODE_ENV==='production'?'':'TURNAVIA <onboarding@resend.dev>');
+
   if(!key){
     console.warn('TURNAVIA email skipped: RESEND_API_KEY is not configured', {to,subject});
-    return {ok:false,skipped:true};
+    return {ok:false,skipped:true,error:'RESEND_API_KEY no configurada'};
   }
+  if(!from){
+    console.warn('TURNAVIA email skipped: EMAIL_FROM is not configured', {to,subject});
+    return {ok:false,skipped:true,error:'EMAIL_FROM no configurado'};
+  }
+
   try{
     const r=await fetch('https://api.resend.com/emails',{
       method:'POST',
       headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
       body:JSON.stringify({from,to:[to],subject,html}),
+      signal:AbortSignal.timeout(8000),
     });
     if(!r.ok){
-      console.error('TURNAVIA email error', await r.text());
-      return {ok:false};
+      const error=await r.text();
+      console.error('TURNAVIA email error', error);
+      return {ok:false,status:r.status,error};
     }
-    return {ok:true};
+    return {ok:true,status:r.status};
   }catch(error){
+    const message=error instanceof Error?error.message:'Error de transporte';
     console.error('TURNAVIA email transport error', error);
-    return {ok:false};
+    return {ok:false,error:message};
   }
 }
 
