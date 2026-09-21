@@ -61,7 +61,28 @@ export async function PATCH(req:Request){
     payment_rejection_reason=CASE WHEN ${body.status||null}='PAGO_PENDIENTE' THEN ${body.rejectionReason||'Pago rechazado. Verifica los datos e intenta nuevamente.'} ELSE payment_rejection_reason END
     WHERE id=${body.id}::uuid RETURNING *`;
   const client=mapClient(rows[0]);
+  const updatedRow=rows[0] as any;
   if(body.status && body.status!==prev.status){
+    try{
+      const authUserId=String(updatedRow.auth_user_id||'');
+      if(authUserId){
+        if(body.status==='ACTIVO'){
+          await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+            VALUES(${authUserId},'SUCCESS','Cuenta TURNAVIA activa','Tu pago fue aprobado. Tu cuenta ya está activa y puedes continuar configurando y operando TURNAVIA.','/panel')`;
+        }else if(body.status==='PAGO_PENDIENTE' && body.rejectionReason){
+          await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+            VALUES(${authUserId},'WARNING','Pago rechazado',${'Tu pago necesita corrección: '+String(body.rejectionReason||'Verifica los datos e intenta nuevamente.')},${'/pago?client='+String(client.id)})`;
+        }else if(body.status==='SUSPENDIDO'){
+          await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+            VALUES(${authUserId},'WARNING','Cuenta suspendida','Tu cuenta TURNAVIA fue suspendida. Revisa tu suscripción o contacta al administrador.','/panel')`;
+        }else if(body.status==='ACTIVO' && prev.status==='SUSPENDIDO'){
+          await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+            VALUES(${authUserId},'SUCCESS','Cuenta reactivada','Tu cuenta TURNAVIA volvió a estar activa.','/panel')`;
+        }
+      }
+    }catch(error){
+      console.error('TURNAVIA in-app client notification error',error);
+    }
     const action=body.status==='ACTIVO'
       ? (prev.status==='SUSPENDIDO'?'CLIENT_REACTIVATED':'PAYMENT_APPROVED')
       : body.status==='SUSPENDIDO'
