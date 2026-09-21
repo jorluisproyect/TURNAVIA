@@ -18,7 +18,12 @@ const actionLabels:any={
   PAYMENT_REJECTED:'Pago rechazado',
   CLIENT_SUSPENDED:'Cuenta suspendida',
   CLIENT_REACTIVATED:'Cuenta reactivada',
-  CLIENT_STATUS_CHANGED:'Estado actualizado'
+  CLIENT_STATUS_CHANGED:'Estado actualizado',
+  WELCOME_EMAIL_SENT:'Correo de bienvenida enviado',
+  WELCOME_EMAIL_FAILED:'Falló correo de bienvenida',
+  ACTIVATION_EMAIL_SENT:'Correo de activación enviado',
+  ACTIVATION_EMAIL_FAILED:'Falló correo de activación',
+  PAYMENT_EMAIL_STATUS:'Estado de correos del pago'
 };
 
 export default async function ClienteMasterDetalle({params}:{params:Promise<{id:string}>}){
