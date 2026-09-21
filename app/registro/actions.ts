@@ -123,6 +123,13 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     }
   }
 
+  if(sql&&authUserId){
+    try{
+      await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+        VALUES(${String(authUserId)},'INFO','Bienvenido a TURNAVIA',${role==='DOCTOR'?'Tu cuenta fue creada. Configura tus servicios, horarios y enlace público desde tu panel.':'Tu cuenta fue creada correctamente. Ya puedes comenzar a reservar.'},'/panel')`;
+    }catch(error){console.error('TURNAVIA welcome notification error',error)}
+  }
+
   const appUrl=process.env.APP_URL||'https://turnavia.vercel.app';
   const publicPath=businessPublicPath||providerPublicPath;
   const welcomeMail=await sendTransactionalEmail({
