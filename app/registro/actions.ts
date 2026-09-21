@@ -18,6 +18,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const accountType=String(formData.get('accountType')||'PATIENT');
   const category=String(formData.get('category')||'Salud').trim();
   const activity=String(formData.get('activity')||'Médico').trim();
+  const country=String(formData.get('country')||'Venezuela').trim()||'Venezuela';
   const requestedRole=rawRole==='DOCTOR'?'DOCTOR':'PATIENT';
   const role=requestedRole;
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
@@ -80,7 +81,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
       let locationId=(loc[0] as any)?.id;
       if(!locationId){
         const l=await sql`INSERT INTO locations(organization_id,name,address,city,state,country,active)
-          VALUES(${organizationId},${name+' · ubicación principal'},'',NULL,NULL,'Venezuela',true) RETURNING id`;
+          VALUES(${organizationId},${name+' · ubicación principal'},'',NULL,NULL,${country},true) RETURNING id`;
         locationId=(l[0] as any)?.id;
         await sql`INSERT INTO doctor_locations(doctor_id,location_id,room) VALUES(${doctorId},${locationId},NULL) ON CONFLICT DO NOTHING`;
       }
