@@ -3,6 +3,7 @@ import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 import { hasDatabase, sql, databaseEnvName } from '@/lib/db';
 import { CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { neonAuthConfigured } from '@/lib/auth/config';
+import EmailTestButton from './EmailTestButton';
 
 export const dynamic='force-dynamic';
 
@@ -13,7 +14,9 @@ function State({ok,label}:{ok:boolean;label:string}){
 export default async function ConfiguracionMaster(){
  const authReady=neonAuthConfigured;
  const appUrlReady=Boolean(process.env.APP_URL);
- const emailReady=Boolean(process.env.RESEND_API_KEY&&process.env.EMAIL_FROM);
+ const resendReady=Boolean(process.env.RESEND_API_KEY);
+ const emailFromReady=Boolean(process.env.EMAIL_FROM);
+ const emailReady=resendReady&&emailFromReady;
  const cookieReady=Boolean(process.env.NEON_AUTH_COOKIE_SECRET);
  let databaseReachable=false;
  if(sql){try{const rows=await sql`SELECT 1 AS ok`;databaseReachable=Number((rows[0] as any)?.ok||0)===1}catch{databaseReachable=false}}
@@ -34,7 +37,8 @@ export default async function ConfiguracionMaster(){
     {!hasDatabase&&<div className="notice danger" style={{marginTop:14}}><strong>Falta conexión de base de datos en producción.</strong><br/>TURNAVIA busca <code>DATABASE_URL</code>, <code>POSTGRES_URL</code>, <code>NEON_DATABASE_URL</code> o sus variantes no-pooling. Hasta que una exista en Vercel, clientes, reservas, pagos y profesionales no podrán operar.</div>}
     {hasDatabase&&!databaseReachable&&<div className="notice danger" style={{marginTop:14}}><strong>La variable de base de datos existe pero Neon no responde.</strong><br/>Variable detectada: <code>{databaseEnvName||'desconocida'}</code>.</div>}
     {hasDatabase&&databaseReachable&&<div className="notice" style={{marginTop:14}}><strong>Neon conectado correctamente.</strong><br/>Variable detectada: <code>{databaseEnvName}</code>. El Master puede operar con datos reales.</div>}
-    {!emailReady&&<div className="notice" style={{marginTop:14}}><strong>Correos de TURNAVIA pendientes.</strong><br/>El acceso y recuperación de contraseña usan Neon Auth, pero para enviar bienvenida y confirmaciones personalizadas debes tener configurados <code>RESEND_API_KEY</code> y <code>EMAIL_FROM</code> en Vercel.</div>}
+    {!emailReady&&<div className="notice" style={{marginTop:14}}><strong>Correos de TURNAVIA pendientes.</strong><br/>El acceso y recuperación de contraseña usan Neon Auth, pero para bienvenida y activación faltan datos del remitente en Vercel.<br/><span className="muted">RESEND_API_KEY: {resendReady?'OK':'FALTA'} · EMAIL_FROM: {emailFromReady?'OK':'FALTA'}</span></div>}
+    {emailReady&&<div className="notice" style={{marginTop:14}}><div><strong>Prueba real de correo.</strong><br/><span className="muted">Envía un correo al Master para confirmar que Resend acepta el remitente y entrega mensajes.</span><div style={{marginTop:10}}><EmailTestButton/></div></div></div>}
   </section>
 
   <section className="panel" style={{marginTop:18}}>
