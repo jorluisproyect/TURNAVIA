@@ -89,7 +89,11 @@ export async function PATCH(req:Request){
       LIMIT 1`;
     const linkRow=linkRows[0] as any;
     const publicPath=linkRow?.organization_slug?'/negocio/'+linkRow.organization_slug:linkRow?.public_slug?'/reservar/'+linkRow.public_slug:'';
-    await sendTransactionalEmail({to:client.email,subject:'Pago aprobado - TURNAVIA',html:turnaviaEmail('Tu cuenta TURNAVIA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu pago fue revisado y aprobado. Tu cuenta ya está activa.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TURNAVIA</a></p>`)});
+    const activationMail=await sendTransactionalEmail({to:client.email,subject:'Pago aprobado - TURNAVIA',html:turnaviaEmail('Tu cuenta TURNAVIA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu pago fue revisado y aprobado. Tu cuenta ya está activa.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TURNAVIA</a></p>`)});
+    try{
+      await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+        VALUES(${activationMail.ok?'ACTIVATION_EMAIL_SENT':'ACTIVATION_EMAIL_FAILED'},'COMMERCIAL_CLIENT',${String(client.id)},jsonb_build_object('to',${client.email},'error',${activationMail.error||null}))`;
+    }catch(error){console.error('TURNAVIA activation email audit error',error)}
   }
   return NextResponse.json({ok:true,client});
 }
