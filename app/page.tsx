@@ -10,7 +10,7 @@ export default function Home(){
     <div>
       <span className="eyebrow"><HeartPulse size={16}/> Citas, turnos y reservas para cualquier servicio</span>
       <h1>Tu servicio, <span>a tu hora.</span></h1>
-      <p>Turnavia conecta profesionales, negocios y clientes en una sola agenda. Publicas disponibilidad, el cliente reserva, registra su pago y el negocio organiza todo desde un mismo lugar.</p>
+      <p>TUCITA conecta profesionales, negocios y clientes en una sola agenda. Publicas disponibilidad, el cliente reserva, registra su pago y el negocio organiza todo desde un mismo lugar.</p>
       <div className="hero-actions"><Link className="btn btn-primary" href="/demo">Explorar demo <ArrowRight size={17}/></Link><Link className="btn btn-secondary" href="/venta">Crear mi cuenta</Link><Link className="btn btn-secondary" href="/explorar">Explorar servicios</Link></div>
       <div className="hero-proof"><span><CheckCircle2 size={16}/> Sin instalar nada</span><span><CheckCircle2 size={16}/> Funciona en móvil y PC</span><span><CheckCircle2 size={16}/> Diseñado para crecer globalmente</span></div>
     </div>
@@ -36,8 +36,8 @@ export default function Home(){
     <div className="card"><div className="iconbox"><Smartphone/></div><h3>Estoy en camino</h3><p>El cliente puede avisar que va en camino o que ya llegó cuando el tipo de servicio lo necesite.</p></div>
     <div className="card"><div className="iconbox"><ShieldCheck/></div><h3>Núcleo adaptable</h3><p>El mismo núcleo se adapta por rubro y muestra solo las funciones necesarias para cada actividad.</p></div>
    </div></section>
-   <section className="section" id="clinicas"><div className="band"><div><h2>Una demo que ya se puede enseñar.</h2><p>Entra como Master, profesional/negocio o cliente y recorre el flujo comercial completo del producto.</p></div><Link className="btn btn-primary" href="/demo">Abrir Turnavia <ArrowRight size={17}/></Link></div></section>
+   <section className="section" id="clinicas"><div className="band"><div><h2>Una demo que ya se puede enseñar.</h2><p>Entra como Master, profesional/negocio o cliente y recorre el flujo comercial completo del producto.</p></div><Link className="btn btn-primary" href="/demo">Abrir TUCITA <ArrowRight size={17}/></Link></div></section>
   </main>
-  <footer className="footer"><div className="container footer-inner"><div><strong>Turnavia</strong> · Tu servicio, a tu hora.</div><div>Demo multirrubro · Reservas inteligentes</div></div></footer>
+  <footer className="footer"><div className="container footer-inner"><div><strong>TUCITA</strong> · Tu servicio, a tu hora.</div><div>Demo multirrubro · Reservas inteligentes</div></div></footer>
  </>
 }
