@@ -66,9 +66,9 @@ export const initialDemoState: DemoState = {
   ]
 };
 
-declare global { var __turnaviaDemo: DemoState | undefined }
-export const demoStore: DemoState = globalThis.__turnaviaDemo ?? structuredClone(initialDemoState);
-if (!globalThis.__turnaviaDemo) globalThis.__turnaviaDemo = demoStore;
+declare global { var __tucitaDemo: DemoState | undefined }
+export const demoStore: DemoState = globalThis.__tucitaDemo ?? structuredClone(initialDemoState);
+if (!globalThis.__tucitaDemo) globalThis.__tucitaDemo = demoStore;
 
 export function resetDemoStore(){
   const fresh=structuredClone(initialDemoState);
