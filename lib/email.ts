@@ -19,30 +19,38 @@ async function sendWithSmtp({to,subject,html,attachments=[],replyTo}:MailArgs):P
   const nodemailer:any=require('nodemailer');
   const from=process.env.EMAIL_FROM||`TUCITA <${cfg.user}>`;
   const configuredReplyTo=replyTo||process.env.EMAIL_REPLY_TO||'';
-  try{
-    const transporter=nodemailer.createTransport({
-      host:cfg.host,
-      port:cfg.port,
-      secure:cfg.secure,
-      auth:{user:cfg.user,pass:cfg.pass},
-      connectionTimeout:8000,
-      greetingTimeout:8000,
-      socketTimeout:15000,
-    });
-    const info=await transporter.sendMail({
-      from,
-      to,
-      subject,
-      html,
-      ...(configuredReplyTo?{replyTo:configuredReplyTo}:{}),
-      attachments:attachments.map(a=>({filename:a.filename,content:Buffer.from(a.content,'base64')})),
-    });
-    return {ok:true,status:250,transport:'smtp'};
-  }catch(error){
-    const message=error instanceof Error?error.message:'Error SMTP';
-    console.error('TUCITA SMTP email error',error);
-    return {ok:false,error:message,transport:'smtp'};
+  const transporter=nodemailer.createTransport({
+    host:cfg.host,
+    port:cfg.port,
+    secure:cfg.secure,
+    auth:{user:cfg.user,pass:cfg.pass},
+    connectionTimeout:10000,
+    greetingTimeout:10000,
+    socketTimeout:20000,
+  });
+  let lastError:unknown;
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      await transporter.sendMail({
+        from,
+        to,
+        subject,
+        html,
+        ...(configuredReplyTo?{replyTo:configuredReplyTo}:{}),
+        attachments:attachments.map(a=>({filename:a.filename,content:Buffer.from(a.content,'base64')})),
+      });
+      return {ok:true,status:250,transport:'smtp'};
+    }catch(error){
+      lastError=error;
+      const code=String((error as any)?.code||'');
+      const transient=['EBUSY','EAI_AGAIN','ETIMEDOUT','ECONNRESET'].includes(code);
+      console.error(`TUCITA SMTP email error (attempt ${attempt})`,error);
+      if(!transient||attempt===3)break;
+      await new Promise(resolve=>setTimeout(resolve,700*attempt));
+    }
   }
+  const message=lastError instanceof Error?lastError.message:'Error SMTP';
+  return {ok:false,error:message,transport:'smtp'};
 }
 
 async function sendWithResend({to,subject,html,attachments=[],replyTo}:MailArgs):Promise<MailResult>{
@@ -78,8 +86,8 @@ export async function sendTransactionalEmail(args:MailArgs):Promise<MailResult>{
   if(smtp){
     const result=await sendWithSmtp(args);
     if(result.ok)return result;
-    // Optional fallback during migration. Once SMTP is verified, RESEND_API_KEY can be removed.
-    if(process.env.RESEND_API_KEY){
+    // SMTP is the primary transport for TUCITA. Resend fallback is opt-in only.
+    if(process.env.EMAIL_FALLBACK_RESEND==='true'&&process.env.RESEND_API_KEY){
       console.warn('TUCITA SMTP failed; attempting Resend fallback',result.error);
       const fallback=await sendWithResend(args);
       if(fallback.ok)return fallback;
