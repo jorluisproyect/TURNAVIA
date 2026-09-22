@@ -1,7 +1,7 @@
-# TURNAVIA — Guía para explicar la demo
+# TUCITA — Guía para explicar la demo
 
 ## Frase de entrada
-“Turnavia permite que el médico publique cuándo va a consultar, el paciente reserve su hora y recepción vea todo en una sola agenda.”
+“TUCITA permite que el médico publique cuándo va a consultar, el paciente reserve su hora y recepción vea todo en una sola agenda.”
 
 ## 1. Médico
 Ruta: `/medico`
@@ -47,7 +47,7 @@ Qué explicar:
 ## 4. Master
 Ruta: `/master`
 
-Este panel es de Turnavia, no de la clínica.
+Este panel es de TUCITA, no de la clínica.
 Sirve para controlar clientes, médicos, mensualidades y crecimiento del SaaS.
 
 ## 5. Activación comercial
@@ -81,4 +81,4 @@ La primera versión resuelve agenda, disponibilidad, citas y coordinación.
 “Doctor, sus pacientes pueden reservar solos y usted sabe exactamente a quién atenderá antes de llegar al consultorio. Si trabaja dentro de una clínica, recepción sigue teniendo control de toda la agenda.”
 
 ## Nuevo argumento comercial: Cita Premium Preagendada
-TURNAVIA reduce citas fantasma: el profesional define el valor de la consulta, el paciente preagenda, envía comprobante y referencia, y la cita solo se confirma cuando el pago es validado. Si no asiste, dispone de una única reprogramación según disponibilidad del profesional.
+TUCITA reduce citas fantasma: el profesional define el valor de la consulta, el paciente preagenda, envía comprobante y referencia, y la cita solo se confirma cuando el pago es validado. Si no asiste, dispone de una única reprogramación según disponibilidad del profesional.
