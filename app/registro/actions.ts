@@ -127,22 +127,22 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   if(sql&&authUserId){
     try{
       await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
-        VALUES(${String(authUserId)},'INFO','Bienvenido a TURNAVIA',${role==='DOCTOR'?'Tu cuenta fue creada. Configura tus servicios, horarios y enlace público desde tu panel.':'Tu cuenta fue creada correctamente. Ya puedes comenzar a reservar.'},'/panel')`;
-    }catch(error){console.error('TURNAVIA welcome notification error',error)}
+        VALUES(${String(authUserId)},'INFO','Bienvenido a TUCITA',${role==='DOCTOR'?'Tu cuenta fue creada. Configura tus servicios, horarios y enlace público desde tu panel.':'Tu cuenta fue creada correctamente. Ya puedes comenzar a reservar.'},'/panel')`;
+    }catch(error){console.error('TUCITA welcome notification error',error)}
   }
 
   const appUrl=process.env.APP_URL||'https://turnavia.vercel.app';
   const publicPath=businessPublicPath||providerPublicPath;
   const welcomeMail=await sendTransactionalEmail({
     to:email,
-    subject:'Tu cuenta TURNAVIA fue creada',
-    html:turnaviaEmail('Bienvenido a TURNAVIA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${role==='DOCTOR'&&publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para que vean tus servicios, precios y horarios disponibles.</p>`:''}<p><a href="${appUrl}/ingresar">Entrar a mi panel TURNAVIA</a></p>${role==='DOCTOR'&&buyIntent&&commercialClientId?`<p><a href="${appUrl}/pago?client=${encodeURIComponent(commercialClientId)}">Completar activación / pago</a></p>`:''}`)
+    subject:'Tu cuenta TUCITA fue creada',
+    html:turnaviaEmail('Bienvenido a TUCITA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${role==='DOCTOR'&&publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para que vean tus servicios, precios y horarios disponibles.</p>`:''}<p><a href="${appUrl}/ingresar">Entrar a mi panel TUCITA</a></p>${role==='DOCTOR'&&buyIntent&&commercialClientId?`<p><a href="${appUrl}/pago?client=${encodeURIComponent(commercialClientId)}">Completar activación / pago</a></p>`:''}`)
   });
   if(sql&&commercialClientId){
     try{
       await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
         VALUES(${welcomeMail.ok?'WELCOME_EMAIL_SENT':'WELCOME_EMAIL_FAILED'},'COMMERCIAL_CLIENT',${commercialClientId},jsonb_build_object('to',${email},'error',${welcomeMail.error||null}))`;
-    }catch(error){console.error('TURNAVIA welcome email audit error',error)}
+    }catch(error){console.error('TUCITA welcome email audit error',error)}
   }
 
   if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId));
