@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
-import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -133,7 +133,7 @@ export async function POST(req:Request){
       await sql`UPDATE appointments SET status='CONFIRMED',payment_approved_at=now() WHERE id=${appointmentId}::uuid AND doctor_id=${doctorId}::uuid`;
       if(ap.email){
         const when=new Date(ap.starts_at).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
-        await sendTransactionalEmail({to:ap.email,subject:'Tu reserva TURNAVIA fue confirmada',html:turnaviaEmail('Reserva confirmada',`<p>Hola <strong>${ap.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${ap.service_name||member.provider_activity}<br/><strong>Con:</strong> ${member.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+        await sendTransactionalEmail({to:ap.email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${ap.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${ap.service_name||member.provider_activity}<br/><strong>Con:</strong> ${member.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
       }
     }else if(action==='reject_payment'){
       await sql`UPDATE appointments SET status='PAYMENT_REJECTED' WHERE id=${appointmentId}::uuid AND doctor_id=${doctorId}::uuid`;
