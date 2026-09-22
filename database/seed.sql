@@ -1,6 +1,6 @@
--- TURNAVIA demo seed (run after schema.sql)
+-- TUCITA demo seed (run after schema.sql)
 INSERT INTO organizations(name,slug,type,phone,email,subscription_status,monthly_price)
-VALUES('Centro Médico Caracas','centro-medico-caracas','CLINIC','0212-5550000','demo@turnavia.app','TRIAL',49)
+VALUES('Centro Médico Caracas','centro-medico-caracas','CLINIC','0212-5550000','demo@demo.tucita.com.ve','TRIAL',49)
 ON CONFLICT(slug) DO NOTHING;
 
 INSERT INTO locations(organization_id,name,address,city,state,country)
@@ -8,11 +8,11 @@ SELECT id,'Centro Médico Caracas','Av. Principal, Caracas','Caracas','Distrito 
 AND NOT EXISTS(SELECT 1 FROM locations WHERE name='Centro Médico Caracas');
 
 INSERT INTO users(organization_id,role,full_name,email,phone)
-SELECT id,'DOCTOR','Dra. Sofía Mendoza','sofia.demo@turnavia.app','0412-5550101' FROM organizations WHERE slug='centro-medico-caracas'
+SELECT id,'DOCTOR','Dra. Sofía Mendoza','sofia.demo@demo.tucita.com.ve','0412-5550101' FROM organizations WHERE slug='centro-medico-caracas'
 ON CONFLICT(email) DO NOTHING;
 
 INSERT INTO doctors(user_id,public_slug,specialty,license_number,default_appointment_minutes)
-SELECT id,'sofia-mendoza','Cardiología','MPPS-DEMO-001',30 FROM users WHERE email='sofia.demo@turnavia.app'
+SELECT id,'sofia-mendoza','Cardiología','MPPS-DEMO-001',30 FROM users WHERE email='sofia.demo@demo.tucita.com.ve'
 ON CONFLICT(public_slug) DO NOTHING;
 
 INSERT INTO doctor_locations(doctor_id,location_id,room)
