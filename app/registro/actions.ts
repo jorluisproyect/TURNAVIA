@@ -1,7 +1,7 @@
 'use server';
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
-import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { redirect } from 'next/navigation';
 import { passwordIssues } from '@/lib/password-policy';
 
@@ -131,12 +131,12 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     }catch(error){console.error('TUCITA welcome notification error',error)}
   }
 
-  const appUrl=process.env.APP_URL||'https://turnavia.vercel.app';
+  const appUrl=process.env.APP_URL||'https://tucita.com.ve';
   const publicPath=businessPublicPath||providerPublicPath;
   const welcomeMail=await sendTransactionalEmail({
     to:email,
     subject:'Tu cuenta TUCITA fue creada',
-    html:turnaviaEmail('Bienvenido a TUCITA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${role==='DOCTOR'&&publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para que vean tus servicios, precios y horarios disponibles.</p>`:''}<p><a href="${appUrl}/ingresar">Entrar a mi panel TUCITA</a></p>${role==='DOCTOR'&&buyIntent&&commercialClientId?`<p><a href="${appUrl}/pago?client=${encodeURIComponent(commercialClientId)}">Completar activación / pago</a></p>`:''}`)
+    html:tucitaEmail('Bienvenido a TUCITA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${role==='DOCTOR'&&publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para que vean tus servicios, precios y horarios disponibles.</p>`:''}<p><a href="${appUrl}/ingresar">Entrar a mi panel TUCITA</a></p>${role==='DOCTOR'&&buyIntent&&commercialClientId?`<p><a href="${appUrl}/pago?client=${encodeURIComponent(commercialClientId)}">Completar activación / pago</a></p>`:''}`)
   });
   if(sql&&commercialClientId){
     try{
