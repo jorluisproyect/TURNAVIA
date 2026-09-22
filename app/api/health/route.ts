@@ -18,7 +18,7 @@ export async function GET(){
 
   return NextResponse.json({
     ok:databaseReachable && Boolean(process.env.NEON_AUTH_COOKIE_SECRET),
-    app:'Turnavia',
+    app:'TUCITA',
     database:{configured:hasDatabase,reachable:databaseReachable,env:databaseEnvName,error:databaseError||undefined},
     auth:{baseUrlConfigured:Boolean(process.env.NEON_AUTH_BASE_URL)||true,cookieSecretConfigured:Boolean(process.env.NEON_AUTH_COOKIE_SECRET)},
     appUrlConfigured:Boolean(process.env.APP_URL),
