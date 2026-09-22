@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { demoStore, makeSlots, resetDemoStore } from '@/lib/demo-store';
 import { sql } from '@/lib/db';
-import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 
 const fallbackDoctor={slug:'sofia-mendoza',name:'Dra. Sofía Mendoza',initials:'SM',specialty:'Cardiología',location:'Centro Médico Caracas · Consultorio 204'};
 
@@ -32,7 +32,7 @@ async function dbSnapshot(){
 }
 
 function memSnapshot(){const availability=demoStore.availability.map(a=>({...a,slots:makeSlots(a)}));return {doctor:fallbackDoctor,doctorStatus:demoStore.doctorStatus,delayMinutes:demoStore.delayMinutes,consultationPrice:demoStore.consultationPrice,currency:demoStore.currency,paymentInstructions:demoStore.paymentInstructions,availability,appointments:[...demoStore.appointments].sort((a,b)=>a.startsAt.localeCompare(b.startsAt))}}
-async function snapshot(){try{return (await dbSnapshot())||memSnapshot()}catch(e){console.error('Turnavia DB fallback',e);return memSnapshot()}}
+async function snapshot(){try{return (await dbSnapshot())||memSnapshot()}catch(e){console.error('TUCITA DB fallback',e);return memSnapshot()}}
 export async function GET(){return NextResponse.json(await snapshot())}
 
 export async function POST(req:Request){
@@ -62,7 +62,7 @@ export async function POST(req:Request){
           const x=rows[0] as any;
           if(x?.email){
             const when=new Date(x.starts_at).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
-            await sendTransactionalEmail({to:x.email,subject:'Tu cita TURNAVIA fue confirmada',html:turnaviaEmail('Cita confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu cita quedó confirmada.</p><p><strong>Médico:</strong> ${x.doctor_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${[x.location_name,x.room?'Consultorio '+x.room:''].filter(Boolean).join(' · ')}</p><p>Si no puedes asistir, recuerda que tienes una sola reprogramación sujeta a disponibilidad.</p>`)});
+            await sendTransactionalEmail({to:x.email,subject:'Tu cita TUCITA fue confirmada',html:tucitaEmail('Cita confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu cita quedó confirmada.</p><p><strong>Médico:</strong> ${x.doctor_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${[x.location_name,x.room?'Consultorio '+x.room:''].filter(Boolean).join(' · ')}</p><p>Si no puedes asistir, recuerda que tienes una sola reprogramación sujeta a disponibilidad.</p>`)});
           }
           return NextResponse.json({ok:true,state:await snapshot()})
         }
@@ -79,7 +79,7 @@ export async function POST(req:Request){
         if(body.action==='doctor_status'){await sql`INSERT INTO doctor_status_updates(doctor_id,work_date,status,delay_minutes) VALUES(${doc.id},current_date,${body.status}::doctor_day_status,${Number(body.delayMinutes||0)}) ON CONFLICT(doctor_id,work_date) DO UPDATE SET status=EXCLUDED.status,delay_minutes=EXCLUDED.delay_minutes,updated_at=now()`;return NextResponse.json({ok:true,state:await snapshot()})}
         if(body.action==='add_availability'){await sql`INSERT INTO availability_blocks(doctor_id,location_id,starts_at,ends_at,slot_minutes,published) VALUES(${doc.id},${doc.location_id},(${body.date}||' '||${body.start}||' America/Caracas')::timestamptz,(${body.date}||' '||${body.end}||' America/Caracas')::timestamptz,${Number(body.slotMinutes||30)},true)`;return NextResponse.json({ok:true,state:await snapshot()})}
       }
-    }catch(e){console.error('Turnavia DB action failed, using demo memory',e)}
+    }catch(e){console.error('TUCITA DB action failed, using demo memory',e)}
   }
   if(body.action==='book'){
     const exists=demoStore.appointments.some(a=>a.startsAt===body.startsAt&&!['CANCELLED','PAYMENT_REJECTED'].includes(a.status)); if(exists)return NextResponse.json({error:'Ese horario acaba de ser reservado. Elige otro.'},{status:409});
