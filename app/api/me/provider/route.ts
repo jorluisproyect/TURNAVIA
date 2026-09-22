@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
+import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -39,12 +40,29 @@ export async function GET(){
 
   const services=await sql`SELECT id,name,description,duration_minutes,price,currency,active
     FROM provider_services WHERE doctor_id=${provider.doctor_id} ORDER BY active DESC,created_at`;
-  const availability=await sql`SELECT id,starts_at,ends_at,slot_minutes,published
-    FROM availability_blocks WHERE doctor_id=${provider.doctor_id} AND starts_at>=now()-interval '1 day' ORDER BY starts_at LIMIT 60`;
+  const locations=await sql`SELECT l.id,l.name,l.address,l.city,l.state,l.country,dl.room
+    FROM doctor_locations dl JOIN locations l ON l.id=dl.location_id
+    WHERE dl.doctor_id=${provider.doctor_id} AND l.active=true ORDER BY l.created_at,l.name`;
+  const availability=await sql`SELECT ab.id,ab.starts_at,ab.ends_at,ab.slot_minutes,ab.published,
+      l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
+    FROM availability_blocks ab
+    JOIN locations l ON l.id=ab.location_id
+    LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id
+    WHERE ab.doctor_id=${provider.doctor_id} AND ab.starts_at>=now()-interval '1 day'
+    ORDER BY ab.starts_at LIMIT 120`;
   const appointments=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.service_name,a.consultation_price,a.consultation_currency,
       a.payment_method,a.payment_reference,a.payment_proof_url,a.payment_submitted_at,a.payment_approved_at,a.reschedule_used,
+      a.receipt_number,a.checked_in_at,a.completed_at,
+      COALESCE(a.location_name_snapshot,l.name) AS location_name,
+      COALESCE(a.location_address_snapshot,l.address) AS location_address,
+      COALESCE(a.location_city_snapshot,l.city) AS location_city,
+      COALESCE(a.location_state_snapshot,l.state) AS location_state,
+      COALESCE(a.location_country_snapshot,l.country) AS location_country,
+      COALESCE(a.location_room_snapshot,dl.room) AS location_room,
       p.full_name AS client_name,p.phone AS client_phone,p.email AS client_email
     FROM appointments a JOIN patients p ON p.id=a.patient_id
+    LEFT JOIN locations l ON l.id=a.location_id
+    LEFT JOIN doctor_locations dl ON dl.doctor_id=a.doctor_id AND dl.location_id=a.location_id
     WHERE a.doctor_id=${provider.doctor_id}
     ORDER BY a.starts_at DESC LIMIT 100`;
   const statusRows=await sql`SELECT status,delay_minutes,note,updated_at FROM doctor_status_updates
@@ -65,8 +83,9 @@ export async function GET(){
       dayStatus:(statusRows[0] as any)?.status||'NORMAL',delayMinutes:Number((statusRows[0] as any)?.delay_minutes||0)
     },
     services:services.map((s:any)=>({id:String(s.id),name:s.name,description:s.description||'',durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active)})),
-    availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published)})),
-    appointments:appointments.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceName:a.service_name||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():null,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():null,rescheduleUsed:Boolean(a.reschedule_used),clientName:a.client_name,clientPhone:a.client_phone,clientEmail:a.client_email||''}))
+    locations:locations.map((l:any)=>({id:String(l.id),name:l.name,address:l.address||'',city:l.city||'',state:l.state||'',country:l.country||'',room:l.room||''})),
+    availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published),location:{id:String(a.location_id),name:a.location_name||'',address:a.address||'',city:a.city||'',state:a.state||'',country:a.country||'',room:a.room||''}})),
+    appointments:appointments.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceName:a.service_name||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():null,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():null,rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,location:{name:a.location_name||'',address:a.location_address||'',city:a.location_city||'',state:a.location_state||'',country:a.location_country||'',room:a.location_room||''},clientName:a.client_name,clientPhone:a.client_phone,clientEmail:a.client_email||''}))
   });
 }
 
@@ -93,6 +112,34 @@ export async function PATCH(req:Request){
     if(provider.location_id){
       await sql`UPDATE locations SET name=${String(body.locationName||name+' · ubicación principal')},address=${String(body.address||'')},city=${String(body.city||'')||null},state=${String(body.state||'')||null},country=${String(body.country||'Venezuela')} WHERE id=${provider.location_id}`;
     }
+    return NextResponse.json({ok:true});
+  }
+
+  if(action==='add_location'){
+    const name=String(body.name||'').trim();
+    if(!name)return NextResponse.json({error:'Escribe el nombre de la ubicación'},{status:400});
+    const rows=await sql`INSERT INTO locations(organization_id,name,address,city,state,country,active)
+      VALUES(${provider.organization_id||null},${name},${String(body.address||'')},${String(body.city||'')||null},${String(body.state||'')||null},${String(body.country||'Venezuela')},true)
+      RETURNING id`;
+    const locationId=(rows[0] as any)?.id;
+    await sql`INSERT INTO doctor_locations(doctor_id,location_id,room) VALUES(${provider.doctor_id},${locationId},${String(body.room||'')||null}) ON CONFLICT DO NOTHING`;
+    return NextResponse.json({ok:true,id:String(locationId)});
+  }
+
+  if(action==='update_location'){
+    const id=String(body.id||'');
+    const owned=await sql`SELECT 1 FROM doctor_locations WHERE doctor_id=${provider.doctor_id} AND location_id=${id}::uuid LIMIT 1`;
+    if(!owned.length)return NextResponse.json({error:'Ubicación no encontrada'},{status:404});
+    await sql`UPDATE locations SET name=${String(body.name||'').trim()},address=${String(body.address||'')},city=${String(body.city||'')||null},state=${String(body.state||'')||null},country=${String(body.country||'Venezuela')} WHERE id=${id}::uuid`;
+    await sql`UPDATE doctor_locations SET room=${String(body.room||'')||null} WHERE doctor_id=${provider.doctor_id} AND location_id=${id}::uuid`;
+    return NextResponse.json({ok:true});
+  }
+
+  if(action==='delete_location'){
+    const id=String(body.id||'');
+    const inUse=await sql`SELECT 1 FROM availability_blocks WHERE doctor_id=${provider.doctor_id} AND location_id=${id}::uuid AND ends_at>=now() LIMIT 1`;
+    if(inUse.length)return NextResponse.json({error:'Esta ubicación tiene horarios futuros. Elimina o mueve esos horarios primero.'},{status:409});
+    await sql`DELETE FROM doctor_locations WHERE doctor_id=${provider.doctor_id} AND location_id=${id}::uuid`;
     return NextResponse.json({ok:true});
   }
 
@@ -124,14 +171,17 @@ export async function PATCH(req:Request){
   }
 
   if(action==='add_availability'){
-    if(!provider.location_id) return NextResponse.json({error:'Configura una ubicación primero'},{status:400});
+    const locationId=String(body.locationId||'');
+    if(!locationId)return NextResponse.json({error:'Selecciona dónde atenderás en este horario'},{status:400});
+    const owned=await sql`SELECT 1 FROM doctor_locations WHERE doctor_id=${provider.doctor_id} AND location_id=${locationId}::uuid LIMIT 1`;
+    if(!owned.length)return NextResponse.json({error:'Ubicación no válida'},{status:400});
     const date=String(body.date||''); const start=String(body.start||''); const end=String(body.end||'');
     if(!date||!start||!end) return NextResponse.json({error:'Completa fecha y horario'},{status:400});
     const startsAt=new Date(`${date}T${start}:00-04:00`);
     const endsAt=new Date(`${date}T${end}:00-04:00`);
     if(Number.isNaN(startsAt.getTime())||Number.isNaN(endsAt.getTime())||endsAt<=startsAt) return NextResponse.json({error:'La hora final debe ser posterior a la hora inicial.'},{status:400});
     await sql`INSERT INTO availability_blocks(doctor_id,location_id,starts_at,ends_at,slot_minutes,published)
-      VALUES(${provider.doctor_id},${provider.location_id},${startsAt.toISOString()}::timestamptz,${endsAt.toISOString()}::timestamptz,${Math.max(5,Number(body.slotMinutes||15))},true)`;
+      VALUES(${provider.doctor_id},${locationId}::uuid,${startsAt.toISOString()}::timestamptz,${endsAt.toISOString()}::timestamptz,${Math.max(5,Number(body.slotMinutes||15))},true)`;
     return NextResponse.json({ok:true});
   }
 
@@ -156,7 +206,9 @@ export async function PATCH(req:Request){
       const x=rows[0] as any;
       if(x.email){
         const when=new Date(x.starts_at).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
-        await sendTransactionalEmail({to:x.email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${x.service_name||provider.provider_activity}<br/><strong>Con:</strong> ${provider.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+        const receipt=await buildAppointmentReceiptPdf(String(x.id));
+        const loc=[receipt.data.locationName,receipt.data.address,receipt.data.room].filter(Boolean).join(' · ');
+        await sendTransactionalEmail({to:x.email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${x.service_name||provider.provider_activity}<br/><strong>Con:</strong> ${provider.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos tu recibo TUCITA con el código QR que debes presentar al llegar.</p>`),attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]});
       }
     }else if(action==='reject_payment'){
       await sql`UPDATE appointments SET status='PAYMENT_REJECTED' WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
