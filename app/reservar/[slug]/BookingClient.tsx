@@ -18,6 +18,9 @@ export default function BookingClient({slug}:{slug:string}){
  const [startsAt,setStartsAt]=useState('');
  const [sent,setSent]=useState(false);
  const [resultStatus,setResultStatus]=useState<'PAYMENT_REVIEW'|'CONFIRMED'>('PAYMENT_REVIEW');
+ const [appointmentId,setAppointmentId]=useState('');
+ const [receiptToken,setReceiptToken]=useState('');
+ const [emailNotice,setEmailNotice]=useState<'sent'|'pending'>('pending');
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState('');
  const [proof,setProof]=useState<{name:string;dataUrl:string}|null>(null);
@@ -48,6 +51,20 @@ export default function BookingClient({slug}:{slug:string}){
    loadProvider(serviceId).catch(()=>setError('No se pudo actualizar la disponibilidad para este servicio.'));
  },[serviceId]);
 
+ useEffect(()=>{
+   if(!sent||resultStatus!=='PAYMENT_REVIEW'||!appointmentId||!receiptToken)return;
+   const timer=setInterval(async()=>{
+     try{
+       const r=await fetch('/api/public/appointments/'+encodeURIComponent(appointmentId)+'/status?token='+encodeURIComponent(receiptToken),{cache:'no-store'});
+       const j=await r.json();
+       if(r.ok&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(String(j.status))){
+         setResultStatus('CONFIRMED');
+       }
+     }catch{}
+   },8000);
+   return()=>clearInterval(timer);
+ },[sent,resultStatus,appointmentId,receiptToken]);
+
  const dates=useMemo(()=>Array.from(new Set((data?.availability||[]).map(a=>a.date))),[data]);
  const currentBlocks=useMemo(()=>data?.availability.filter(a=>a.date===date)||[],[data,date]);
  const selectedBlock=useMemo(()=>currentBlocks.find(a=>a.slots.some(s=>s.startsAt===startsAt))||currentBlocks[0],[currentBlocks,startsAt]);
@@ -74,6 +91,9 @@ export default function BookingClient({slug}:{slug:string}){
    const r=await fetch('/api/public/provider/'+encodeURIComponent(slug),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...form,serviceId:service.id,startsAt,locationId:selectedBlock?.location?.id||'',paymentProofName:proof?.name||'',paymentProofDataUrl:proof?.dataUrl||''})});
    const j=await r.json();setLoading(false);
    if(!r.ok){setError(j.error||'No se pudo enviar la reserva');return}
+   setAppointmentId(String(j.appointmentId||''));
+   setReceiptToken(String(j.receiptToken||''));
+   setEmailNotice(j.emailNotice==='sent'?'sent':'pending');
    setResultStatus(j.status==='CONFIRMED'?'CONFIRMED':'PAYMENT_REVIEW');
    setSent(true);
  }
@@ -82,7 +102,10 @@ export default function BookingClient({slug}:{slug:string}){
  if(!data)return <div className="booking"><div className="container booking-wrap"><div className="profile-card">Cargando TUCITA…</div></div></div>;
 
  const provider=data.provider;
- if(sent)return <div className="booking"><div className="container booking-wrap"><div className="booking-header"><Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link></div><div className="profile-card" style={{textAlign:'center',padding:'44px 28px'}}><div className="iconbox" style={{margin:'0 auto',width:62,height:62,borderRadius:20}}><CheckCircle2 size={30}/></div><h1 style={{fontSize:34,marginBottom:8}}>{resultStatus==='CONFIRMED'?'Reserva confirmada':'Pago enviado para revisión'}</h1><p className="muted">{resultStatus==='CONFIRMED'?<>Tu reserva con <strong>{provider.name}</strong> quedó confirmada.</>:<>Tu horario quedó preagendado mientras <strong>{provider.name}</strong> revisa el comprobante.</>}</p><div className="notice" style={{margin:'22px auto',maxWidth:540,textAlign:'left'}}><strong>{resultStatus==='CONFIRMED'?'Reserva confirmada.':'Reserva Premium Preagendada.'}</strong><br/>{resultStatus==='CONFIRMED'?'Guarda esta fecha y hora. Puedes crear una cuenta para ver el seguimiento de tu reserva.':'La reserva se confirma cuando el profesional o negocio aprueba el pago. Si no puedes asistir, podrás solicitar una reprogramación según disponibilidad.'}</div><div className="button-row" style={{justifyContent:'center'}}><Link href={'/registro?role=PATIENT&email='+encodeURIComponent(form.email)} className="btn btn-primary">Crear mi cuenta</Link><Link href="/ingresar" className="btn btn-secondary">Ya tengo cuenta</Link></div></div></div></div>;
+ if(sent){
+   const receiptUrl=appointmentId&&receiptToken?'/api/public/appointments/'+encodeURIComponent(appointmentId)+'/receipt?token='+encodeURIComponent(receiptToken):'';
+   return <div className="booking"><div className="container booking-wrap"><div className="booking-header"><Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link></div><div className="profile-card" style={{textAlign:'center',padding:'44px 28px'}}><div className="iconbox" style={{margin:'0 auto',width:62,height:62,borderRadius:20}}><CheckCircle2 size={30}/></div><h1 style={{fontSize:34,marginBottom:8}}>{resultStatus==='CONFIRMED'?'Reserva confirmada':'Pago enviado para revisión'}</h1><p className="muted">{resultStatus==='CONFIRMED'?<>Tu reserva con <strong>{provider.name}</strong> quedó confirmada.</>:<>Tu horario quedó preagendado mientras <strong>{provider.name}</strong> revisa el comprobante.</>}</p><div className="notice" style={{margin:'22px auto',maxWidth:560,textAlign:'left'}}><strong>{resultStatus==='CONFIRMED'?'Tu recibo TUCITA ya está disponible.':'Pago recibido y en revisión.'}</strong><br/>{resultStatus==='CONFIRMED'?<>Puedes descargar ahora tu comprobante PDF con el <strong>código QR de la cita</strong>. {emailNotice==='sent'?'También fue enviado a tu correo.':'Si el correo tarda, puedes descargarlo aquí.'}</>:<>En cuanto el profesional o negocio apruebe el pago, esta pantalla se actualizará y habilitará tu <strong>recibo PDF + QR</strong>. También lo enviaremos a <strong>{form.email}</strong>.</>}</div><div className="button-row" style={{justifyContent:'center',flexWrap:'wrap'}}>{resultStatus==='CONFIRMED'&&receiptUrl&&<a href={receiptUrl} target="_blank" rel="noreferrer" className="btn btn-primary">Descargar recibo + QR</a>}<Link href={'/registro?role=PATIENT&email='+encodeURIComponent(form.email)} className="btn btn-secondary">Crear mi cuenta</Link><Link href="/ingresar" className="btn btn-secondary">Ya tengo cuenta</Link></div></div></div></div>;
+ }
 
  return <div className="booking"><div className="container booking-wrap">
    <div className="booking-header"><Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link><p className="muted">Reserva tu servicio en pocos pasos</p></div>
