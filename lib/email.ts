@@ -81,7 +81,14 @@ export async function sendTransactionalEmail(args:MailArgs):Promise<MailResult>{
     // Optional fallback during migration. Once SMTP is verified, RESEND_API_KEY can be removed.
     if(process.env.RESEND_API_KEY){
       console.warn('TUCITA SMTP failed; attempting Resend fallback',result.error);
-      return sendWithResend(args);
+      const fallback=await sendWithResend(args);
+      if(fallback.ok)return fallback;
+      return {
+        ok:false,
+        status:fallback.status,
+        transport:'smtp',
+        error:`SMTP falló: ${result.error||'error desconocido'}. Resend de respaldo también falló: ${fallback.error||'error desconocido'}`
+      };
     }
     return result;
   }
