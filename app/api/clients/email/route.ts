@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { isMasterSession, validUuid } from '@/lib/access';
-import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 
 export const runtime='nodejs';
 
@@ -26,19 +26,19 @@ export async function POST(req:Request){
     ORDER BY u.created_at
     LIMIT 1`;
   const linkRow=linkRows[0] as any;
-  const appUrl=process.env.APP_URL||'https://turnavia.vercel.app';
+  const appUrl=process.env.APP_URL||'https://tucita.com.ve';
   const publicPath=linkRow?.organization_slug?'/negocio/'+linkRow.organization_slug:linkRow?.public_slug?'/reservar/'+linkRow.public_slug:'';
 
   const mail=kind==='welcome'
     ? await sendTransactionalEmail({
         to:client.email,
         subject:'Tu cuenta TUCITA fue creada',
-        html:turnaviaEmail('Bienvenido a TUCITA',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu cuenta TUCITA está creada.</p><p><strong>Usuario:</strong> ${client.email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p>`:''}<p><a href="${appUrl}/ingresar">Entrar a TUCITA</a></p>`)
+        html:tucitaEmail('Bienvenido a TUCITA',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu cuenta TUCITA está creada.</p><p><strong>Usuario:</strong> ${client.email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p>`:''}<p><a href="${appUrl}/ingresar">Entrar a TUCITA</a></p>`)
       })
     : await sendTransactionalEmail({
         to:client.email,
         subject:'Tu cuenta TUCITA está activa',
-        html:turnaviaEmail('Tu cuenta TUCITA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu cuenta está <strong>ACTIVA</strong> y lista para operar.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TUCITA</a></p>`)
+        html:tucitaEmail('Tu cuenta TUCITA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu cuenta está <strong>ACTIVA</strong> y lista para operar.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TUCITA</a></p>`)
       });
 
   try{
