@@ -2,10 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    // Shared cPanel hosting has strict process limits. Keep Next.js build
-    // concurrency low and prefer worker threads to avoid spawn EAGAIN errors.
+    // Shared cPanel hosting has strict process limits.
+    // Keep concurrency to one worker. Worker threads are disabled because
+    // Next.js 15 can throw DataCloneError when serializing build config.
     cpus: 1,
-    workerThreads: true,
+    workerThreads: false,
     staticGenerationMaxConcurrency: 1,
     staticGenerationMinPagesPerWorker: 1,
   },
