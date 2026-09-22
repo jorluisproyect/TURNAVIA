@@ -25,7 +25,7 @@ export default function OlvidarContrasena(){
 
   return <main className="demo-chooser"><div className="container booking-wrap">
     <div className="row space"><Brand/><Link href="/ingresar" className="btn btn-secondary">Volver a ingresar</Link></div>
-    <div className="demo-head"><span className="eyebrow">Recuperar acceso</span><h1>Restablece tu contraseña</h1><p className="muted">Te enviaremos un enlace seguro al correo de tu cuenta TURNAVIA.</p></div>
+    <div className="demo-head"><span className="eyebrow">Recuperar acceso</span><h1>Restablece tu contraseña</h1><p className="muted">Te enviaremos un enlace seguro al correo de tu cuenta TUCITA.</p></div>
     <section className="profile-card">
       {sent?<div style={{textAlign:'center',padding:'20px 4px'}}><CheckCircle2 size={42}/><h2>Revisa tu correo</h2><p className="muted">Si existe una cuenta con <strong>{email}</strong>, recibirás un enlace para crear una contraseña nueva.</p><Link href="/ingresar" className="btn btn-primary">Volver a ingresar</Link></div>:
       <form className="form" onSubmit={submit}>
