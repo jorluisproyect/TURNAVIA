@@ -27,7 +27,7 @@ export default function EquipoPage(){
       if(!r.ok){setError(j.error||'No se pudo abrir el equipo');return}
       setData(j);setError('');
       if(j.team?.length&&!selected)setSelected(j.team[0].id);
-    }catch{setError('No se pudo conectar con TURNAVIA.')}
+    }catch{setError('No se pudo conectar con TUCITA.')}
   }
   useEffect(()=>{load()},[]);
   const current:Member|undefined=useMemo(()=>data?.team?.find((m:Member)=>m.id===selected)||data?.team?.[0],[data,selected]);
