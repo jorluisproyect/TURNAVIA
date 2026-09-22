@@ -1,7 +1,7 @@
-# TURNAVIA - Operación comercial definida
+# TUCITA - Operación comercial definida
 
 ## Qué se vende
-TURNAVIA es un servicio SaaS. No se entrega el código fuente. El cliente recibe una cuenta, panel privado, enlace público de reserva y mantenimiento continuo.
+TUCITA es un servicio SaaS. No se entrega el código fuente. El cliente recibe una cuenta, panel privado, enlace público de reserva y mantenimiento continuo.
 
 ## Prueba
 - 5 días gratis.
@@ -27,8 +27,8 @@ TURNAVIA es un servicio SaaS. No se entrega el código fuente. El cliente recibe
 2. Registra datos y comienza 5 días gratis.
 3. Configura horarios y comparte su enlace.
 4. Antes de vencer, entra a /pago?client=ID.
-5. PayPal: TURNAVIA crea la orden en el servidor; PayPal confirma/captura; si queda COMPLETED, cuenta ACTIVA automáticamente.
-6. Binance: cliente paga, registra referencia/ID y, si existe campo de comentario, usa `TURNAVIA - Nombre del médico o clínica`.
+5. PayPal: TUCITA crea la orden en el servidor; PayPal confirma/captura; si queda COMPLETED, cuenta ACTIVA automáticamente.
+6. Binance: cliente paga, registra referencia/ID y, si existe campo de comentario, usa `TUCITA - Nombre del médico o clínica`.
 7. En Master queda REVISION_BINANCE. Se verifica en Binance y se pulsa Aprobar Binance.
 8. Cliente activo continúa operando.
 
