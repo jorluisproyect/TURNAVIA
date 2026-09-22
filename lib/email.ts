@@ -1,22 +1,58 @@
 type MailAttachment={filename:string;content:string};
 type MailArgs={to:string;subject:string;html:string;attachments?:MailAttachment[];replyTo?:string};
-type MailResult={ok:boolean;skipped?:boolean;status?:number;error?:string};
+type MailResult={ok:boolean;skipped?:boolean;status?:number;error?:string;transport?:'smtp'|'resend'};
 
-export async function sendTransactionalEmail({to,subject,html,attachments=[],replyTo}:MailArgs):Promise<MailResult>{
+function smtpConfig(){
+  const host=process.env.SMTP_HOST;
+  const user=process.env.SMTP_USER;
+  const pass=process.env.SMTP_PASS;
+  const port=Number(process.env.SMTP_PORT||465);
+  if(!host||!user||!pass)return null;
+  return {host,user,pass,port,secure:String(process.env.SMTP_SECURE??'true').toLowerCase()!=='false'};
+}
+
+async function sendWithSmtp({to,subject,html,attachments=[],replyTo}:MailArgs):Promise<MailResult>{
+  const cfg=smtpConfig();
+  if(!cfg)return {ok:false,skipped:true,error:'SMTP no configurado'};
+  // nodemailer is CommonJS and is used only in the Node.js runtime.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const nodemailer:any=require('nodemailer');
+  const from=process.env.EMAIL_FROM||`TUCITA <${cfg.user}>`;
+  const configuredReplyTo=replyTo||process.env.EMAIL_REPLY_TO||'';
+  try{
+    const transporter=nodemailer.createTransport({
+      host:cfg.host,
+      port:cfg.port,
+      secure:cfg.secure,
+      auth:{user:cfg.user,pass:cfg.pass},
+      connectionTimeout:8000,
+      greetingTimeout:8000,
+      socketTimeout:15000,
+    });
+    const info=await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      ...(configuredReplyTo?{replyTo:configuredReplyTo}:{}),
+      attachments:attachments.map(a=>({filename:a.filename,content:Buffer.from(a.content,'base64')})),
+    });
+    return {ok:true,status:250,transport:'smtp'};
+  }catch(error){
+    const message=error instanceof Error?error.message:'Error SMTP';
+    console.error('TUCITA SMTP email error',error);
+    return {ok:false,error:message,transport:'smtp'};
+  }
+}
+
+async function sendWithResend({to,subject,html,attachments=[],replyTo}:MailArgs):Promise<MailResult>{
   const key=process.env.RESEND_API_KEY;
   const configuredFrom=process.env.EMAIL_FROM;
   const from=configuredFrom || (process.env.NODE_ENV==='production'?'':'TUCITA <onboarding@resend.dev>');
   const configuredReplyTo=replyTo||process.env.EMAIL_REPLY_TO||'';
 
-  if(!key){
-    console.warn('TUCITA email skipped: RESEND_API_KEY is not configured', {to,subject});
-    return {ok:false,skipped:true,error:'RESEND_API_KEY no configurada'};
-  }
-  if(!from){
-    console.warn('TUCITA email skipped: EMAIL_FROM is not configured', {to,subject});
-    return {ok:false,skipped:true,error:'EMAIL_FROM no configurado'};
-  }
-
+  if(!key)return {ok:false,skipped:true,error:'RESEND_API_KEY no configurada'};
+  if(!from)return {ok:false,skipped:true,error:'EMAIL_FROM no configurado'};
   try{
     const r=await fetch('https://api.resend.com/emails',{
       method:'POST',
@@ -26,23 +62,30 @@ export async function sendTransactionalEmail({to,subject,html,attachments=[],rep
     });
     if(!r.ok){
       const raw=await r.text();
-      console.error('TUCITA email error', raw);
       let message=raw;
-      try{
-        const parsed=JSON.parse(raw);
-        message=String(parsed?.message||raw);
-      }catch{}
-      if(r.status===403 && /only send testing emails|verify a domain/i.test(message)){
-        message='Resend está en modo de prueba. Verifica un dominio propio en Resend y configura EMAIL_FROM con una dirección de ese dominio para enviar correos a clientes.';
-      }
-      return {ok:false,status:r.status,error:message};
+      try{message=String(JSON.parse(raw)?.message||raw)}catch{}
+      return {ok:false,status:r.status,error:message,transport:'resend'};
     }
-    return {ok:true,status:r.status};
+    return {ok:true,status:r.status,transport:'resend'};
   }catch(error){
     const message=error instanceof Error?error.message:'Error de transporte';
-    console.error('TUCITA email transport error', error);
-    return {ok:false,error:message};
+    return {ok:false,error:message,transport:'resend'};
   }
+}
+
+export async function sendTransactionalEmail(args:MailArgs):Promise<MailResult>{
+  const smtp=smtpConfig();
+  if(smtp){
+    const result=await sendWithSmtp(args);
+    if(result.ok)return result;
+    // Optional fallback during migration. Once SMTP is verified, RESEND_API_KEY can be removed.
+    if(process.env.RESEND_API_KEY){
+      console.warn('TUCITA SMTP failed; attempting Resend fallback',result.error);
+      return sendWithResend(args);
+    }
+    return result;
+  }
+  return sendWithResend(args);
 }
 
 export function tucitaEmail(title:string,body:string){
