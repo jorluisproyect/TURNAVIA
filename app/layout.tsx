@@ -3,7 +3,7 @@ import './globals.css';
 import { PwaRegister } from '@/components/PwaRegister';
 
 export const metadata: Metadata = {
-  title:'Turnavia · Tu servicio, a tu hora',
+  title:'TUCITA · Tu servicio, a tu hora',
   description:'Citas, turnos y reservas para profesionales, negocios y clientes',
   manifest:'/manifest.json'
 };
