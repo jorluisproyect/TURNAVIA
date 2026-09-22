@@ -59,7 +59,7 @@ export async function DELETE(req:Request){
   if(appointments>0||hasCommercialHistory||hasAuthAccount){
     return NextResponse.json({
       error:hasAuthAccount
-        ? 'Esta es una cuenta real con acceso. Para no dejar un usuario de autenticación huérfano, TURNAVIA la desactiva en lugar de borrarla definitivamente.'
+        ? 'Esta es una cuenta real con acceso. Para no dejar un usuario de autenticación huérfano, TUCITA la desactiva en lugar de borrarla definitivamente.'
         : 'Este profesional tiene historial real de citas o pagos. Por seguridad no se elimina; desactívalo para conservar el historial.',
       canDeactivate:true
     },{status:409});
