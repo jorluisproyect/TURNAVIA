@@ -20,6 +20,6 @@ export default async function MisProfesionales(){
  }
  return <div className="dashboard"><Sidebar role="paciente"/><main className="main">
    <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Mis contactos</div><h1>Mis profesionales</h1></div><Link href="/explorar" className="btn btn-primary">Explorar</Link></div>
-   <section className="panel">{rows.length===0?<div className="empty">Cuando reserves con un profesional o negocio, aparecerá aquí. <Link href="/explorar">Explorar TURNAVIA</Link>.</div>:<div className="role-grid">{rows.map((r:any)=><Link className="role-card" key={r.public_slug} href={'/reservar/'+r.public_slug}><h3>{r.full_name}</h3><p>{r.provider_activity} · {r.provider_category}</p><div className="go">Reservar nuevamente</div></Link>)}</div>}</section>
+   <section className="panel">{rows.length===0?<div className="empty">Cuando reserves con un profesional o negocio, aparecerá aquí. <Link href="/explorar">Explorar TUCITA</Link>.</div>:<div className="role-grid">{rows.map((r:any)=><Link className="role-card" key={r.public_slug} href={'/reservar/'+r.public_slug}><h3>{r.full_name}</h3><p>{r.provider_activity} · {r.provider_category}</p><div className="go">Reservar nuevamente</div></Link>)}</div>}</section>
  </main></div>;
 }
