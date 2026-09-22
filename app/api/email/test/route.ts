@@ -12,5 +12,5 @@ export async function POST(){
     html:tucitaEmail('Correo de prueba',`<p>Si recibiste este mensaje, los correos transaccionales de TUCITA están funcionando correctamente.</p><p><strong>Destino de prueba:</strong> ${MASTER_EMAIL}</p>`)
   });
   if(!result.ok) return NextResponse.json({error:result.error||'No se pudo enviar el correo.',status:result.status||null},{status:502});
-  return NextResponse.json({ok:true});
+  return NextResponse.json({ok:true,transport:result.transport||null});
 }
