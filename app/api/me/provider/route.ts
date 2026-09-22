@@ -201,6 +201,7 @@ export async function PATCH(req:Request){
   if(['approve_payment','reject_payment','appointment_status'].includes(action)){
     const rows=await sql`SELECT a.id,p.email,p.full_name,a.starts_at,a.service_name FROM appointments a JOIN patients p ON p.id=a.patient_id WHERE a.id=${body.id}::uuid AND a.doctor_id=${provider.doctor_id} LIMIT 1`;
     if(!rows.length) return NextResponse.json({error:'Reserva no encontrada'},{status:404});
+    let message='Cambios guardados';
     if(action==='approve_payment'){
       await sql`UPDATE appointments SET status='CONFIRMED',payment_approved_at=now() WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
       const x=rows[0] as any;
@@ -208,17 +209,33 @@ export async function PATCH(req:Request){
         const when=new Date(x.starts_at).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
         const receipt=await buildAppointmentReceiptPdf(String(x.id));
         const loc=[receipt.data.locationName,receipt.data.address,receipt.data.room].filter(Boolean).join(' · ');
-        await sendTransactionalEmail({to:x.email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${x.service_name||provider.provider_activity}<br/><strong>Con:</strong> ${provider.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos tu recibo TUCITA con el código QR que debes presentar al llegar.</p>`),attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]});
+        const mail=await sendTransactionalEmail({to:x.email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${x.service_name||provider.provider_activity}<br/><strong>Con:</strong> ${provider.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos tu recibo TUCITA con el código QR que debes presentar al llegar.</p>`),attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]});
+        message=mail.ok?'Pago aprobado. Recibo PDF con QR enviado al correo del cliente.':'Pago aprobado. El recibo quedó disponible, pero no pudimos confirmar el envío del correo.';
+        try{
+          await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+            VALUES('APPOINTMENT_RECEIPT_EMAIL','APPOINTMENT',${String(x.id)},jsonb_build_object('ok',${Boolean(mail.ok)},'to',${x.email},'error',${mail.error||null}))`;
+        }catch{}
+      }else{
+        message='Pago aprobado. La reserva quedó confirmada, pero el cliente no tiene correo registrado.';
       }
     }else if(action==='reject_payment'){
       await sql`UPDATE appointments SET status='PAYMENT_REJECTED' WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
+      message='Pago rechazado.';
     }else{
       const allowed=['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED','CANCELLED','NO_SHOW'];
       const next=String(body.status||'');
       if(!allowed.includes(next)) return NextResponse.json({error:'Estado inválido'},{status:400});
-      await sql`UPDATE appointments SET status=${next}::appointment_status WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
+      if(next==='ARRIVED'){
+        await sql`UPDATE appointments SET status='ARRIVED',checked_in_at=COALESCE(checked_in_at,now()),checked_in_by=COALESCE(checked_in_by,${String(provider.email||'')}) WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
+        message='Llegada registrada.';
+      }else if(next==='COMPLETED'){
+        await sql`UPDATE appointments SET status='COMPLETED',completed_at=COALESCE(completed_at,now()) WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
+        message='Servicio completado.';
+      }else{
+        await sql`UPDATE appointments SET status=${next}::appointment_status WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
+      }
     }
-    return NextResponse.json({ok:true});
+    return NextResponse.json({ok:true,message});
   }
 
   return NextResponse.json({error:'Acción inválida'},{status:400});
