@@ -1,4 +1,4 @@
-# TURNAVIA
+# TUCITA
 MVP operativo de agenda médica digital para médico, clínica/recepción y paciente.
 
 ## Incluye
@@ -37,7 +37,7 @@ La demo comercial está lista para mostrar. Antes de manejar pacientes reales, t
 5. Si el paciente no asiste, puede marcarse `NO_SHOW` y el sistema permite una sola reprogramación, sujeta a disponibilidad.
 
 ## Backend provisioned (2026-09-17)
-Neon project: TURNAVIA
+Neon project: TUCITA
 - PostgreSQL schema + demo seed installed
 - Managed Better Auth provisioned (email/password enabled)
 - Private Object Storage bucket `payment-proofs` created
