@@ -1,11 +1,12 @@
 'use client';
 import { useEffect,useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { CheckCircle2,MapPin,ScanLine } from 'lucide-react';
 
-export default function CheckinPage({params}:{params:Promise<{token:string}>}){
- const [token,setToken]=useState('');const [data,setData]=useState<any>(null);const [msg,setMsg]=useState('');
- useEffect(()=>{params.then(p=>setToken(p.token))},[params]);
+export default function CheckinPage(){
+ const params=useParams<{token:string}>();
+ const token=String(params?.token||'');const [data,setData]=useState<any>(null);const [msg,setMsg]=useState('');
  async function load(t=token){if(!t)return;const r=await fetch('/api/checkin/'+encodeURIComponent(t));const j=await r.json();if(!r.ok){setMsg(j.error||'No se pudo validar el QR');return}setData(j.appointment);setMsg('')}
  useEffect(()=>{if(token)load(token)},[token]);
  async function action(action:string){const r=await fetch('/api/checkin/'+encodeURIComponent(token),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action})});const j=await r.json();if(!r.ok){setMsg(j.error||'No se pudo actualizar');return}await load(token)}
