@@ -16,7 +16,7 @@ export default async function ClientesMaster({searchParams}:{searchParams:Promis
     const hay=[r.name,r.email,r.phone,r.category,r.subcategory,r.type].filter(Boolean).join(' ').toLowerCase();
     return (!q||hay.includes(q))&&(status==='TODOS'||String(r.status)===status);
   });
-  const real=filtered.filter((r:any)=>!String(r.email||'').toLowerCase().endsWith('@turnavia.app'));
+  const real=filtered.filter((r:any)=>!String(r.email||'').toLowerCase().includes('demo'));
 
   return <div className="dashboard"><Sidebar role="master"/><main className="main">
     <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Administración</div><h1>Clientes</h1></div><Link href="/activar" className="btn btn-primary">Nueva prueba</Link></div>
@@ -32,7 +32,7 @@ export default async function ClientesMaster({searchParams}:{searchParams:Promis
     </section>
 
     <section className="panel" style={{marginTop:18}}>{filtered.length===0?<div className="notice">No encontramos clientes con esos filtros.</div>:<div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Cliente</th><th>Rubro</th><th>Plan</th><th>Estado</th><th>Prueba</th><th>Acción</th></tr></thead><tbody>{filtered.map((r:any)=>{
-      const demo=String(r.email||'').toLowerCase().endsWith('@turnavia.app');
+      const demo=String(r.email||'').toLowerCase().includes('demo');
       return <tr key={r.id}><td><strong>{r.name}</strong>{demo&&<span className="pill" style={{marginLeft:8}}>Demo</span>}<div className="muted" style={{fontSize:12}}>{r.email} · {r.phone}</div></td><td>{r.category||'—'}<div className="muted" style={{fontSize:12}}>{r.subcategory||''}</div></td><td>{r.type}</td><td><span className="pill">{labels[r.status]||r.status}</span></td><td>{r.trial_ends_at?new Date(r.trial_ends_at).toLocaleDateString('es-VE'):'—'}</td><td><Link href={'/master/clientes/'+r.id} className="btn btn-secondary">Abrir ficha</Link></td></tr>
     })}</tbody></table></div>}</section>
   </main></div>;
