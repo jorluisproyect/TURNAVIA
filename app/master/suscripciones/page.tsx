@@ -23,7 +23,7 @@ export default async function SuscripcionesMaster({searchParams}:{searchParams:P
    const hay=[r.name,r.email,r.type,r.payment_method,r.payment_reference].filter(Boolean).join(' ').toLowerCase();
    return (!q||hay.includes(q))&&(status==='TODOS'||String(r.status)===status);
  });
- const real=(rows as any[]).filter(r=>!String(r.email||'').toLowerCase().endsWith('@turnavia.app'));
+ const real=(rows as any[]).filter(r=>!String(r.email||'').toLowerCase().includes('demo'));
  const active=real.filter((r:any)=>r.status==='ACTIVO').length;
  const trial=real.filter((r:any)=>r.status==='TRIAL').length;
  const review=real.filter((r:any)=>r.status==='REVISION_BINANCE').length;
@@ -31,7 +31,7 @@ export default async function SuscripcionesMaster({searchParams}:{searchParams:P
  const mrr=real.filter((r:any)=>r.status==='ACTIVO').reduce((n:number,r:any)=>n+(String(r.type).startsWith('Negocio')?49:15),0);
 
  return <div className="dashboard"><Sidebar role="master"/><main className="main">
-  <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Cobros TURNAVIA</div><h1>Suscripciones</h1></div></div>
+  <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Cobros TUCITA</div><h1>Suscripciones</h1></div></div>
   <div className="stat-grid">
     <div className="stat"><small>Activos reales</small><div className="n">{active}</div></div>
     <div className="stat"><small>En prueba</small><div className="n">{trial}</div></div>
@@ -49,7 +49,7 @@ export default async function SuscripcionesMaster({searchParams}:{searchParams:P
 
   <section className="panel" style={{marginTop:18}}>
     {filtered.length===0?<div className="notice">No hay suscripciones con esos filtros.</div>:<div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Cliente</th><th>Plan</th><th>Estado</th><th>Ciclo / prueba</th><th>Pago</th><th>Referencia</th><th>Acción</th></tr></thead><tbody>{filtered.map((r:any)=>{
-      const demo=String(r.email||'').toLowerCase().endsWith('@turnavia.app');
+      const demo=String(r.email||'').toLowerCase().includes('demo');
       return <tr key={String(r.id)}>
       <td><Link href={'/master/clientes/'+r.id}><strong>{r.name}</strong></Link>{demo&&<span className="pill" style={{marginLeft:8}}>Demo</span>}<div className="muted" style={{fontSize:12}}>{r.email}</div></td>
       <td>{r.type}<div className="muted" style={{fontSize:12}}>{String(r.type).startsWith('Negocio')?'$49/mes':'$15/mes'}</div></td>
