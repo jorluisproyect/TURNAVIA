@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { commercialClientAccess, MASTER_EMAIL } from '@/lib/access';
-import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 
 export const runtime='nodejs';
 
@@ -48,15 +48,15 @@ export async function POST(req:Request){
   const amount=Boolean((access.client as any)?.payment_reviewed_at)?monthly:initial;
   try{
     await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
-      VALUES('PAYMENT_SUBMITTED','COMMERCIAL_CLIENT',${clientId},jsonb_build_object('source','TURNAVIA_SUBSCRIPTION','method',${methodLabel},'reference',${reference},'amount',${amount},'currency','USD'))`;
+      VALUES('PAYMENT_SUBMITTED','COMMERCIAL_CLIENT',${clientId},jsonb_build_object('source','TUCITA_SUBSCRIPTION','method',${methodLabel},'reference',${reference},'amount',${amount},'currency','USD'))`;
   }catch(error){
-    console.error('TURNAVIA payment audit error',error);
+    console.error('TUCITA payment audit error',error);
   }
 
   try{
     if(r.auth_user_id){
       await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
-        VALUES(${String(r.auth_user_id)},'PAYMENT','Pago enviado','Recibimos tu pago y está esperando aprobación del administrador de TURNAVIA.','/panel')`;
+        VALUES(${String(r.auth_user_id)},'PAYMENT','Pago enviado','Recibimos tu pago y está esperando aprobación del administrador de TUCITA.','/panel')`;
     }
     const masterRows=await sql`SELECT auth_user_id FROM app_user_profiles WHERE role='MASTER' ORDER BY updated_at DESC LIMIT 1`;
     const masterAuthId=String((masterRows[0] as any)?.auth_user_id||'');
@@ -65,20 +65,20 @@ export async function POST(req:Request){
         VALUES(${masterAuthId},'PAYMENT','Nuevo pago por revisar',${r.name+' envió un pago por '+methodLabel+' · Ref. '+reference},'/master')`;
     }
   }catch(error){
-    console.error('TURNAVIA in-app payment notification error',error);
+    console.error('TUCITA in-app payment notification error',error);
   }
 
   const masterMail=await sendTransactionalEmail({
     to:MASTER_EMAIL,
-    subject:'Nuevo pago TURNAVIA por revisar',
-    html:turnaviaEmail('Pago pendiente de verificación',`<p><strong>${r.name}</strong> envió un pago de TURNAVIA.</p><p><strong>Método:</strong> ${methodLabel}<br/><strong>Referencia:</strong> ${reference}</p><p>Ingresa al Panel Master para revisar el comprobante y aprobar o rechazar el pago.</p><p><a href="${process.env.APP_URL||'https://turnavia.vercel.app'}/master">Abrir Panel Master</a></p>`)
+    subject:'Nuevo pago TUCITA por revisar',
+    html:tucitaEmail('Pago pendiente de verificación',`<p><strong>${r.name}</strong> envió un pago de TUCITA.</p><p><strong>Método:</strong> ${methodLabel}<br/><strong>Referencia:</strong> ${reference}</p><p>Ingresa al Panel Master para revisar el comprobante y aprobar o rechazar el pago.</p><p><a href="${process.env.APP_URL||'https://tucita.com.ve'}/master">Abrir Panel Master</a></p>`)
   });
   let clientMail:any={ok:false,skipped:true};
   if(r.email){
     clientMail=await sendTransactionalEmail({
       to:r.email,
-      subject:'Recibimos tu pago TURNAVIA',
-      html:turnaviaEmail('Pago recibido',`<p>Hola <strong>${r.name}</strong>.</p><p>Recibimos tu referencia y comprobante. El pago está en revisión y te avisaremos cuando sea aprobado.</p>`)
+      subject:'Recibimos tu pago TUCITA',
+      html:tucitaEmail('Pago recibido',`<p>Hola <strong>${r.name}</strong>.</p><p>Recibimos tu referencia y comprobante. El pago está en revisión y te avisaremos cuando sea aprobado.</p>`)
     });
   }
 
@@ -90,7 +90,7 @@ export async function POST(req:Request){
         'clientError',${clientMail.error||null}
       ))`;
   }catch(error){
-    console.error('TURNAVIA payment email audit error',error);
+    console.error('TUCITA payment email audit error',error);
   }
 
   return NextResponse.json({ok:true,emailNotice:clientMail.ok?'sent':'pending',client:{id:String(r.id),name:r.name,type:r.type,specialty:r.specialty||'',phone:r.phone||'',email:r.email,status:r.status,trialEndsAt:r.trial_ends_at?new Date(r.trial_ends_at).toISOString():undefined,paymentMethod:r.payment_method,paymentReference:r.payment_reference,paymentComment:r.payment_comment,hasProof:Boolean(r.payment_proof)}});
