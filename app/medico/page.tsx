@@ -160,7 +160,8 @@ export default function Medico(){
        {a.status==='CONFIRMED'&&<button className="btn btn-secondary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'ARRIVED'})}>Llegó</button>}
        {a.status==='ARRIVED'&&<button className="btn btn-secondary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'IN_CONSULTATION'})}>Atender</button>}
        {a.status==='IN_CONSULTATION'&&<button className="btn btn-primary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'COMPLETED'})}>Completar</button>}
-       {a.receiptNumber&&['CONFIRMED','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)&&<a className="btn btn-secondary" href={'/api/appointments/'+a.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={14}/> Recibo</a>}
+       {a.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)&&<a className="btn btn-secondary" href={'/api/appointments/'+a.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={14}/> Recibo</a>}
+       {a.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)&&a.clientEmail&&<button className="btn btn-secondary" onClick={()=>patch({action:'resend_receipt_email',id:a.id})}>Reenviar al correo</button>}
       </div></td>
     </tr>)}</tbody></table></div>}
    </section>
