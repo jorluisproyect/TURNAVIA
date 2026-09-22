@@ -28,19 +28,25 @@ export async function GET(){
   if(!p) return NextResponse.json({patient:{name,email,phone:'',nationalId:''},appointments:[]});
 
   const aps=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.service_id,a.service_name,a.consultation_price,a.consultation_currency,
-      a.payment_method,a.payment_reference,a.reschedule_used,
+      a.payment_method,a.payment_reference,a.reschedule_used,a.receipt_number,a.checked_in_at,a.completed_at,
       d.public_slug,d.provider_category,d.provider_activity,u.full_name AS provider_name,
-      l.name AS location_name,l.address,l.city
+      COALESCE(a.location_name_snapshot,l.name) AS location_name,
+      COALESCE(a.location_address_snapshot,l.address) AS address,
+      COALESCE(a.location_city_snapshot,l.city) AS city,
+      COALESCE(a.location_state_snapshot,l.state) AS state,
+      COALESCE(a.location_country_snapshot,l.country) AS country,
+      COALESCE(a.location_room_snapshot,dl.room) AS room
     FROM appointments a
     JOIN doctors d ON d.id=a.doctor_id
     JOIN users u ON u.id=d.user_id
     LEFT JOIN locations l ON l.id=a.location_id
+    LEFT JOIN doctor_locations dl ON dl.doctor_id=a.doctor_id AND dl.location_id=a.location_id
     WHERE a.patient_id=${p.id}
     ORDER BY a.starts_at DESC LIMIT 100`;
 
   return NextResponse.json({
     patient:{name:p.full_name||name,email:p.email||email,phone:p.phone||'',nationalId:p.national_id||''},
-    appointments:aps.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceId:a.service_id?String(a.service_id):'',serviceName:a.service_name||a.provider_activity||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',rescheduleUsed:Boolean(a.reschedule_used),providerName:a.provider_name,providerSlug:a.public_slug,category:a.provider_category||'',activity:a.provider_activity||'',location:[a.location_name,a.address,a.city].filter(Boolean).join(' · ')}))
+    appointments:aps.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceId:a.service_id?String(a.service_id):'',serviceName:a.service_name||a.provider_activity||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,providerName:a.provider_name,providerSlug:a.public_slug,category:a.provider_category||'',activity:a.provider_activity||'',location:[a.location_name,a.address,a.city,a.state,a.country,a.room].filter(Boolean).join(' · ')}))
   });
 }
 
@@ -92,7 +98,11 @@ export async function PATCH(req:Request){
         SELECT pg_advisory_xact_lock(hashtext(${String(ap.doctor_id)})::bigint)
       ),
       valid_block AS (
-        SELECT ab.id FROM availability_blocks ab,provider_lock
+        SELECT ab.id,ab.location_id,l.name,l.address,l.city,l.state,l.country,dl.room
+        FROM availability_blocks ab
+        JOIN locations l ON l.id=ab.location_id
+        LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id,
+        provider_lock
         WHERE ab.doctor_id=${ap.doctor_id}
           AND ab.published=true
           AND ab.starts_at<=${requestedStart.toISOString()}::timestamptz
@@ -102,11 +112,18 @@ export async function PATCH(req:Request){
       UPDATE appointments a SET
         starts_at=${requestedStart.toISOString()}::timestamptz,
         ends_at=${requestedEnd.toISOString()}::timestamptz,
+        location_id=vb.location_id,
+        location_name_snapshot=vb.name,
+        location_address_snapshot=vb.address,
+        location_city_snapshot=vb.city,
+        location_state_snapshot=vb.state,
+        location_country_snapshot=vb.country,
+        location_room_snapshot=vb.room,
         reschedule_used=true
+      FROM valid_block vb
       WHERE a.id=${appointmentId}::uuid
         AND a.patient_id=${p.id}
         AND a.reschedule_used=false
-        AND EXISTS (SELECT 1 FROM valid_block)
         AND NOT EXISTS (
           SELECT 1 FROM appointments other
           WHERE other.doctor_id=${ap.doctor_id}
