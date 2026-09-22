@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2, ExternalLink, CheckCircle2, MapPin, ScanLine, FileText } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 import { COUNTRY_SUGGESTIONS } from '@/lib/provider-catalog';
@@ -14,11 +14,12 @@ export default function Medico(){
  const [error,setError]=useState('');
  const [toast,setToast]=useState('');
  const [origin,setOrigin]=useState('');
- const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|null>(null);
+ const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|'location'|null>(null);
  const [profile,setProfile]=useState<any>({});
  const [settings,setSettings]=useState<any>({});
  const [service,setService]=useState({id:'',name:'',description:'',durationMinutes:30,price:0,currency:'USD'});
- const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',slotMinutes:15});
+ const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',slotMinutes:15,locationId:''});
+ const [locationForm,setLocationForm]=useState({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
  const [dayStatus,setDayStatus]=useState({status:'NORMAL',delayMinutes:0,note:''});
 
  const load=()=>fetch('/api/me/provider').then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{
@@ -54,8 +55,21 @@ export default function Medico(){
  }
  function openAvailability(){
    const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/Caracas'});
-   setAv(v=>({...v,date:v.date||today}));
+   setAv(v=>({...v,date:v.date||today,locationId:v.locationId||data?.locations?.[0]?.id||''}));
    setModal('availability');
+ }
+ function newLocation(){
+   setLocationForm({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
+   setModal('location');
+ }
+ function editLocation(l:any){
+   setLocationForm({id:l.id,name:l.name||'',address:l.address||'',city:l.city||'',state:l.state||'',country:l.country||'Venezuela',room:l.room||''});
+   setModal('location');
+ }
+ async function saveLocation(){
+   const action=locationForm.id?'update_location':'add_location';
+   const ok=await patch({action,...locationForm});
+   if(ok)setLocationForm({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
  }
  function newService(){
    setService({id:'',name:'',description:'',durationMinutes:30,price:0,currency:'USD'});
@@ -80,7 +94,7 @@ export default function Medico(){
  const serviceHint=activity.includes('barber')?'Ej.: Corte clásico, Fade, Corte + barba, Barba completa':activity.includes('manicur')||activity.includes('uña')?'Ej.: Manicura, Semipermanente, Acrílicas, Jelly, Nail art, Retiro, Mantenimiento':'Crea cada servicio por separado con su duración y precio.';
 
  return <div className="dashboard"><Sidebar role="medico"/><main className="main">
-  <div id="perfil" className="topbar"><div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1>{p.subscriptionStatus==='TRIAL'&&p.trialEndsAt&&<div className="muted" style={{fontSize:12}}>Prueba disponible hasta {new Date(p.trialEndsAt).toLocaleDateString('es-VE')}</div>}{p.subscriptionStatus==='ACTIVO'&&p.renewalDueAt&&<div className="muted" style={{fontSize:12}}>Próxima renovación aproximada: {new Date(p.renewalDueAt).toLocaleDateString('es-VE')}</div>}</div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':p.subscriptionStatus==='REVISION_BINANCE'?'Pago en revisión':'Prueba gratis'}</span>{p.clientId&&p.subscriptionStatus!=='ACTIVO'&&<Link className="btn btn-primary" href={'/pago?client='+p.clientId}>Activar / pagar</Link>}{p.clientId&&p.subscriptionStatus==='ACTIVO'&&<Link className="btn btn-secondary" href={'/pago?client='+p.clientId}>Renovación</Link>}<button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
+  <div id="perfil" className="topbar"><div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1>{p.subscriptionStatus==='TRIAL'&&p.trialEndsAt&&<div className="muted" style={{fontSize:12}}>Prueba disponible hasta {new Date(p.trialEndsAt).toLocaleDateString('es-VE')}</div>}{p.subscriptionStatus==='ACTIVO'&&p.renewalDueAt&&<div className="muted" style={{fontSize:12}}>Próxima renovación aproximada: {new Date(p.renewalDueAt).toLocaleDateString('es-VE')}</div>}</div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':p.subscriptionStatus==='REVISION_BINANCE'?'Pago en revisión':'Prueba gratis'}</span>{p.clientId&&p.subscriptionStatus!=='ACTIVO'&&<Link className="btn btn-primary" href={'/pago?client='+p.clientId}>Activar / pagar</Link>}{p.clientId&&p.subscriptionStatus==='ACTIVO'&&<Link className="btn btn-secondary" href={'/pago?client='+p.clientId}>Renovación</Link>}<Link className="btn btn-secondary" href="/scan"><ScanLine size={16}/> Leer QR</Link><button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
 
   {p.subscriptionStatus==='ACTIVO'&&<section className="panel" style={{marginBottom:18,border:'1px solid #7dd3c7',background:'linear-gradient(135deg,#f0fdfa,#ffffff)'}}>
     <div className="row space" style={{gap:16,flexWrap:'wrap'}}>
@@ -105,6 +119,11 @@ export default function Medico(){
     <div className="stat"><small>Bloques disponibles</small><div className="n">{data.availability.length}</div></div>
   </div>
 
+  <section className="panel" id="ubicaciones" style={{marginTop:18}}>
+   <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>Lugares de atención</h2><div className="muted" style={{fontSize:13}}>Agrega todos los lugares donde trabajas. Luego asigna cada horario a uno de ellos.</div></div><button className="btn btn-primary" onClick={newLocation}><Plus size={16}/> Agregar ubicación</button></div>
+   {!data.locations?.length?<div className="notice" style={{marginTop:14}}>Agrega al menos una ubicación para publicar horarios.</div>:<div className="grid-3" style={{marginTop:14}}>{data.locations.map((l:any)=><div className="card" key={l.id}><MapPin size={18}/><h3>{l.name}</h3><p>{[l.address,l.city,l.state,l.country].filter(Boolean).join(' · ')||'Dirección por completar'}{l.room?<><br/><strong>{l.room}</strong></>:null}</p><div className="row" style={{gap:8,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editLocation(l)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'delete_location',id:l.id})}><Trash2 size={15}/> Eliminar</button></div></div>)}</div>}
+  </section>
+
   <section className="panel" id="agenda" style={{marginTop:18}}>
     <div className="row space" style={{gap:10,flexWrap:'wrap'}}>
       <div><h2>Calendario de disponibilidad</h2><div className="muted" style={{fontSize:13}}>Publica exactamente qué días y horas puedes atender. El cliente solo verá horas libres.</div></div>
@@ -114,7 +133,7 @@ export default function Medico(){
     <div className="grid-3" style={{marginTop:14}}>{data.availability.map((a:any)=><div className="card" key={a.id}>
       <CalendarPlus size={18}/><h3>{new Date(a.startsAt).toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long',timeZone:'America/Caracas'})}</h3>
       <p><strong>{new Date(a.startsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'})}</strong> a <strong>{new Date(a.endsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'})}</strong></p>
-      <div className="muted" style={{fontSize:12}}>Inicios cada {a.slotMinutes} min. TUCITA adapta el espacio a la duración real del servicio.</div>
+      <div className="notice" style={{margin:'10px 0'}}><MapPin size={15}/> <strong>Atención en {a.location?.name||'ubicación por confirmar'}</strong><br/><span className="muted">{[a.location?.address,a.location?.city,a.location?.state,a.location?.country].filter(Boolean).join(' · ')}{a.location?.room?' · '+a.location.room:''}</span></div><div className="muted" style={{fontSize:12}}>Inicios cada {a.slotMinutes} min. TUCITA adapta el espacio a la duración real del servicio.</div>
       <button className="btn btn-secondary" style={{marginTop:12}} onClick={()=>patch({action:'delete_availability',id:a.id})}><Trash2 size={15}/> Eliminar horario</button>
     </div>)}</div>}
     <div className="notice" style={{marginTop:14}}><strong>Ejemplo:</strong> si publicas 9:00–13:00 y un corte dura 30 minutos, TUCITA ofrece horas que permitan completar esos 30 minutos. Si “Corte + barba” dura 45 minutos, recalcula automáticamente las horas disponibles.</div>
@@ -133,7 +152,7 @@ export default function Medico(){
     <div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Cliente</th><th>Servicio</th><th>Fecha</th><th>Pago</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{upcoming.map((a:any)=><tr key={a.id}>
       <td><strong>{a.clientName}</strong><div className="muted" style={{fontSize:12}}>{a.clientEmail} · {a.clientPhone}</div></td>
       <td>{a.serviceName}<div className="muted" style={{fontSize:12}}>{a.currency} {a.price}</div></td>
-      <td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short',timeZone:'America/Caracas'})}</td>
+      <td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short',timeZone:'America/Caracas'})}<div className="muted" style={{fontSize:12,marginTop:4}}><MapPin size={12}/> {a.location?.name||'Ubicación'}</div></td>
       <td>{a.paymentMethod||'—'}{a.paymentReference&&<div><strong>Ref: {a.paymentReference}</strong></div>}{a.paymentProofUrl&&<a className="btn btn-secondary" style={{marginTop:6,padding:'6px 9px'}} target="_blank" rel="noreferrer" href={a.paymentProofUrl}><Eye size={14}/> Ver</a>}</td>
       <td><StatusPill tone={a.status==='PAYMENT_REVIEW'?'warn':a.status==='PAYMENT_REJECTED'?'bad':['CONFIRMED','COMPLETED','ARRIVED','IN_CONSULTATION'].includes(a.status)?'ok':''}>{labels[a.status]||a.status}</StatusPill></td>
       <td><div className="row" style={{gap:6,flexWrap:'wrap'}}>
@@ -141,6 +160,7 @@ export default function Medico(){
        {a.status==='CONFIRMED'&&<button className="btn btn-secondary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'ARRIVED'})}>Llegó</button>}
        {a.status==='ARRIVED'&&<button className="btn btn-secondary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'IN_CONSULTATION'})}>Atender</button>}
        {a.status==='IN_CONSULTATION'&&<button className="btn btn-primary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'COMPLETED'})}>Completar</button>}
+       {a.receiptNumber&&['CONFIRMED','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)&&<a className="btn btn-secondary" href={'/api/appointments/'+a.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={14}/> Recibo</a>}
       </div></td>
     </tr>)}</tbody></table></div>}
    </section>
@@ -174,7 +194,15 @@ export default function Medico(){
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Duración real</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>120 min</option><option value={180}>180 min</option></select></div><div className="field" style={{flex:1,minWidth:150}}><label>Precio</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService}>{service.id?'Guardar cambios':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
+ {modal==='location'&&<div className="modal-backdrop"><div className="modal"><h2>{locationForm.id?'Editar ubicación':'Nueva ubicación'}</h2><div className="form">
+   <div className="field"><label>Nombre visible</label><input value={locationForm.name} onChange={e=>setLocationForm({...locationForm,name:e.target.value})} placeholder="Ej. Clínica X / Sede Centro / Consultorio privado"/></div>
+   <div className="field"><label>Dirección</label><input value={locationForm.address} onChange={e=>setLocationForm({...locationForm,address:e.target.value})}/></div>
+   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:170}}><label>Ciudad</label><input value={locationForm.city} onChange={e=>setLocationForm({...locationForm,city:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:170}}><label>Estado / Provincia</label><input value={locationForm.state} onChange={e=>setLocationForm({...locationForm,state:e.target.value})}/></div></div>
+   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:170}}><label>País</label><input list="location-countries" value={locationForm.country} onChange={e=>setLocationForm({...locationForm,country:e.target.value})}/><datalist id="location-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div><div className="field" style={{flex:1,minWidth:170}}><label>Consultorio / local / referencia</label><input value={locationForm.room} onChange={e=>setLocationForm({...locationForm,room:e.target.value})} placeholder="Ej. Consultorio 204"/></div></div>
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveLocation}>Guardar ubicación</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+
  {modal==='availability'&&<div className="modal-backdrop"><div className="modal"><h2>Agregar disponibilidad</h2><div className="form">
+   <div className="field"><label>¿Dónde atenderás en este horario?</label><select value={av.locationId} onChange={e=>setAv({...av,locationId:e.target.value})}><option value="">Selecciona una ubicación</option>{(data.locations||[]).map((l:any)=><option key={l.id} value={l.id}>{l.name}{l.room?' · '+l.room:''}</option>)}</select></div>
    <div className="field"><label>Día disponible</label><input type="date" value={av.date} onChange={e=>setAv({...av,date:e.target.value})}/></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Disponible desde</label><input type="time" value={av.start} onChange={e=>setAv({...av,start:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:150}}><label>Disponible hasta</label><input type="time" value={av.end} onChange={e=>setAv({...av,end:e.target.value})}/></div></div>
    <div className="field"><label>Cada cuánto puede comenzar una reserva</label><select value={av.slotMinutes} onChange={e=>setAv({...av,slotMinutes:Number(e.target.value)})}><option value={10}>Cada 10 min</option><option value={15}>Cada 15 min</option><option value={20}>Cada 20 min</option><option value={30}>Cada 30 min</option><option value={45}>Cada 45 min</option><option value={60}>Cada 60 min</option></select></div>
