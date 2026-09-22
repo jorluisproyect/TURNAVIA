@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
-import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 
 export const dynamic='force-dynamic';
@@ -156,7 +156,7 @@ export async function PATCH(req:Request){
       const x=rows[0] as any;
       if(x.email){
         const when=new Date(x.starts_at).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
-        await sendTransactionalEmail({to:x.email,subject:'Tu reserva TURNAVIA fue confirmada',html:turnaviaEmail('Reserva confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${x.service_name||provider.provider_activity}<br/><strong>Con:</strong> ${provider.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+        await sendTransactionalEmail({to:x.email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu pago fue aprobado y tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${x.service_name||provider.provider_activity}<br/><strong>Con:</strong> ${provider.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
       }
     }else if(action==='reject_payment'){
       await sql`UPDATE appointments SET status='PAYMENT_REJECTED' WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
