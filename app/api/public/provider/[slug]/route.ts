@@ -195,23 +195,25 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
           AND a.starts_at<${requestedEnd.toISOString()}::timestamptz
           AND a.ends_at>${requestedStart.toISOString()}::timestamptz
       )
-      RETURNING id
+      RETURNING id,checkin_token
     )
-    SELECT id FROM inserted`;
+    SELECT id,checkin_token FROM inserted`;
 
   if(!rows.length) return NextResponse.json({error:'Ese horario ya no está disponible o acaba de ser reservado. Elige otro.'},{status:409});
   const appointmentId=String((rows[0] as any)?.id);
+  const receiptToken=String((rows[0] as any)?.checkin_token||'');
   const when=requestedStart.toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
+  let customerMail:any={ok:false};
   if(initialStatus==='CONFIRMED'){
     const receipt=await buildAppointmentReceiptPdf(appointmentId);
     const loc=[receipt.data.locationName,receipt.data.address,receipt.data.room].filter(Boolean).join(' · ');
-    await sendTransactionalEmail({to:email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${clientName}</strong>.</p><p>Tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos tu recibo TUCITA con el código QR que debes presentar al llegar.</p>`),attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]});
+    customerMail=await sendTransactionalEmail({to:email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${clientName}</strong>.</p><p>Tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos tu recibo TUCITA con el código QR que debes presentar al llegar.</p>`),attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]});
   }else{
-    await sendTransactionalEmail({to:email,subject:'Recibimos tu reserva TUCITA',html:tucitaEmail('Reserva preagendada',`<p>Hola <strong>${clientName}</strong>.</p><p>Recibimos tu reserva y comprobante. El profesional o negocio revisará el pago antes de confirmarla.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+    customerMail=await sendTransactionalEmail({to:email,subject:'Recibimos tu reserva TUCITA',html:tucitaEmail('Reserva preagendada',`<p>Hola <strong>${clientName}</strong>.</p><p>Recibimos tu reserva y comprobante. El profesional o negocio revisará el pago antes de confirmarla.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p><p>Cuando el pago sea aprobado recibirás por correo tu recibo PDF con el código QR de la cita.</p>`)});
   }
   const providerEmail=String(p.organization_email||p.email||'').trim();
   if(providerEmail){
     await sendTransactionalEmail({to:providerEmail,subject:'Nueva reserva en TUCITA',html:tucitaEmail('Nueva reserva recibida',`<p><strong>${clientName}</strong> reservó <strong>${service.name}</strong> con ${p.full_name}.</p><p><strong>Fecha y hora:</strong> ${when}<br/><strong>Monto:</strong> ${service.currency||'USD'} ${Number(service.price||0)}<br/><strong>Estado:</strong> ${initialStatus==='CONFIRMED'?'Confirmada':'Pago por revisar'}</p><p><a href="${process.env.APP_URL||'https://tucita.com.ve'}/panel">Abrir TUCITA</a></p>`)});
   }
-  return NextResponse.json({ok:true,appointmentId,status:initialStatus},{status:201});
+  return NextResponse.json({ok:true,appointmentId,receiptToken,status:initialStatus,emailNotice:customerMail.ok?'sent':'pending'},{status:201});
 }
