@@ -36,7 +36,8 @@ export default async function Master(){
   const reviews=real.filter(c=>c.status==='REVISION_BINANCE');
   const now=Date.now();
   const expiring=real.filter(c=>c.status==='TRIAL'&&c.trialEndsAt&&new Date(c.trialEndsAt).getTime()>=now&&new Date(c.trialEndsAt).getTime()<=now+86400000);
-  const systemOk=hasDatabase&&neonAuthConfigured&&Boolean(process.env.NEON_AUTH_COOKIE_SECRET)&&Boolean(process.env.APP_URL)&&Boolean(process.env.RESEND_API_KEY);
+  const emailTransportReady=Boolean((process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS)||process.env.RESEND_API_KEY);
+  const systemOk=hasDatabase&&neonAuthConfigured&&Boolean(process.env.NEON_AUTH_COOKIE_SECRET)&&Boolean(process.env.APP_URL)&&Boolean(process.env.EMAIL_FROM)&&emailTransportReady;
 
   return <div className="dashboard">
     <Sidebar role="master"/>
