@@ -17,7 +17,7 @@ export default function CheckinPage(){
    <span className="eyebrow"><ScanLine size={15}/> CONTROL DE CITA TUCITA</span>
    <h1 style={{marginTop:12}}>{data.clientName}</h1>
    <div className="notice"><strong>{data.serviceName}</strong><br/>{new Date(data.startsAt).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'})}<br/><span className="row" style={{marginTop:6}}><MapPin size={15}/>{loc||'Ubicación por confirmar'}</span>{data.location?.room&&<><br/><strong>{data.location.room}</strong></>}</div>
-   <div className="notice" style={{marginTop:12}}><strong>Recibo:</strong> {data.receiptNumber}<br/><strong>Estado:</strong> {data.status}</div>
+   <div className="notice" style={{marginTop:12}}><strong>Recibo:</strong> {data.receiptNumber}<br/><strong>Estado:</strong> {data.status}<br/><strong>Teléfono:</strong> {data.clientPhone||'—'}<br/><strong>Pago:</strong> {data.currency} {data.price} · {data.paymentMethod||'—'}{data.paymentReference?' · Ref. '+data.paymentReference:''}</div>
    {msg&&<div className="notice danger">{msg}</div>}
    <div className="button-row" style={{marginTop:18,flexWrap:'wrap'}}>
     {['CONFIRMED','ON_THE_WAY'].includes(data.status)&&<button className="btn btn-primary" onClick={()=>action('arrive')}><CheckCircle2 size={16}/> Registrar llegada</button>}
