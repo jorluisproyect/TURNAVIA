@@ -4,7 +4,8 @@ import { CheckCircle2, MapPin, ShieldCheck, UploadCloud, CreditCard } from 'luci
 import Link from 'next/link';
 
 type Slot={time:string;available:boolean;startsAt:string};
-type Availability={id:string;date:string;slots:Slot[]};
+type LocationInfo={id:string;name:string;address:string;city:string;state:string;country:string;room:string};
+type Availability={id:string;date:string;slots:Slot[];location:LocationInfo};
 type Service={id:string;name:string;description:string;durationMinutes:number;price:number;currency:string};
 type PaymentMethod={id:string;name:string;type:string;account_label?:string;account_value?:string;instructions?:string;requires_proof?:boolean;active:boolean};
 type State={provider:{slug:string;name:string;initials:string;category:string;activity:string;type:string;location:string;dayStatus:string;delayMinutes:number};services:Service[];availability:Availability[];paymentInstructions:string};
@@ -47,7 +48,9 @@ export default function BookingClient({slug}:{slug:string}){
    loadProvider(serviceId).catch(()=>setError('No se pudo actualizar la disponibilidad para este servicio.'));
  },[serviceId]);
 
- const current=useMemo(()=>data?.availability.find(a=>a.date===date),[data,date]);
+ const dates=useMemo(()=>Array.from(new Set((data?.availability||[]).map(a=>a.date))),[data]);
+ const currentBlocks=useMemo(()=>data?.availability.filter(a=>a.date===date)||[],[data,date]);
+ const selectedBlock=useMemo(()=>currentBlocks.find(a=>a.slots.some(s=>s.startsAt===startsAt))||currentBlocks[0],[currentBlocks,startsAt]);
  const service=useMemo(()=>data?.services.find(s=>s.id===serviceId)||data?.services[0],[data,serviceId]);
  const selectedMethod=useMemo(()=>methods.find(m=>m.name===form.paymentMethod),[methods,form.paymentMethod]);
  const requiresProof=selectedMethod?.requires_proof!==false;
@@ -61,14 +64,14 @@ export default function BookingClient({slug}:{slug:string}){
  }
 
  async function book(){
-   if(!service||!startsAt||!form.clientName||!form.phone||!form.email||!form.policyAccepted){
+   if(!service||!startsAt||!selectedBlock?.location?.id||!form.clientName||!form.phone||!form.email||!form.policyAccepted){
      setError('Completa tus datos y acepta la política de reserva.');return;
    }
    if(requiresProof&&(!form.paymentReference||!proof)){
      setError('Este método requiere referencia y comprobante de pago.');return;
    }
    setLoading(true);setError('');
-   const r=await fetch('/api/public/provider/'+encodeURIComponent(slug),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...form,serviceId:service.id,startsAt,paymentProofName:proof?.name||'',paymentProofDataUrl:proof?.dataUrl||''})});
+   const r=await fetch('/api/public/provider/'+encodeURIComponent(slug),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...form,serviceId:service.id,startsAt,locationId:selectedBlock?.location?.id||'',paymentProofName:proof?.name||'',paymentProofDataUrl:proof?.dataUrl||''})});
    const j=await r.json();setLoading(false);
    if(!r.ok){setError(j.error||'No se pudo enviar la reserva');return}
    setResultStatus(j.status==='CONFIRMED'?'CONFIRMED':'PAYMENT_REVIEW');
@@ -94,9 +97,10 @@ export default function BookingClient({slug}:{slug:string}){
        {service&&<div className="notice"><strong>{service.name}</strong> · {service.durationMinutes} min · {service.currency} {service.price}{service.description?<><br/>{service.description}</>:null}</div>}
      </div>
 
-     <div style={{marginTop:22}}><strong>2. Selecciona el día disponible</strong><div className="date-tabs">{data.availability.map(a=><button key={a.id} className={'date-tab '+(date===a.date?'active':'')} onClick={()=>{setDate(a.date);setStartsAt(a.slots.find(s=>s.available)?.startsAt||'')}}><strong>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11,marginTop:3}}>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div>{!data.availability.length&&<div className="notice" style={{marginTop:10}}>Todavía no hay horarios publicados.</div>}</div>
+     <div style={{marginTop:22}}><strong>2. Selecciona el día disponible</strong><div className="date-tabs">{dates.map(d=><button key={d} className={'date-tab '+(date===d?'active':'')} onClick={()=>{setDate(d);const first=data.availability.find(a=>a.date===d&&a.slots.some(s=>s.available));setStartsAt(first?.slots.find(s=>s.available)?.startsAt||'')}}><strong>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11,marginTop:3}}>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div>{!data.availability.length&&<div className="notice" style={{marginTop:10}}>Todavía no hay horarios publicados.</div>}</div>
 
-     <div style={{marginTop:22}}><strong>3. Selecciona la hora</strong><div className="muted" style={{fontSize:12,marginTop:5}}>Solo mostramos horas donde cabe completo el servicio seleccionado.</div><div className="booking-slots">{current?.slots.map(s=><button disabled={!s.available} type="button" className={startsAt===s.startsAt?'selected':''} onClick={()=>setStartsAt(s.startsAt)} key={s.startsAt}>{s.time}</button>)}</div></div>
+     <div style={{marginTop:22}}><strong>3. Selecciona la hora y el lugar</strong><div className="muted" style={{fontSize:12,marginTop:5}}>Cada bloque indica claramente dónde estará el profesional o negocio.</div><div style={{display:'grid',gap:12,marginTop:12}}>{currentBlocks.map(block=><div className="notice" key={block.id} style={{padding:14}}><div className="row" style={{alignItems:'flex-start',gap:8}}><MapPin size={17}/><div><strong style={{fontSize:15}}>Atención en {block.location.name||'ubicación por confirmar'}</strong><div className="muted" style={{fontSize:12,marginTop:3}}>{[block.location.address,block.location.city,block.location.state,block.location.country].filter(Boolean).join(' · ')}{block.location.room?<><br/><strong>{block.location.room}</strong></>:null}</div></div></div><div className="booking-slots" style={{marginTop:10}}>{block.slots.map(s=><button disabled={!s.available} type="button" className={startsAt===s.startsAt?'selected':''} onClick={()=>setStartsAt(s.startsAt)} key={block.id+'-'+s.startsAt}>{s.time}</button>)}</div></div>)}</div></div>
+     {selectedBlock&&startsAt&&<div className="notice" style={{marginTop:14,border:'2px solid #0f766e'}}><strong>Tu cita será en: {selectedBlock.location.name}</strong><br/>{[selectedBlock.location.address,selectedBlock.location.city,selectedBlock.location.state,selectedBlock.location.country].filter(Boolean).join(' · ')}{selectedBlock.location.room?<><br/><strong>{selectedBlock.location.room}</strong></>:null}</div>}
 
      <div style={{marginTop:26}}><strong>4. Tus datos</strong><div className="form">
        <div className="field"><label>Nombre completo</label><input value={form.clientName} onChange={e=>setForm({...form,clientName:e.target.value})} placeholder="Escribe tu nombre real"/></div>
