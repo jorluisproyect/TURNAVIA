@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { planFromType } from '@/lib/plans';
 import { sql } from '@/lib/db';
-import { sendTransactionalEmail, turnaviaEmail } from '@/lib/email';
+import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { isMasterSession, commercialClientAccess } from '@/lib/access';
 
 function mapClient(r:any){
@@ -68,20 +68,20 @@ export async function PATCH(req:Request){
       if(authUserId){
         if(body.status==='ACTIVO'){
           await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
-            VALUES(${authUserId},'SUCCESS','Cuenta TURNAVIA activa','Tu pago fue aprobado. Tu cuenta ya está activa y puedes continuar configurando y operando TURNAVIA.','/panel')`;
+            VALUES(${authUserId},'SUCCESS','Cuenta TUCITA activa','Tu pago fue aprobado. Tu cuenta ya está activa y puedes continuar configurando y operando TUCITA.','/panel')`;
         }else if(body.status==='PAGO_PENDIENTE' && body.rejectionReason){
           await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
             VALUES(${authUserId},'WARNING','Pago rechazado',${'Tu pago necesita corrección: '+String(body.rejectionReason||'Verifica los datos e intenta nuevamente.')},${'/pago?client='+String(client.id)})`;
         }else if(body.status==='SUSPENDIDO'){
           await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
-            VALUES(${authUserId},'WARNING','Cuenta suspendida','Tu cuenta TURNAVIA fue suspendida. Revisa tu suscripción o contacta al administrador.','/panel')`;
+            VALUES(${authUserId},'WARNING','Cuenta suspendida','Tu cuenta TUCITA fue suspendida. Revisa tu suscripción o contacta al administrador.','/panel')`;
         }else if(body.status==='ACTIVO' && prev.status==='SUSPENDIDO'){
           await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
-            VALUES(${authUserId},'SUCCESS','Cuenta reactivada','Tu cuenta TURNAVIA volvió a estar activa.','/panel')`;
+            VALUES(${authUserId},'SUCCESS','Cuenta reactivada','Tu cuenta TUCITA volvió a estar activa.','/panel')`;
         }
       }
     }catch(error){
-      console.error('TURNAVIA in-app client notification error',error);
+      console.error('TUCITA in-app client notification error',error);
     }
     const action=body.status==='ACTIVO'
       ? (prev.status==='SUSPENDIDO'?'CLIENT_REACTIVATED':'PAYMENT_APPROVED')
@@ -100,7 +100,7 @@ export async function PATCH(req:Request){
       ))`;
   }
   if(body.status==='ACTIVO' && prev.status!=='ACTIVO'){
-    const appUrl=process.env.APP_URL||'https://turnavia.vercel.app';
+    const appUrl=process.env.APP_URL||'https://tucita.com.ve';
     const linkRows=await sql`SELECT d.public_slug,o.slug AS organization_slug
       FROM users u
       JOIN doctors d ON d.user_id=u.id
@@ -110,11 +110,11 @@ export async function PATCH(req:Request){
       LIMIT 1`;
     const linkRow=linkRows[0] as any;
     const publicPath=linkRow?.organization_slug?'/negocio/'+linkRow.organization_slug:linkRow?.public_slug?'/reservar/'+linkRow.public_slug:'';
-    const activationMail=await sendTransactionalEmail({to:client.email,subject:'Pago aprobado - TURNAVIA',html:turnaviaEmail('Tu cuenta TURNAVIA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu pago fue revisado y aprobado. Tu cuenta ya está activa.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TURNAVIA</a></p>`)});
+    const activationMail=await sendTransactionalEmail({to:client.email,subject:'Pago aprobado - TUCITA',html:tucitaEmail('Tu cuenta TUCITA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu pago fue revisado y aprobado. Tu cuenta ya está activa.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TUCITA</a></p>`)});
     try{
       await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
         VALUES(${activationMail.ok?'ACTIVATION_EMAIL_SENT':'ACTIVATION_EMAIL_FAILED'},'COMMERCIAL_CLIENT',${String(client.id)},jsonb_build_object('to',${client.email},'error',${activationMail.error||null}))`;
-    }catch(error){console.error('TURNAVIA activation email audit error',error)}
+    }catch(error){console.error('TUCITA activation email audit error',error)}
   }
   return NextResponse.json({ok:true,client});
 }
