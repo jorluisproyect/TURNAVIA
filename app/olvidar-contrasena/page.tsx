@@ -15,7 +15,7 @@ export default function OlvidarContrasena(){
     e.preventDefault();
     setBusy(true);setError('');
     try{
-      const redirectTo=(typeof window!=='undefined'?window.location.origin:'https://turnavia.vercel.app')+'/restablecer-contrasena';
+      const redirectTo=(typeof window!=='undefined'?window.location.origin:'https://tucita.com.ve')+'/restablecer-contrasena';
       const {error}=await authClient.requestPasswordReset({email:email.trim().toLowerCase(),redirectTo});
       if(error){setError(error.message||'No se pudo enviar el enlace.');return}
       setSent(true);
