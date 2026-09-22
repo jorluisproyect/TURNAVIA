@@ -43,7 +43,7 @@ function PagoContent(){
         setMethods(list);
         setSelectedId(list[0]?.id||'');
       }else setLoadError(methodRes.j?.error||'No se pudieron cargar los métodos de pago.');
-    }).catch(()=>setLoadError('No se pudo conectar con TURNAVIA.'));
+    }).catch(()=>setLoadError('No se pudo conectar con TUCITA.'));
   },[id]);
 
   const selected=useMemo(()=>methods.find(m=>m.id===selectedId)||null,[methods,selectedId]);
@@ -75,7 +75,7 @@ function PagoContent(){
       form.append('reference',reference.trim());
       form.append('paymentMethod',selected.type||selected.name);
       form.append('paymentMethodId',selected.id);
-      form.append('comment',`TURNAVIA - ${c.name}`);
+      form.append('comment',`TUCITA - ${c.name}`);
       if(proof)form.append('proof',proof);
 
       const r=await fetch('/api/payments/binance',{method:'POST',body:form});
@@ -102,7 +102,7 @@ function PagoContent(){
 
   return <main className="demo-chooser"><div className="container booking-wrap">
     <div className="row space"><Brand/><Link href="/" className="btn btn-secondary">Inicio</Link></div>
-    <div className="demo-head"><span className="eyebrow"><ShieldCheck size={15}/> Activación TURNAVIA</span><h1>Realiza tu pago</h1><p className="muted">{c?<>Cuenta: <strong>{c.name}</strong></>:'Cargando cuenta...'}</p></div>
+    <div className="demo-head"><span className="eyebrow"><ShieldCheck size={15}/> Activación TUCITA</span><h1>Realiza tu pago</h1><p className="muted">{c?<>Cuenta: <strong>{c.name}</strong></>:'Cargando cuenta...'}</p></div>
 
     {loadError&&<div className="notice danger">{loadError}</div>}
 
@@ -119,7 +119,7 @@ function PagoContent(){
     {underReview?<section className="panel" style={{textAlign:'center'}}>
       <CheckCircle2 size={52} style={{margin:'0 auto 12px'}}/>
       <h2>Pago enviado correctamente</h2>
-      <p className="muted" style={{maxWidth:620,margin:'0 auto'}}>Recibimos tu referencia y comprobante. Tu pago está <strong>esperando aprobación del administrador de TURNAVIA</strong>. No necesitas enviarlo nuevamente.</p>
+      <p className="muted" style={{maxWidth:620,margin:'0 auto'}}>Recibimos tu referencia y comprobante. Tu pago está <strong>esperando aprobación del administrador de TUCITA</strong>. No necesitas enviarlo nuevamente.</p>
       <div className="notice" style={{marginTop:18}}><strong>Estado: PAGO EN REVISIÓN</strong><br/>Cuando sea aprobado, tu cuenta quedará activa y recibirás la confirmación correspondiente.</div>
       <div className="button-row" style={{justifyContent:'center',marginTop:18}}><Link href="/panel" className="btn btn-primary">Ir a mi panel</Link><Link href="/" className="btn btn-secondary">Volver al inicio</Link></div>
     </section>:<>
@@ -135,12 +135,12 @@ function PagoContent(){
             <p>{method.instructions||'Realiza el pago y registra la referencia para validación.'}</p>
             <div className="notice"><strong>{method.account_label||'Datos de pago'}</strong><br/><span style={{wordBreak:'break-word'}}>{method.account_value||'Configurar método'}</span></div>
           </button>
-        })}</div>:!loadError&&<div className="notice danger">No hay métodos de pago activos en este momento. Contacta a TURNAVIA antes de realizar un pago.</div>}
+        })}</div>:!loadError&&<div className="notice danger">No hay métodos de pago activos en este momento. Contacta a TUCITA antes de realizar un pago.</div>}
       </section>
 
       {selected&&<section className="panel" style={{marginTop:18}}>
         <h2>2. Confirma tu pago por {selected.name}</h2>
-        <div className="notice"><strong>Total a pagar: USD {amountDue}</strong><br/>Concepto sugerido: TURNAVIA - {c.name}</div>
+        <div className="notice"><strong>Total a pagar: USD {amountDue}</strong><br/>Concepto sugerido: TUCITA - {c.name}</div>
         <div className="field" style={{marginTop:14}}><label>Referencia / ID de transacción</label><input value={reference} onChange={e=>setReference(e.target.value)} placeholder={String(selected.type).toUpperCase()==='BINANCE'?'ID / TxID de Binance':'Referencia real del pago'}/></div>
         {selected.requires_proof!==false&&<div className="field" style={{marginTop:12}}><label>Capture / comprobante</label><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>setProof(e.target.files?.[0]||null)}/><div className="muted" style={{fontSize:12,marginTop:6}}>JPG, PNG, WEBP o PDF · máximo 5 MB.</div></div>}
         {msg&&<div className="notice danger" style={{marginTop:12}}>{msg}</div>}
