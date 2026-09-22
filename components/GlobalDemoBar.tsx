@@ -33,7 +33,7 @@ export function GlobalDemoBar(){
       {current==='medico'&&<><strong>1 · Médico:</strong> publica horarios o marca un retraso. Después cambia a <b>Paciente</b>.</>}
       {current==='paciente'&&<><strong>2 · Paciente:</strong> reserva una cita con la Dra. Sofía. Después cambia a <b>Recepción</b>.</>}
       {current==='recepcion'&&<><strong>3 · Recepción:</strong> la misma cita aparece aquí. Registra llegada, consulta y finalización.</>}
-      {current==='master'&&<><strong>Panel interno TURNAVIA:</strong> esta vista es nuestra y no forma parte del acceso normal del cliente.</>}
+      {current==='master'&&<><strong>Panel interno TUCITA:</strong> esta vista es nuestra y no forma parte del acceso normal del cliente.</>}
     </div>
   </div>
 }
