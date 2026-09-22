@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
+import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
+import { randomUUID } from 'crypto';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -59,7 +61,13 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
   const chosen=(services as any[]).find(s=>String(s.id)===requestedServiceId)||(services as any[])[0];
   const durationMinutes=Math.max(5,Number(chosen?.duration_minutes||p.default_appointment_minutes||30));
 
-  const blocks=await sql`SELECT id,starts_at,ends_at,slot_minutes FROM availability_blocks WHERE doctor_id=${p.id} AND published=true AND ends_at>=now() ORDER BY starts_at LIMIT 60`;
+  const blocks=await sql`SELECT ab.id,ab.starts_at,ab.ends_at,ab.slot_minutes,
+      l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
+    FROM availability_blocks ab
+    JOIN locations l ON l.id=ab.location_id
+    LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id
+    WHERE ab.doctor_id=${p.id} AND ab.published=true AND ab.ends_at>=now()
+    ORDER BY ab.starts_at LIMIT 120`;
   const aps=await sql`SELECT starts_at,ends_at,status FROM appointments WHERE doctor_id=${p.id} AND ends_at>=now()-interval '1 day'`;
   const statusRows=await sql`SELECT status,delay_minutes FROM doctor_status_updates WHERE doctor_id=${p.id} ORDER BY updated_at DESC LIMIT 1`;
 
@@ -68,6 +76,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     date:new Date(b.starts_at).toLocaleDateString('en-CA',{timeZone:'America/Caracas'}),
     startsAt:new Date(b.starts_at).toISOString(),
     endsAt:new Date(b.ends_at).toISOString(),
+    location:{id:String(b.location_id),name:b.location_name||'',address:b.address||'',city:b.city||'',state:b.state||'',country:b.country||'',room:b.room||''},
     slots:slotList(b,aps as any[],durationMinutes)
   }));
   const initials=String(p.full_name||'T').replace(/^(Dr\.?|Dra\.?)\s*/i,'').split(/\s+/).slice(0,2).map((x:string)=>x[0]||'').join('').toUpperCase();
@@ -153,7 +162,8 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
     patientId=(rows[0] as any)?.id;
   }
 
-  if(!p.location_id) return NextResponse.json({error:'Este profesional aún no configuró su ubicación.'},{status:409});
+  const requestedLocationId=String(body.locationId||'');
+  if(!requestedLocationId) return NextResponse.json({error:'Selecciona la ubicación de tu cita.'},{status:400});
 
   // One SQL statement + advisory lock serializes bookings for the same provider.
   // This prevents two clients from taking overlapping slots at the same instant.
@@ -162,18 +172,22 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
       SELECT pg_advisory_xact_lock(hashtext(${String(p.id)})::bigint)
     ),
     valid_block AS (
-      SELECT ab.id
-      FROM availability_blocks ab, provider_lock
+      SELECT ab.id,ab.location_id,l.name,l.address,l.city,l.state,l.country,dl.room
+      FROM availability_blocks ab
+      JOIN locations l ON l.id=ab.location_id
+      LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id,
+      provider_lock
       WHERE ab.doctor_id=${p.id}
+        AND ab.location_id=${requestedLocationId}::uuid
         AND ab.published=true
         AND ab.starts_at<=${requestedStart.toISOString()}::timestamptz
         AND ab.ends_at>=${requestedEnd.toISOString()}::timestamptz
       LIMIT 1
     ),
     inserted AS (
-      INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted)
-      SELECT ${p.id},${patientId},${p.location_id},${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true
-      FROM valid_block
+      INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot)
+      SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room
+      FROM valid_block vb
       WHERE NOT EXISTS (
         SELECT 1 FROM appointments a
         WHERE a.doctor_id=${p.id}
@@ -189,7 +203,9 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   const appointmentId=String((rows[0] as any)?.id);
   const when=requestedStart.toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
   if(initialStatus==='CONFIRMED'){
-    await sendTransactionalEmail({to:email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${clientName}</strong>.</p><p>Tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
+    const receipt=await buildAppointmentReceiptPdf(appointmentId);
+    const loc=[receipt.data.locationName,receipt.data.address,receipt.data.room].filter(Boolean).join(' · ');
+    await sendTransactionalEmail({to:email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${clientName}</strong>.</p><p>Tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos tu recibo TUCITA con el código QR que debes presentar al llegar.</p>`),attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]});
   }else{
     await sendTransactionalEmail({to:email,subject:'Recibimos tu reserva TUCITA',html:tucitaEmail('Reserva preagendada',`<p>Hola <strong>${clientName}</strong>.</p><p>Recibimos tu reserva y comprobante. El profesional o negocio revisará el pago antes de confirmarla.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p>`)});
   }
