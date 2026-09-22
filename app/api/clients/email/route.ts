@@ -32,20 +32,20 @@ export async function POST(req:Request){
   const mail=kind==='welcome'
     ? await sendTransactionalEmail({
         to:client.email,
-        subject:'Tu cuenta TURNAVIA fue creada',
-        html:turnaviaEmail('Bienvenido a TURNAVIA',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu cuenta TURNAVIA está creada.</p><p><strong>Usuario:</strong> ${client.email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p>`:''}<p><a href="${appUrl}/ingresar">Entrar a TURNAVIA</a></p>`)
+        subject:'Tu cuenta TUCITA fue creada',
+        html:turnaviaEmail('Bienvenido a TUCITA',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu cuenta TUCITA está creada.</p><p><strong>Usuario:</strong> ${client.email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p>`:''}<p><a href="${appUrl}/ingresar">Entrar a TUCITA</a></p>`)
       })
     : await sendTransactionalEmail({
         to:client.email,
-        subject:'Tu cuenta TURNAVIA está activa',
-        html:turnaviaEmail('Tu cuenta TURNAVIA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu cuenta está <strong>ACTIVA</strong> y lista para operar.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TURNAVIA</a></p>`)
+        subject:'Tu cuenta TUCITA está activa',
+        html:turnaviaEmail('Tu cuenta TUCITA está activa',`<p>Hola <strong>${client.name}</strong>.</p><p>Tu cuenta está <strong>ACTIVA</strong> y lista para operar.</p>${publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para recibir reservas.</p>`:''}<p><a href="${appUrl}/ingresar">Ingresar a TUCITA</a></p>`)
       });
 
   try{
     await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
       VALUES(${mail.ok?(kind==='welcome'?'WELCOME_EMAIL_SENT':'ACTIVATION_EMAIL_SENT'):(kind==='welcome'?'WELCOME_EMAIL_FAILED':'ACTIVATION_EMAIL_FAILED')},
       'COMMERCIAL_CLIENT',${id},jsonb_build_object('to',${client.email},'manualRetry',true,'error',${mail.error||null}))`;
-  }catch(error){console.error('TURNAVIA manual email audit error',error)}
+  }catch(error){console.error('TUCITA manual email audit error',error)}
 
   if(!mail.ok) return NextResponse.json({error:mail.error||'No se pudo enviar el correo.'},{status:502});
   return NextResponse.json({ok:true});
