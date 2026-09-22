@@ -35,14 +35,14 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
     <div className="row space" style={{gap:12,flexWrap:'wrap'}}><Brand/><Link href="/ingresar" className="btn btn-secondary">Ingresar</Link></div>
 
     <div className="demo-head">
-      <span className="eyebrow"><Search size={15}/> Explorar TURNAVIA</span>
+      <span className="eyebrow"><Search size={15}/> Explorar TUCITA</span>
       <h1>Encuentra el servicio que necesitas y reserva tu hora.</h1>
-      <p className="muted">TURNAVIA funciona para profesionales y negocios de múltiples rubros. Explora las categorías y luego elige quién te atenderá.</p>
+      <p className="muted">TUCITA funciona para profesionales y negocios de múltiples rubros. Explora las categorías y luego elige quién te atenderá.</p>
     </div>
 
     <section className="panel">
       <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
-        <div><h2>Rubros disponibles en TURNAVIA</h2><p className="muted" style={{marginTop:-6}}>Estas son las actividades que la plataforma puede organizar con servicios, precios, horarios y reservas.</p></div>
+        <div><h2>Rubros disponibles en TUCITA</h2><p className="muted" style={{marginTop:-6}}>Estas son las actividades que la plataforma puede organizar con servicios, precios, horarios y reservas.</p></div>
         {selectedCategory&&<Link href="/explorar" className="btn btn-secondary">Ver todos los rubros</Link>}
       </div>
 
