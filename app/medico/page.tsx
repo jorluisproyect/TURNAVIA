@@ -13,6 +13,7 @@ export default function Medico(){
  const [data,setData]=useState<any>(null);
  const [error,setError]=useState('');
  const [toast,setToast]=useState('');
+ const [origin,setOrigin]=useState('');
  const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|null>(null);
  const [profile,setProfile]=useState<any>({});
  const [settings,setSettings]=useState<any>({});
@@ -28,7 +29,7 @@ export default function Medico(){
    setDayStatus({status:j.provider.dayStatus,delayMinutes:j.provider.delayMinutes,note:''});
  }).catch(()=>setError('No se pudo conectar con TURNAVIA.'));
 
- useEffect(()=>{load()},[]);
+ useEffect(()=>{load();setOrigin(window.location.origin)},[]);
  const upcoming=useMemo(()=>data?.appointments?.filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-86400000)||[],[data]);
  const review=useMemo(()=>upcoming.filter((a:any)=>a.status==='PAYMENT_REVIEW'),[upcoming]);
  const confirmed=useMemo(()=>upcoming.filter((a:any)=>['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION'].includes(a.status)),[upcoming]);
@@ -74,7 +75,7 @@ export default function Medico(){
  if(!data)return <div className="dashboard"><Sidebar role="medico"/><main className="main">Cargando tu cuenta…</main></div>;
  const p=data.provider;
  const publicPath=p.publicPath||('/reservar/'+p.slug);
- const publicUrl='https://turnavia.vercel.app'+publicPath;
+ const publicUrl=(origin||'https://turnavia.vercel.app')+publicPath;
  const activity=String(p.activity||'').toLowerCase();
  const serviceHint=activity.includes('barber')?'Ej.: Corte clásico, Fade, Corte + barba, Barba completa':activity.includes('manicur')||activity.includes('uña')?'Ej.: Manicura, Semipermanente, Acrílicas, Jelly, Nail art, Retiro, Mantenimiento':'Crea cada servicio por separado con su duración y precio.';
 
