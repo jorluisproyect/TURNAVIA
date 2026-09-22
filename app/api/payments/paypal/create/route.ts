@@ -27,7 +27,7 @@ export async function POST(req:Request){
       intent:'CAPTURE',
       purchase_units:[{
         reference_id:c.id,
-        description:`TURNAVIA - ${c.name} - activación + primer mes`,
+        description:`TUCITA - ${c.name} - activación + primer mes`,
         amount:{currency_code:'USD',value:plan.initial.toFixed(2)}
       }],
       payment_source:{
