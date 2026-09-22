@@ -18,12 +18,11 @@
     "tailwind-merge": "^2.5.5",
     "@neondatabase/auth": "0.4.2-beta",
     "pdf-lib": "^1.17.1",
-    "qrcode": "^1.5.4"
-  },
-  "devDependencies": {
+    "qrcode": "^1.5.4",
+    "typescript": "^5.7.2",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.3",
-    "@types/react-dom": "^19.0.2",
-    "typescript": "^5.7.2"
-  }
+    "@types/react-dom": "^19.0.2"
+  },
+  "devDependencies": {}
 }
