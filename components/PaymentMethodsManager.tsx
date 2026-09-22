@@ -70,7 +70,7 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza'}:{scope:'MASTE
 
   return <section className="panel" style={{marginTop:18}}>
     <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
-      <div><h2>Métodos de pago</h2><div className="muted" style={{fontSize:13}}>{scope==='MASTER'?'Cómo pagan profesionales y negocios a TURNAVIA.':'Solo los métodos activos se muestran a tus clientes.'}</div></div>
+      <div><h2>Métodos de pago</h2><div className="muted" style={{fontSize:13}}>{scope==='MASTER'?'Cómo pagan profesionales y negocios a TUCITA.':'Solo los métodos activos se muestran a tus clientes.'}</div></div>
       <button className="btn btn-primary" onClick={()=>{if(show)reset();else{setEditingId('');setForm(blank);setShow(true)}}}>{show?<><X size={16}/> Cerrar</>:<><Plus size={16}/> Agregar método</>}</button>
     </div>
 
