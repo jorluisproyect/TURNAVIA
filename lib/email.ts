@@ -4,14 +4,14 @@ type MailResult={ok:boolean;skipped?:boolean;status?:number;error?:string};
 export async function sendTransactionalEmail({to,subject,html}:MailArgs):Promise<MailResult>{
   const key=process.env.RESEND_API_KEY;
   const configuredFrom=process.env.EMAIL_FROM;
-  const from=configuredFrom || (process.env.NODE_ENV==='production'?'':'TURNAVIA <onboarding@resend.dev>');
+  const from=configuredFrom || (process.env.NODE_ENV==='production'?'':'TUCITA <onboarding@resend.dev>');
 
   if(!key){
-    console.warn('TURNAVIA email skipped: RESEND_API_KEY is not configured', {to,subject});
+    console.warn('TUCITA email skipped: RESEND_API_KEY is not configured', {to,subject});
     return {ok:false,skipped:true,error:'RESEND_API_KEY no configurada'};
   }
   if(!from){
-    console.warn('TURNAVIA email skipped: EMAIL_FROM is not configured', {to,subject});
+    console.warn('TUCITA email skipped: EMAIL_FROM is not configured', {to,subject});
     return {ok:false,skipped:true,error:'EMAIL_FROM no configurado'};
   }
 
@@ -24,7 +24,7 @@ export async function sendTransactionalEmail({to,subject,html}:MailArgs):Promise
     });
     if(!r.ok){
       const raw=await r.text();
-      console.error('TURNAVIA email error', raw);
+      console.error('TUCITA email error', raw);
       let message=raw;
       try{
         const parsed=JSON.parse(raw);
@@ -38,11 +38,11 @@ export async function sendTransactionalEmail({to,subject,html}:MailArgs):Promise
     return {ok:true,status:r.status};
   }catch(error){
     const message=error instanceof Error?error.message:'Error de transporte';
-    console.error('TURNAVIA email transport error', error);
+    console.error('TUCITA email transport error', error);
     return {ok:false,error:message};
   }
 }
 
 export function turnaviaEmail(title:string,body:string){
-  return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5fbf9;padding:24px;color:#173b37"><div style="max-width:620px;margin:auto;background:white;border:1px solid #d8e8e4;border-radius:18px;padding:28px"><div style="font-weight:800;color:#0f766e;font-size:20px">TURNAVIA</div><h1 style="font-size:24px">${title}</h1><div style="line-height:1.6">${body}</div><p style="color:#607873;font-size:12px;margin-top:24px">TURNAVIA · Tu servicio, a tu hora.</p></div></body></html>`;
+  return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5fbf9;padding:24px;color:#173b37"><div style="max-width:620px;margin:auto;background:white;border:1px solid #d8e8e4;border-radius:18px;padding:28px"><div style="font-weight:800;color:#0f766e;font-size:20px">TUCITA</div><h1 style="font-size:24px">${title}</h1><div style="line-height:1.6">${body}</div><p style="color:#607873;font-size:12px;margin-top:24px">TUCITA · Tu servicio, a tu hora.</p></div></body></html>`;
 }
