@@ -36,9 +36,9 @@ function ResetContent(){
 
   return <main className="demo-chooser"><div className="container booking-wrap">
     <div className="row space"><Brand/><Link href="/ingresar" className="btn btn-secondary">Ingresar</Link></div>
-    <div className="demo-head"><span className="eyebrow">Seguridad TURNAVIA</span><h1>Crea una contraseña nueva</h1><p className="muted">El enlace es de un solo uso y debe estar vigente.</p></div>
+    <div className="demo-head"><span className="eyebrow">Seguridad TUCITA</span><h1>Crea una contraseña nueva</h1><p className="muted">El enlace es de un solo uso y debe estar vigente.</p></div>
     <section className="profile-card">
-      {done?<div style={{textAlign:'center',padding:'20px 4px'}}><CheckCircle2 size={42}/><h2>Contraseña actualizada</h2><p className="muted">Ya puedes ingresar con tu contraseña nueva.</p><Link href="/ingresar" className="btn btn-primary">Ingresar a TURNAVIA</Link></div>:
+      {done?<div style={{textAlign:'center',padding:'20px 4px'}}><CheckCircle2 size={42}/><h2>Contraseña actualizada</h2><p className="muted">Ya puedes ingresar con tu contraseña nueva.</p><Link href="/ingresar" className="btn btn-primary">Ingresar a TUCITA</Link></div>:
       <form className="form" onSubmit={submit}>
         {(invalid||!token)&&<div className="notice danger">Este enlace no es válido o expiró. Solicita uno nuevo.</div>}
         <div className="field"><label>Nueva contraseña</label><div style={{position:'relative'}}><input type={showPassword?'text':'password'} required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div><div className="muted" style={{fontSize:12,marginTop:6}}>{PASSWORD_HELP}</div></div>
