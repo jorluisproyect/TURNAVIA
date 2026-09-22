@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 15
     env:
       NEON_AUTH_COOKIE_SECRET: ci-validation-secret-32-characters-minimum
-      APP_URL: https://turnavia.vercel.app
+      APP_URL: https://tucita.com.ve
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
