@@ -1,6 +1,6 @@
-# TURNAVIA — Actualización Multirrubro
+# TUCITA — Actualización Multirrubro
 
-TURNAVIA mantiene un solo proyecto y ahora funciona como plataforma de citas, turnos y reservas para múltiples rubros.
+TUCITA mantiene un solo proyecto y ahora funciona como plataforma de citas, turnos y reservas para múltiples rubros.
 
 ## Rubros
 Salud, Belleza, Bienestar, Servicios profesionales, Educación, Automotriz, Hogar y técnicos, Mascotas, Deporte, Espacios y alquiler, Eventos, Servicios 18+ (solo adultos y actividades permitidas) y Otro.
