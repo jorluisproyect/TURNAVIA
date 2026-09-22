@@ -16,7 +16,9 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^2.5.5",
-    "@neondatabase/auth": "0.4.2-beta"
+    "@neondatabase/auth": "0.4.2-beta",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
