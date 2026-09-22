@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { CalendarCheck2, CalendarClock, CarFront, CheckCircle2, MapPin, XCircle } from 'lucide-react';
+import { CalendarCheck2, CalendarClock, CarFront, CheckCircle2, MapPin, XCircle, FileText } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 
 const label:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Ya llegaste',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asististe'};
@@ -75,11 +75,11 @@ export default function Paciente(){
         {!ap.rescheduleUsed&&['PAYMENT_REVIEW','CONFIRMED'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>openReschedule(ap)}><CalendarClock size={17}/> Reprogramar</button>}
         {ap.rescheduleUsed&&<span className="pill">Reprogramación usada</span>}
         {!['COMPLETED','CANCELLED','IN_CONSULTATION'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>action(ap.id,'CANCELLED')}><XCircle size={17}/> Cancelar</button>}
-        <Link className="btn btn-secondary" href={'/reservar/'+ap.providerSlug}>Reservar otra</Link>
+        {ap.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(ap.status)&&<a className="btn btn-secondary" href={'/api/appointments/'+ap.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={16}/> Descargar recibo</a>}<Link className="btn btn-secondary" href={'/reservar/'+ap.providerSlug}>Reservar otra</Link>
       </div>
    </section>)}</div>}
 
-   {history.length>0&&<section className="panel" style={{marginTop:18}}><h2>Historial</h2><div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Profesional / negocio</th><th>Servicio</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{history.map((a:any)=><tr key={a.id}><td><strong>{a.providerName}</strong><div className="muted" style={{fontSize:12}}>{a.activity}</div></td><td>{a.serviceName}</td><td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'})}</td><td><StatusPill tone={a.status==='COMPLETED'?'ok':a.status==='PAYMENT_REJECTED'?'bad':''}>{label[a.status]||a.status}</StatusPill></td></tr>)}</tbody></table></div></section>}
+   {history.length>0&&<section className="panel" style={{marginTop:18}}><h2>Historial</h2><div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Profesional / negocio</th><th>Servicio</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{history.map((a:any)=><tr key={a.id}><td><strong>{a.providerName}</strong><div className="muted" style={{fontSize:12}}>{a.activity}</div></td><td>{a.serviceName}</td><td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'})}<div className="muted" style={{fontSize:12}}>{a.location}</div></td><td><StatusPill tone={a.status==='COMPLETED'?'ok':a.status==='PAYMENT_REJECTED'?'bad':''}>{label[a.status]||a.status}</StatusPill>{a.receiptNumber&&a.status==='COMPLETED'&&<div style={{marginTop:6}}><a className="btn btn-secondary" href={'/api/appointments/'+a.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={14}/> Recibo</a></div>}</td></tr>)}</tbody></table></div></section>}
    {reschedule&&<div className="modal-backdrop"><div className="modal">
      <h2>Reprogramar reserva</h2>
      <p className="muted">{reschedule.providerName} · {reschedule.serviceName}. TUCITA permite una sola reprogramación por reserva.</p>
