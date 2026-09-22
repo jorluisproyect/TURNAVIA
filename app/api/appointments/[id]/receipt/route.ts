@@ -39,7 +39,7 @@ export async function GET(_req:Request,ctx:{params:Promise<{id:string}>}){
   if(!(await canAccess(id)))return NextResponse.json({error:'No autorizado'},{status:403});
   try{
     const {buffer,data}=await buildAppointmentReceiptPdf(id);
-    return new NextResponse(buffer,{headers:{
+    return new NextResponse(new Uint8Array(buffer),{headers:{
       'Content-Type':'application/pdf',
       'Content-Disposition':`inline; filename="${String(data.receipt_number||'recibo-tucita')}.pdf"`,
       'Cache-Control':'private, no-store'
