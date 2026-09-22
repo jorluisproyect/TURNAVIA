@@ -27,7 +27,7 @@ export default function Medico(){
    setProfile({name:j.provider.name,phone:j.provider.phone,category:j.provider.category,activity:j.provider.activity,type:j.provider.type,locationName:j.provider.location?.name||'',address:j.provider.location?.address||'',city:j.provider.location?.city||'',state:j.provider.location?.state||'',country:j.provider.location?.country||'Venezuela'});
    setSettings({price:j.provider.price,currency:j.provider.currency,paymentInstructions:j.provider.paymentInstructions,defaultMinutes:j.provider.defaultMinutes,acceptsOnlineBooking:j.provider.acceptsOnlineBooking});
    setDayStatus({status:j.provider.dayStatus,delayMinutes:j.provider.delayMinutes,note:''});
- }).catch(()=>setError('No se pudo conectar con TURNAVIA.'));
+ }).catch(()=>setError('No se pudo conectar con TUCITA.'));
 
  useEffect(()=>{load();setOrigin(window.location.origin)},[]);
  const upcoming=useMemo(()=>data?.appointments?.filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-86400000)||[],[data]);
@@ -50,7 +50,7 @@ export default function Medico(){
    const path=data?.provider?.publicPath||(data?.provider?.slug?'/reservar/'+data.provider.slug:'');
    if(!path)return;
    const url=location.origin+path;
-   if(navigator.share)await navigator.share({title:'Reserva en TURNAVIA',text:'Reserva tu cita o servicio conmigo en TURNAVIA',url});else copy();
+   if(navigator.share)await navigator.share({title:'Reserva en TUCITA',text:'Reserva tu cita o servicio conmigo en TUCITA',url});else copy();
  }
  function openAvailability(){
    const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/Caracas'});
@@ -75,7 +75,7 @@ export default function Medico(){
  if(!data)return <div className="dashboard"><Sidebar role="medico"/><main className="main">Cargando tu cuenta…</main></div>;
  const p=data.provider;
  const publicPath=p.publicPath||('/reservar/'+p.slug);
- const publicUrl=(origin||'https://turnavia.vercel.app')+publicPath;
+ const publicUrl=(origin||'https://tucita.com.ve')+publicPath;
  const activity=String(p.activity||'').toLowerCase();
  const serviceHint=activity.includes('barber')?'Ej.: Corte clásico, Fade, Corte + barba, Barba completa':activity.includes('manicur')||activity.includes('uña')?'Ej.: Manicura, Semipermanente, Acrílicas, Jelly, Nail art, Retiro, Mantenimiento':'Crea cada servicio por separado con su duración y precio.';
 
@@ -114,10 +114,10 @@ export default function Medico(){
     <div className="grid-3" style={{marginTop:14}}>{data.availability.map((a:any)=><div className="card" key={a.id}>
       <CalendarPlus size={18}/><h3>{new Date(a.startsAt).toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long',timeZone:'America/Caracas'})}</h3>
       <p><strong>{new Date(a.startsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'})}</strong> a <strong>{new Date(a.endsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'})}</strong></p>
-      <div className="muted" style={{fontSize:12}}>Inicios cada {a.slotMinutes} min. TURNAVIA adapta el espacio a la duración real del servicio.</div>
+      <div className="muted" style={{fontSize:12}}>Inicios cada {a.slotMinutes} min. TUCITA adapta el espacio a la duración real del servicio.</div>
       <button className="btn btn-secondary" style={{marginTop:12}} onClick={()=>patch({action:'delete_availability',id:a.id})}><Trash2 size={15}/> Eliminar horario</button>
     </div>)}</div>}
-    <div className="notice" style={{marginTop:14}}><strong>Ejemplo:</strong> si publicas 9:00–13:00 y un corte dura 30 minutos, TURNAVIA ofrece horas que permitan completar esos 30 minutos. Si “Corte + barba” dura 45 minutos, recalcula automáticamente las horas disponibles.</div>
+    <div className="notice" style={{marginTop:14}}><strong>Ejemplo:</strong> si publicas 9:00–13:00 y un corte dura 30 minutos, TUCITA ofrece horas que permitan completar esos 30 minutos. Si “Corte + barba” dura 45 minutos, recalcula automáticamente las horas disponibles.</div>
   </section>
 
   <section className="panel" id="servicios" style={{marginTop:18}}>
