@@ -131,14 +131,14 @@ export default function Demo(){
 
  useEffect(()=>{
   try{
-   const b=localStorage.getItem('turnavia-demo-v5-businesses');
-   const a=localStorage.getItem('turnavia-demo-v5-appointments');
+   const b=localStorage.getItem('tucita-demo-v5-businesses');
+   const a=localStorage.getItem('tucita-demo-v5-appointments');
    if(b)setBusinesses(JSON.parse(b));
    if(a)setAppointments(JSON.parse(a));
   }catch{}
  },[]);
- useEffect(()=>{try{localStorage.setItem('turnavia-demo-v5-businesses',JSON.stringify(businesses))}catch{}},[businesses]);
- useEffect(()=>{try{localStorage.setItem('turnavia-demo-v5-appointments',JSON.stringify(appointments))}catch{}},[appointments]);
+ useEffect(()=>{try{localStorage.setItem('tucita-demo-v5-businesses',JSON.stringify(businesses))}catch{}},[businesses]);
+ useEffect(()=>{try{localStorage.setItem('tucita-demo-v5-appointments',JSON.stringify(appointments))}catch{}},[appointments]);
 
  const biz=useMemo(()=>businesses.find(b=>b.id===selectedBusiness)||businesses[0],[businesses,selectedBusiness]);
  const service=useMemo(()=>biz?.services.find(s=>s.name===selectedService)||biz?.services[0],[biz,selectedService]);
@@ -173,7 +173,7 @@ export default function Demo(){
 
  function reset(){
   setBusinesses(seedBusinesses);setAppointments(seedAppointments);setSelectedBusiness('med-1');setSelectedService('');setDate(demoDate());setTime('');setCategoryFilter('Todos');setTourBusinessId('bar-1');setTourStep(-1);setMsg('Demo reiniciada con todo el catálogo precargado.');
-  try{localStorage.removeItem('turnavia-demo-v5-businesses');localStorage.removeItem('turnavia-demo-v5-appointments')}catch{}
+  try{localStorage.removeItem('tucita-demo-v5-businesses');localStorage.removeItem('tucita-demo-v5-appointments')}catch{}
  }
  function changeAppointment(id:string,status:Appointment['status']){
   setAppointments(v=>v.map(a=>a.id===id?{...a,status}:a));
@@ -211,7 +211,7 @@ export default function Demo(){
 
  const whatsappText=encodeURIComponent(`Hola, vi el demo de TUCITA para ${tourBiz?.activity||'mi negocio'} y quiero información para configurarlo.`);
  const whatsappHref='https://wa.me/584129365637?text='+whatsappText;
- const demoUrl='https://turnavia.vercel.app/demo';
+ const demoUrl='https://tucita.com.ve/demo';
 
 
  function goTour(index:number){
