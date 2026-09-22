@@ -13,7 +13,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
   const status=String(sp.status||'TODOS');
   const rows=sql?await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.accepts_online_booking,u.full_name,u.email,u.phone,u.active,
     COUNT(ps.id) FILTER (WHERE ps.active=true)::int AS services,
-    COALESCE(cc.status,CASE WHEN lower(COALESCE(u.email,'')) LIKE '%@turnavia.app' THEN 'DEMO' ELSE 'SIN_SUSCRIPCION' END) AS commercial_status,
+    COALESCE(cc.status,CASE WHEN lower(COALESCE(u.email,'')) LIKE '%demo%' THEN 'DEMO' ELSE 'SIN_SUSCRIPCION' END) AS commercial_status,
     cc.id AS commercial_client_id
     FROM doctors d
     JOIN users u ON u.id=d.user_id
@@ -32,7 +32,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
   const realCount=filtered.filter((r:any)=>String(r.commercial_status)!=='DEMO').length;
 
   return <div className="dashboard"><Sidebar role="master"/><main className="main">
-    <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Red TURNAVIA</div><h1>Profesionales y negocios</h1></div></div>
+    <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Red TUCITA</div><h1>Profesionales y negocios</h1></div></div>
     <section className="panel">
       <form method="get" className="row" style={{gap:10,flexWrap:'wrap',alignItems:'end'}}>
         <div className="field" style={{flex:1,minWidth:240}}><label>Buscar</label><div style={{position:'relative'}}><Search size={16} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/><input name="q" defaultValue={String(sp.q||'')} placeholder="Nombre, correo o rubro" style={{paddingLeft:38}}/></div></div>
