@@ -11,6 +11,7 @@ async function staffContext(token:string){
   if(!session?.user)return null;
   const email=String((session.user as any).email||'').toLowerCase();
   const rows=await sql`SELECT a.id,a.status,a.starts_at,a.ends_at,a.service_name,a.receipt_number,a.checked_in_at,a.completed_at,
+      a.consultation_price,a.consultation_currency,a.payment_method,a.payment_reference,a.payment_approved_at,
       p.full_name AS client_name,p.phone AS client_phone,
       u.full_name AS provider_name,u.email AS provider_email,u.organization_id AS provider_org,
       COALESCE(a.location_name_snapshot,l.name) AS location_name,
@@ -45,6 +46,7 @@ export async function GET(_req:Request,ctx:{params:Promise<{token:string}>}){
   const r=c.row;
   return NextResponse.json({appointment:{
     id:String(r.id),status:r.status,receiptNumber:r.receipt_number,clientName:r.client_name,clientPhone:r.client_phone,
+    price:Number(r.consultation_price||0),currency:r.consultation_currency||'USD',paymentMethod:r.payment_method||'',paymentReference:r.payment_reference||'',paymentApprovedAt:r.payment_approved_at?new Date(r.payment_approved_at).toISOString():null,
     providerName:r.provider_name,serviceName:r.service_name,
     startsAt:new Date(r.starts_at).toISOString(),endsAt:new Date(r.ends_at).toISOString(),
     checkedInAt:r.checked_in_at?new Date(r.checked_in_at).toISOString():null,
