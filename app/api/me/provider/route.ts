@@ -198,10 +198,33 @@ export async function PATCH(req:Request){
     return NextResponse.json({ok:true});
   }
 
-  if(['approve_payment','reject_payment','appointment_status'].includes(action)){
-    const rows=await sql`SELECT a.id,p.email,p.full_name,a.starts_at,a.service_name FROM appointments a JOIN patients p ON p.id=a.patient_id WHERE a.id=${body.id}::uuid AND a.doctor_id=${provider.doctor_id} LIMIT 1`;
+  if(['approve_payment','reject_payment','appointment_status','resend_receipt_email'].includes(action)){
+    const rows=await sql`SELECT a.id,a.status,p.email,p.full_name,a.starts_at,a.service_name FROM appointments a JOIN patients p ON p.id=a.patient_id WHERE a.id=${body.id}::uuid AND a.doctor_id=${provider.doctor_id} LIMIT 1`;
     if(!rows.length) return NextResponse.json({error:'Reserva no encontrada'},{status:404});
     let message='Cambios guardados';
+    if(action==='resend_receipt_email'){
+      const x=rows[0] as any;
+      if(!x.email) return NextResponse.json({error:'El cliente no tiene correo registrado.'},{status:409});
+      if(!['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(String(x.status))){
+        return NextResponse.json({error:'El recibo solo puede enviarse cuando la reserva está confirmada.'},{status:409});
+      }
+      const when=new Date(x.starts_at).toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});
+      const receipt=await buildAppointmentReceiptPdf(String(x.id));
+      const loc=[receipt.data.locationName,receipt.data.address,receipt.data.room].filter(Boolean).join(' · ');
+      const mail=await sendTransactionalEmail({
+        to:x.email,
+        subject:'Tu comprobante y QR de TUCITA',
+        html:tucitaEmail('Tu comprobante TUCITA',`<p>Hola <strong>${x.full_name}</strong>.</p><p>Tu reserva está confirmada.</p><p><strong>Servicio:</strong> ${x.service_name||provider.provider_activity}<br/><strong>Con:</strong> ${provider.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos nuevamente tu comprobante PDF con el código QR que debes presentar al llegar.</p>`),
+        attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]
+      });
+      try{
+        await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+          VALUES('APPOINTMENT_RECEIPT_EMAIL_RESEND','APPOINTMENT',${String(x.id)},jsonb_build_object('ok',${Boolean(mail.ok)},'to',${x.email},'error',${mail.error||null}))`;
+      }catch{}
+      return mail.ok
+        ? NextResponse.json({ok:true,message:'Comprobante PDF + QR reenviado al correo del cliente.'})
+        : NextResponse.json({error:'No se pudo confirmar el envío del correo. El recibo sigue disponible para descargar.'},{status:502});
+    }
     if(action==='approve_payment'){
       await sql`UPDATE appointments SET status='CONFIRMED',payment_approved_at=now() WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
       const x=rows[0] as any;
