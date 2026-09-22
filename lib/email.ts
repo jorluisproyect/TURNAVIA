@@ -1,7 +1,8 @@
-type MailArgs={to:string;subject:string;html:string};
+type MailAttachment={filename:string;content:string};
+type MailArgs={to:string;subject:string;html:string;attachments?:MailAttachment[]};
 type MailResult={ok:boolean;skipped?:boolean;status?:number;error?:string};
 
-export async function sendTransactionalEmail({to,subject,html}:MailArgs):Promise<MailResult>{
+export async function sendTransactionalEmail({to,subject,html,attachments=[]}:MailArgs):Promise<MailResult>{
   const key=process.env.RESEND_API_KEY;
   const configuredFrom=process.env.EMAIL_FROM;
   const from=configuredFrom || (process.env.NODE_ENV==='production'?'':'TUCITA <onboarding@resend.dev>');
@@ -19,7 +20,7 @@ export async function sendTransactionalEmail({to,subject,html}:MailArgs):Promise
     const r=await fetch('https://api.resend.com/emails',{
       method:'POST',
       headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
-      body:JSON.stringify({from,to:[to],subject,html}),
+      body:JSON.stringify({from,to:[to],subject,html,attachments}),
       signal:AbortSignal.timeout(8000),
     });
     if(!r.ok){
