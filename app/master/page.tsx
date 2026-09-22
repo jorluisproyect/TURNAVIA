@@ -12,7 +12,7 @@ export const dynamic='force-dynamic';
 type ClientStatus='TRIAL'|'PAGO_PENDIENTE'|'REVISION_BINANCE'|'ACTIVO'|'SUSPENDIDO';
 const labels:Record<ClientStatus,string>={TRIAL:'Prueba gratis',PAGO_PENDIENTE:'Pago pendiente',REVISION_BINANCE:'Pago en revisión',ACTIVO:'Activo',SUSPENDIDO:'Suspendido'};
 const tone=(s:ClientStatus)=>s==='ACTIVO'?'ok':s==='SUSPENDIDO'?'bad':'warn';
-const isDemo=(email:string)=>email.toLowerCase().endsWith('@turnavia.app');
+const isDemo=(email:string)=>{const e=email.toLowerCase();return e.startsWith('demo@')||e.includes('.demo@')};
 
 export default async function Master(){
   await refreshAllCommercialStatuses();
@@ -42,16 +42,16 @@ export default async function Master(){
     <Sidebar role="master"/>
     <main className="main">
       <div className="topbar">
-        <div><div className="muted" style={{fontSize:13}}>TURNAVIA · Administración comercial</div><h1>Panel Master</h1></div>
+        <div><div className="muted" style={{fontSize:13}}>TUCITA · Administración comercial</div><h1>Panel Master</h1></div>
         <div className="row"><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Nueva prueba</Link></div>
       </div>
 
-      {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TURNAVIA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
+      {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TUCITA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
 
       <section className="panel" style={{marginBottom:18}}>
         <div className="row space" style={{gap:14,flexWrap:'wrap'}}>
           <div><span className="eyebrow"><BellRing size={15}/> CENTRO DE ALERTAS</span><h2 style={{marginTop:10}}>Estado comercial de hoy</h2></div>
-          <span className={systemOk?'status ok':'status'}>{systemOk?'TURNAVIA operativo':'Revisar configuración'}</span>
+          <span className={systemOk?'status ok':'status'}>{systemOk?'TUCITA operativo':'Revisar configuración'}</span>
         </div>
         <div className="grid-3" style={{marginTop:14}}>
           <Link href="/master/suscripciones?status=REVISION_BINANCE" className="notice" style={{textDecoration:'none'}}><strong>{reviews.length} pago{reviews.length===1?'':'s'} por revisar</strong><br/><span className="muted">Abrir bandeja de cobros</span></Link>
