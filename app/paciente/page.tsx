@@ -16,7 +16,7 @@ export default function Paciente(){
  const [resDate,setResDate]=useState('');
  const [resStart,setResStart]=useState('');
 
- const load=()=>fetch('/api/me/patient').then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{if(!ok){setError(j.error||'No se pudo cargar tu cuenta');return}setData(j);setError('')}).catch(()=>setError('No se pudo conectar con TURNAVIA.'));
+ const load=()=>fetch('/api/me/patient').then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{if(!ok){setError(j.error||'No se pudo cargar tu cuenta');return}setData(j);setError('')}).catch(()=>setError('No se pudo conectar con TUCITA.'));
  useEffect(()=>{load()},[]);
  const active=useMemo(()=>data?.appointments?.filter((a:any)=>!['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
  const history=useMemo(()=>data?.appointments?.filter((a:any)=>['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
@@ -82,7 +82,7 @@ export default function Paciente(){
    {history.length>0&&<section className="panel" style={{marginTop:18}}><h2>Historial</h2><div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Profesional / negocio</th><th>Servicio</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{history.map((a:any)=><tr key={a.id}><td><strong>{a.providerName}</strong><div className="muted" style={{fontSize:12}}>{a.activity}</div></td><td>{a.serviceName}</td><td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'})}</td><td><StatusPill tone={a.status==='COMPLETED'?'ok':a.status==='PAYMENT_REJECTED'?'bad':''}>{label[a.status]||a.status}</StatusPill></td></tr>)}</tbody></table></div></section>}
    {reschedule&&<div className="modal-backdrop"><div className="modal">
      <h2>Reprogramar reserva</h2>
-     <p className="muted">{reschedule.providerName} · {reschedule.serviceName}. TURNAVIA permite una sola reprogramación por reserva.</p>
+     <p className="muted">{reschedule.providerName} · {reschedule.serviceName}. TUCITA permite una sola reprogramación por reserva.</p>
      {!resData?<div className="notice">Cargando horarios disponibles…</div>:<>
        <div className="field"><label>Selecciona el día</label><div className="date-tabs">{resData.availability.map((a:any)=><button type="button" key={a.id} className={'date-tab '+(resDate===a.date?'active':'')} onClick={()=>{setResDate(a.date);setResStart(a.slots.find((s:any)=>s.available)?.startsAt||'')}}><strong>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11}}>{new Date(a.date+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div></div>
        <div className="field"><label>Selecciona la hora</label><div className="booking-slots">{resData.availability.find((a:any)=>a.date===resDate)?.slots.map((s:any)=><button type="button" disabled={!s.available} className={resStart===s.startsAt?'selected':''} onClick={()=>setResStart(s.startsAt)} key={s.startsAt}>{s.time}</button>)}</div></div>
