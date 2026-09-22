@@ -9,18 +9,18 @@ type Method = {
   currency:string; requiresProof:boolean; active:boolean; isPrimary:boolean;
 };
 
-declare global { var __turnaviaPaymentMethods: Method[] | undefined }
+declare global { var __tucitaPaymentMethods: Method[] | undefined }
 
 function fallback(){
-  if(!globalThis.__turnaviaPaymentMethods){
-    globalThis.__turnaviaPaymentMethods=[
-      {id:'m1',scope:'MASTER',name:'PayPal',type:'PAYPAL',accountLabel:'Cuenta',accountValue:'Configurar PayPal',instructions:'Cobro de activación y mensualidad TURNAVIA.',currency:'USD',requiresProof:false,active:true,isPrimary:true},
+  if(!globalThis.__tucitaPaymentMethods){
+    globalThis.__tucitaPaymentMethods=[
+      {id:'m1',scope:'MASTER',name:'PayPal',type:'PAYPAL',accountLabel:'Cuenta',accountValue:'Configurar PayPal',instructions:'Cobro de activación y mensualidad TUCITA.',currency:'USD',requiresProof:false,active:true,isPrimary:true},
       {id:'m2',scope:'MASTER',name:'Binance',type:'BINANCE',accountLabel:'UID',accountValue:'Configurar UID',instructions:'Validar referencia antes de activar.',currency:'USDT',requiresProof:true,active:true,isPrimary:false},
       {id:'d1',scope:'DOCTOR',doctorId:'sofia-mendoza',name:'Pago móvil',type:'PAGO_MOVIL',accountLabel:'Banco / teléfono',accountValue:'Configurar datos',instructions:'Realiza el pago y adjunta comprobante.',currency:'USD',requiresProof:true,active:true,isPrimary:true},
       {id:'d2',scope:'DOCTOR',doctorId:'sofia-mendoza',name:'Binance',type:'BINANCE',accountLabel:'UID',accountValue:'Configurar UID',instructions:'Envía el pago y registra el ID de transacción.',currency:'USDT',requiresProof:true,active:true,isPrimary:false},
     ];
   }
-  return globalThis.__turnaviaPaymentMethods;
+  return globalThis.__tucitaPaymentMethods;
 }
 
 async function doctorId(slug:string){
