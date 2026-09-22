@@ -199,17 +199,17 @@ export default function Demo(){
  const tourService=tourBiz?.services[1]||tourBiz?.services[0];
  const tourServiceName=tourService?.name||'Servicio';
  const tourSteps=[
-  {title:'1. TURNAVIA adaptado a tu rubro',text:`Vamos a mostrar TURNAVIA usando el ejemplo “${tourBiz?.name} · ${tourBiz?.activity}”. El mismo sistema cambia servicios, tiempos y agenda según el negocio.`,view:'home' as const,businessId:tourBiz?.id||'bar-1',service:''},
+  {title:'1. TUCITA adaptado a tu rubro',text:`Vamos a mostrar TUCITA usando el ejemplo “${tourBiz?.name} · ${tourBiz?.activity}”. El mismo sistema cambia servicios, tiempos y agenda según el negocio.`,view:'home' as const,businessId:tourBiz?.id||'bar-1',service:''},
   {title:'2. Configuración del negocio',text:`Aquí ${tourBiz?.name} controla disponibilidad, equipo y operación diaria. Cada negocio publica exactamente cuándo puede recibir reservas.`,view:'professional' as const,businessId:tourBiz?.id||'bar-1',service:''},
-  {title:'3. Servicios con tiempo y precio',text:`Ejemplo: “${tourServiceName}” dura ${tourService?.duration||30} minutos y cuesta $${tourService?.price||0}. TURNAVIA usa esos datos para calcular la agenda sin cruces.`,view:'professional' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
+  {title:'3. Servicios con tiempo y precio',text:`Ejemplo: “${tourServiceName}” dura ${tourService?.duration||30} minutos y cuesta $${tourService?.price||0}. TUCITA usa esos datos para calcular la agenda sin cruces.`,view:'professional' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
   {title:'4. Reserva del cliente',text:'El cliente selecciona servicio, fecha y hora. Solo aparecen horarios donde el servicio cabe completo dentro de la disponibilidad publicada.',view:'client' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
   {title:'5. Pago y comprobante',text:'El cliente registra método de pago, referencia y comprobante. La reserva queda preagendada mientras el profesional revisa el pago.',view:'client' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
   {title:'6. Confirmación del profesional',text:'La reserva llega al panel profesional. Desde aquí se puede aprobar o rechazar el pago y después completar la atención.',view:'professional' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
   {title:'7. Control comercial Master',text:'El Master controla pruebas gratis, clientes, activaciones, suspensiones, planes y el crecimiento de toda la plataforma.',view:'master' as const,businessId:tourBiz?.id||'bar-1',service:''},
-  {title:'8. Resultado y planes',text:'Cerramos mostrando el cambio para el negocio, los planes de TURNAVIA y las opciones para iniciar una prueba o contactar por WhatsApp.',view:'offer' as const,businessId:tourBiz?.id||'bar-1',service:''}
+  {title:'8. Resultado y planes',text:'Cerramos mostrando el cambio para el negocio, los planes de TUCITA y las opciones para iniciar una prueba o contactar por WhatsApp.',view:'offer' as const,businessId:tourBiz?.id||'bar-1',service:''}
  ];
 
- const whatsappText=encodeURIComponent(`Hola, vi el demo de TURNAVIA para ${tourBiz?.activity||'mi negocio'} y quiero información para configurarlo.`);
+ const whatsappText=encodeURIComponent(`Hola, vi el demo de TUCITA para ${tourBiz?.activity||'mi negocio'} y quiero información para configurarlo.`);
  const whatsappHref='https://wa.me/584129365637?text='+whatsappText;
  const demoUrl='https://turnavia.vercel.app/demo';
 
@@ -245,12 +245,12 @@ export default function Demo(){
     <div className="demo-head">
       <span className="eyebrow"><Sparkles size={15}/> DEMO COMERCIAL MULTIRRUBRO</span>
       <h1>Una agenda para prácticamente cualquier negocio por reserva.</h1>
-      <p className="muted">TURNAVIA adapta servicios, duración, precio, disponibilidad, pagos y operación según el rubro. Este demo está precargado para mostrar la amplitud del producto sin tocar datos reales.</p>
+      <p className="muted">TUCITA adapta servicios, duración, precio, disponibilidad, pagos y operación según el rubro. Este demo está precargado para mostrar la amplitud del producto sin tocar datos reales.</p>
       <div className="hero-actions" style={{marginTop:18}}>
         <button className="btn btn-primary" onClick={()=>goTour(0)}><PlayCircle size={17}/> Ver demo explicado paso a paso</button>
         <button className="btn btn-secondary" onClick={()=>{setTourStep(-1);setCategoryFilter('Todos')}}><Eye size={17}/> Explorar libremente</button>
       </div>
-      <div className="notice" style={{marginTop:14,textAlign:'left'}}><Lightbulb size={17} style={{verticalAlign:'middle',marginRight:7}}/><strong>Para vender TURNAVIA:</strong> usa “Recorrido guiado”. Va explicando qué problema resuelve cada pantalla mientras tú solo vas pulsando “Siguiente”.</div>
+      <div className="notice" style={{marginTop:14,textAlign:'left'}}><Lightbulb size={17} style={{verticalAlign:'middle',marginRight:7}}/><strong>Para vender TUCITA:</strong> usa “Recorrido guiado”. Va explicando qué problema resuelve cada pantalla mientras tú solo vas pulsando “Siguiente”.</div>
     </div>
 
     <section className="panel" style={{marginTop:18}}>
@@ -271,7 +271,7 @@ export default function Demo(){
           <strong>{tourBiz?.name}</strong>
           <p>{tourBiz?.activity} · {tourBiz?.category}</p>
           <div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{tourBiz?.services.length||0} servicios</span><span className="pill">{tourBiz?.staff||1} profesional{(tourBiz?.staff||1)===1?'':'es'}</span></div>
-          <button className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:14}} onClick={()=>goTour(0)}><PlayCircle size={17}/> Mostrar TURNAVIA para este rubro</button>
+          <button className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:14}} onClick={()=>goTour(0)}><PlayCircle size={17}/> Mostrar TUCITA para este rubro</button>
         </div>
       </div>
     </section>
@@ -411,12 +411,12 @@ export default function Demo(){
     <div className="demo-head" style={{paddingBottom:10}}>
       <span className="eyebrow"><CheckCircle2 size={15}/> RESULTADO PARA EL NEGOCIO</span>
       <h1>Menos mensajes desordenados. Más reservas organizadas.</h1>
-      <p className="muted">Así se traduce TURNAVIA para {tourBiz?.activity||'este negocio'} después de ver el recorrido completo.</p>
+      <p className="muted">Así se traduce TUCITA para {tourBiz?.activity||'este negocio'} después de ver el recorrido completo.</p>
     </div>
 
     <div className="panel-grid" style={{marginTop:18}}>
       <section className="panel">
-        <h2>Antes de TURNAVIA</h2>
+        <h2>Antes de TUCITA</h2>
         <div style={{display:'grid',gap:10,marginTop:14}}>
           <div className="notice">❌ Clientes preguntando por WhatsApp qué horarios quedan.</div>
           <div className="notice">❌ Precios, servicios y duración explicados una y otra vez.</div>
@@ -426,7 +426,7 @@ export default function Demo(){
         </div>
       </section>
       <section className="panel">
-        <h2>Con TURNAVIA</h2>
+        <h2>Con TUCITA</h2>
         <div style={{display:'grid',gap:10,marginTop:14}}>
           <div className="notice"><CheckCircle2 size={16}/> Disponibilidad publicada y reservas 24/7.</div>
           <div className="notice"><CheckCircle2 size={16}/> Cada servicio muestra precio y duración.</div>
@@ -439,7 +439,7 @@ export default function Demo(){
 
     <section className="panel" style={{marginTop:18}}>
       <div className="row space" style={{gap:14,flexWrap:'wrap'}}>
-        <div><span className="eyebrow">PLANES TURNAVIA</span><h2 style={{marginTop:8}}>Empieza con 5 días de prueba</h2><p className="muted">Sin tarjeta para probar el flujo antes de activar el servicio.</p></div>
+        <div><span className="eyebrow">PLANES TUCITA</span><h2 style={{marginTop:8}}>Empieza con 5 días de prueba</h2><p className="muted">Sin tarjeta para probar el flujo antes de activar el servicio.</p></div>
         <span className="pill">5 días gratis</span>
       </div>
       <div className="panel-grid" style={{marginTop:16}}>
@@ -464,18 +464,18 @@ export default function Demo(){
       <div className="panel-grid" style={{alignItems:'center'}}>
         <div>
           <span className="eyebrow">SIGUIENTE PASO</span>
-          <h2 style={{marginTop:8}}>¿Quieres TURNAVIA para tu negocio?</h2>
+          <h2 style={{marginTop:8}}>¿Quieres TUCITA para tu negocio?</h2>
           <p className="muted">Puedes iniciar la prueba ahora o escribir directamente por WhatsApp con un mensaje ya preparado para {tourBiz?.activity||'tu negocio'}.</p>
           <div className="button-row" style={{marginTop:16}}>
             <Link href="/registro?role=DOCTOR" className="btn btn-primary"><CheckCircle2 size={17}/> Iniciar prueba gratis</Link>
             <a href={whatsappHref} target="_blank" rel="noreferrer" className="btn btn-secondary">Hablar por WhatsApp</a>
           </div>
-          <div className="notice" style={{marginTop:14}}><strong>Mensaje preparado:</strong><br/>“Hola, vi el demo de TURNAVIA para {tourBiz?.activity||'mi negocio'} y quiero información para configurarlo.”</div>
+          <div className="notice" style={{marginTop:14}}><strong>Mensaje preparado:</strong><br/>“Hola, vi el demo de TUCITA para {tourBiz?.activity||'mi negocio'} y quiero información para configurarlo.”</div>
         </div>
         <div className="card" style={{textAlign:'center'}}>
           <h3>Pruébalo en tu teléfono</h3>
           <p className="muted">Escanea el QR para abrir este mismo demo.</p>
-          <img src={'https://quickchart.io/qr?size=220&text='+encodeURIComponent(demoUrl)} alt="QR del demo TURNAVIA" width="220" height="220" style={{maxWidth:'100%',borderRadius:12,background:'#fff',padding:8}}/>
+          <img src={'https://quickchart.io/qr?size=220&text='+encodeURIComponent(demoUrl)} alt="QR del demo TUCITA" width="220" height="220" style={{maxWidth:'100%',borderRadius:12,background:'#fff',padding:8}}/>
           <div style={{marginTop:10}}><a href={demoUrl} target="_blank" rel="noreferrer" className="btn btn-secondary">Abrir demo</a></div>
         </div>
       </div>
