@@ -14,9 +14,10 @@ function State({ok,label}:{ok:boolean;label:string}){
 export default async function ConfiguracionMaster(){
  const authReady=neonAuthConfigured;
  const appUrlReady=Boolean(process.env.APP_URL);
+ const smtpReady=Boolean(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS);
  const resendReady=Boolean(process.env.RESEND_API_KEY);
  const emailFromReady=Boolean(process.env.EMAIL_FROM);
- const emailReady=resendReady&&emailFromReady;
+ const emailReady=emailFromReady&&(smtpReady||resendReady);
  const cookieReady=Boolean(process.env.NEON_AUTH_COOKIE_SECRET);
  let databaseReachable=false;
  if(sql){try{const rows=await sql`SELECT 1 AS ok`;databaseReachable=Number((rows[0] as any)?.ok||0)===1}catch{databaseReachable=false}}
@@ -37,8 +38,8 @@ export default async function ConfiguracionMaster(){
     {!hasDatabase&&<div className="notice danger" style={{marginTop:14}}><strong>Falta conexión de base de datos en producción.</strong><br/>TUCITA busca <code>DATABASE_URL</code>, <code>POSTGRES_URL</code>, <code>NEON_DATABASE_URL</code> o sus variantes no-pooling. Hasta que una exista en Vercel, clientes, reservas, pagos y profesionales no podrán operar.</div>}
     {hasDatabase&&!databaseReachable&&<div className="notice danger" style={{marginTop:14}}><strong>La variable de base de datos existe pero Neon no responde.</strong><br/>Variable detectada: <code>{databaseEnvName||'desconocida'}</code>.</div>}
     {hasDatabase&&databaseReachable&&<div className="notice" style={{marginTop:14}}><strong>Neon conectado correctamente.</strong><br/>Variable detectada: <code>{databaseEnvName}</code>. El Master puede operar con datos reales.</div>}
-    {!emailReady&&<div className="notice" style={{marginTop:14}}><strong>Correos de TUCITA pendientes.</strong><br/>El acceso y recuperación de contraseña usan Neon Auth, pero para bienvenida y activación faltan datos del remitente en Vercel.<br/><span className="muted">RESEND_API_KEY: {resendReady?'OK':'FALTA'} · EMAIL_FROM: {emailFromReady?'OK':'FALTA'}</span></div>}
-    {emailReady&&<div className="notice" style={{marginTop:14}}><div><strong>Prueba real de correo.</strong><br/><span className="muted">Envía un correo al Master para confirmar que Resend acepta el remitente y entrega mensajes.</span><div style={{marginTop:10}}><EmailTestButton/></div></div></div>}
+    {!emailReady&&<div className="notice" style={{marginTop:14}}><strong>Correos de TUCITA pendientes.</strong><br/>Falta completar el remitente y al menos un transporte de correo.<br/><span className="muted">SMTP: {smtpReady?'OK':'FALTA'} · Resend respaldo: {resendReady?'OK':'NO CONFIGURADO'} · EMAIL_FROM: {emailFromReady?'OK':'FALTA'}</span></div>}
+    {emailReady&&<div className="notice" style={{marginTop:14}}><div><strong>Prueba real de correo.</strong><br/><span className="muted">TUCITA intentará primero el SMTP de tu dominio. Si aún conservas Resend, solo se usará como respaldo si SMTP falla.</span><div style={{marginTop:10}}><EmailTestButton/></div></div></div>}
   </section>
 
   <section className="panel" style={{marginTop:18}}>
