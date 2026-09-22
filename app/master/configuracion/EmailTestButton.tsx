@@ -13,7 +13,7 @@ export default function EmailTestButton(){
       const r=await fetch('/api/email/test',{method:'POST'});
       const j=await r.json();
       if(!r.ok){setMsg(j.error||'No se pudo enviar el correo de prueba.');return}
-      setOk(true);setMsg('Correo de prueba enviado al correo Master. Revisa también Spam/Promociones.');
+      setOk(true);setMsg(`Correo de prueba enviado al correo Master por ${j.transport==='smtp'?'SMTP de tucita.com.ve':j.transport==='resend'?'Resend (respaldo)':'el servicio configurado'}. Revisa también Spam/Promociones.`);
     }catch{
       setMsg('No se pudo conectar con el servicio de correo.');
     }finally{setBusy(false)}
