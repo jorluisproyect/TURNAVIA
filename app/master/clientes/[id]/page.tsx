@@ -56,7 +56,7 @@ export default async function ClienteMasterDetalle({params}:{params:Promise<{id:
   const events=await sql`SELECT action,metadata,created_at FROM audit_events WHERE entity_type='COMMERCIAL_CLIENT' AND entity_id=${id} ORDER BY created_at DESC LIMIT 50`;
 
   const publicPath=provider?.organization_slug?'/negocio/'+provider.organization_slug:provider?.public_slug?'/reservar/'+provider.public_slug:'';
-  const demo=String(client.email||'').toLowerCase().endsWith('@turnavia.app');
+  const demo=String(client.email||'').toLowerCase().includes('demo');
   const monthly=String(client.type||'').startsWith('Negocio')?49:15;
   const initial=String(client.type||'').startsWith('Negocio')?149:40;
 
@@ -98,7 +98,7 @@ export default async function ClienteMasterDetalle({params}:{params:Promise<{id:
       </section>
 
       <section className="panel">
-        <h2>Último pago TURNAVIA</h2>
+        <h2>Último pago TUCITA</h2>
         {!client.payment_reference&&!client.payment_submitted_at?<div className="notice">Todavía no hay un pago registrado.</div>:<div style={{display:'grid',gap:10}}>
           <div className="notice"><CreditCard size={16}/><span><strong>Método</strong><br/>{client.payment_method||'—'}</span></div>
           <div className="notice"><span><strong>Referencia</strong><br/>{client.payment_reference||'—'}</span></div>
@@ -110,7 +110,7 @@ export default async function ClienteMasterDetalle({params}:{params:Promise<{id:
     </div>
 
     <section className="panel" style={{marginTop:18}}>
-      <div className="row space" style={{gap:12,flexWrap:'wrap'}}><div><h2>Cuenta y operación</h2><p className="muted" style={{marginTop:-6}}>Información vinculada al usuario que opera TURNAVIA.</p></div>{publicPath&&<code>{publicPath}</code>}</div>
+      <div className="row space" style={{gap:12,flexWrap:'wrap'}}><div><h2>Cuenta y operación</h2><p className="muted" style={{marginTop:-6}}>Información vinculada al usuario que opera TUCITA.</p></div>{publicPath&&<code>{publicPath}</code>}</div>
       {!provider?<div className="notice">La cuenta comercial existe, pero todavía no tiene un perfil profesional vinculado.</div>:<div className="grid-3">
         <div className="card"><strong>{provider.full_name}</strong><p className="muted">{provider.provider_activity||client.subcategory||'Profesional'} · {provider.provider_category||client.category||'—'}</p><div>{provider.email}</div></div>
         <div className="card"><strong>Servicios</strong><div className="n" style={{fontSize:30}}>{serviceRows.length}</div><p className="muted">{(serviceRows as any[]).filter(s=>s.active).length} activos</p></div>
