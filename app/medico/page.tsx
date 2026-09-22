@@ -39,7 +39,7 @@ export default function Medico(){
    const r=await fetch('/api/me/provider',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
    const j=await r.json();
    if(!r.ok){setToast(j.error||'No se pudo guardar');return false}
-   setModal(null);setToast('Cambios guardados');await load();setTimeout(()=>setToast(''),1800);return true;
+   setModal(null);setToast(j.message||'Cambios guardados');await load();setTimeout(()=>setToast(''),2800);return true;
  }
  async function copy(){
    const path=data?.provider?.publicPath||(data?.provider?.slug?'/reservar/'+data.provider.slug:'');
