@@ -49,7 +49,7 @@ export default async function Master(){
 
       {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TUCITA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
 
-      <section className="panel" style={{marginBottom:18}}>
+      <section id="alertas" className="panel" style={{marginBottom:18}}>
         <div className="row space" style={{gap:14,flexWrap:'wrap'}}>
           <div><span className="eyebrow"><BellRing size={15}/> CENTRO DE ALERTAS</span><h2 style={{marginTop:10}}>Estado comercial de hoy</h2></div>
           <span className={systemOk?'status ok':'status'}>{systemOk?'TUCITA operativo':'Revisar configuración'}</span>
