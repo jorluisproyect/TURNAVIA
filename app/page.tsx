@@ -36,7 +36,7 @@ export default function Home(){
     <div className="card"><div className="iconbox"><Smartphone/></div><h3>Estoy en camino</h3><p>El cliente puede avisar que va en camino o que ya llegó cuando el tipo de servicio lo necesite.</p></div>
     <div className="card"><div className="iconbox"><ShieldCheck/></div><h3>Núcleo adaptable</h3><p>El mismo núcleo se adapta por rubro y muestra solo las funciones necesarias para cada actividad.</p></div>
    </div></section>
-   <section className="section" id="clinicas"><div className="band"><div><h2>Una demo que ya se puede enseñar.</h2><p>Entra como Master, profesional/negocio o cliente y recorre el flujo comercial completo del producto.</p></div><Link className="btn btn-primary" href="/demo">Abrir TUCITA <ArrowRight size={17}/></Link></div></section>
+   <section className="section" id="clinicas"><div className="band"><div><h2>Una demo que ya se puede enseñar.</h2><p>Explora cómo un profesional organiza sus servicios y cómo un cliente realiza su reserva con un recorrido guiado.</p></div><Link className="btn btn-primary" href="/demo">Abrir TUCITA <ArrowRight size={17}/></Link></div></section>
   </main>
   <footer className="footer"><div className="container footer-inner"><div><strong>TUCITA</strong> · Tu servicio, a tu hora.</div><div>Demo multirrubro · Reservas inteligentes</div></div></footer>
  </>
