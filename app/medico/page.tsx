@@ -37,6 +37,7 @@ export default function Medico(){
  const [data,setData]=useState<any>(null);
  const [error,setError]=useState('');
  const [toast,setToast]=useState('');
+  const {busy:saving,run:runSave}=useActionLock();
  const [origin,setOrigin]=useState('');
  const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|'location'|null>(null);
  const [profile,setProfile]=useState<any>({});
