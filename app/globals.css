@@ -82,3 +82,13 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
 @keyframes trialArrow{0%,100%{transform:translateY(-3px)}50%{transform:translateY(5px)}}
 @keyframes trialPulse{0%,100%{box-shadow:0 10px 35px rgba(11,111,105,.08)}50%{box-shadow:0 14px 42px rgba(11,111,105,.18)}}
 @media(prefers-reduced-motion:reduce){.trial-cta,.trial-arrow{animation:none}}
+
+
+/* Profile modal: fixed action bar + independently scrollable content */
+.profile-modal{display:flex;flex-direction:column;overflow:hidden;max-height:calc(100dvh - 36px)}
+.profile-modal-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:2px}
+.profile-modal-actions{position:static!important;flex:0 0 auto;margin:14px -24px -24px!important;padding:16px 24px 24px!important;background:white!important;border-top:1px solid var(--line);z-index:4}
+@media(max-width:700px){
+  .profile-modal{max-height:calc(100dvh - 16px)}
+  .profile-modal-actions{margin:12px -18px -18px!important;padding:14px 18px 18px!important}
+}
