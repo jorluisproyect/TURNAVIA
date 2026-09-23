@@ -44,7 +44,7 @@ export default async function Master(){
     <main className="main">
       <div className="topbar">
         <div><div className="muted" style={{fontSize:13}}>TUCITA · Administración comercial</div><h1>Panel Master</h1></div>
-        <div className="row"><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Nueva prueba</Link></div>
+        <div className="row" style={{gap:8,flexWrap:'wrap'}}><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Crear cliente</Link><Link href="/master/suscripciones?status=REVISION_BINANCE" className="btn btn-secondary"><DollarSign size={16}/> Pagos</Link><Link href="/master/clientes" className="btn btn-secondary"><Building2 size={16}/> Clientes</Link></div>
       </div>
 
       {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TUCITA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
