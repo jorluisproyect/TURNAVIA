@@ -43,6 +43,7 @@ export default function Medico(){
  const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',slotMinutes:15,locationId:''});
  const [locationForm,setLocationForm]=useState({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
  const [dayStatus,setDayStatus]=useState({status:'NORMAL',delayMinutes:0,note:''});
+ const [fx,setFx]=useState<any>(null);
 
  const load=()=>fetch('/api/me/provider').then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{
    if(!ok){setError(j.error||'No se pudo abrir tu panel');return}
@@ -53,7 +54,7 @@ export default function Medico(){
    setDayStatus({status:j.provider.dayStatus,delayMinutes:j.provider.delayMinutes,note:''});
  }).catch(()=>setError('No se pudo conectar con TUCITA.'));
 
- useEffect(()=>{load();setOrigin(window.location.origin)},[]);
+ useEffect(()=>{load();setOrigin(window.location.origin);fetch('/api/fx').then(r=>r.json()).then(setFx).catch(()=>{})},[]);
  const upcoming=useMemo(()=>data?.appointments?.filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-86400000)||[],[data]);
  const review=useMemo(()=>upcoming.filter((a:any)=>a.status==='PAYMENT_REVIEW'),[upcoming]);
  const confirmed=useMemo(()=>upcoming.filter((a:any)=>['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION'].includes(a.status)),[upcoming]);
@@ -108,6 +109,20 @@ export default function Medico(){
    const action=locationForm.id?'update_location':'add_location';
    const ok=await patch({action,...locationForm});
    if(ok)setLocationForm({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
+ }
+ function converted(amount:number,from:string,to:string){
+   const rates=fx?.rates||{};
+   const f=Number(rates[from]),t=Number(rates[to]);
+   if(!(f>0)||!(t>0))return null;
+   return Number(amount||0)/f*t;
+ }
+ function money(v:number|null,currency:string){
+   if(v===null||!Number.isFinite(v))return '—';
+   return new Intl.NumberFormat('es-VE',{minimumFractionDigits:currency==='VES'?2:2,maximumFractionDigits:currency==='VES'?2:2}).format(v)+' '+currency;
+ }
+ function fxPreview(amount:number,currency:string){
+   if(!fx?.available||!amount)return null;
+   return <div><div className="fx-strip">{['USD','EUR','USDT','VES'].map(cur=><div className="fx-chip" key={cur}><small>Equiv. {cur}</small><strong>{money(converted(amount,currency,cur),cur)}</strong></div>)}</div><div className="muted" style={{fontSize:10,marginTop:6}}>Conversión automática de referencia. <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Rates by Exchange Rate API</a></div></div>;
  }
  function newService(){
    setService({id:'',name:'',description:'',durationMinutes:30,price:0,currency:'USD'});
@@ -233,7 +248,7 @@ export default function Medico(){
    <div className="notice">{serviceHint}</div>
    <div className="field"><label>Nombre del servicio</label><input value={service.name} onChange={e=>setService({...service,name:e.target.value})} placeholder={activity.includes('barber')?'Ej. Corte + barba':activity.includes('manicur')?'Ej. Acrílicas':'Ej. Consulta / Servicio premium'}/></div>
    <div className="field"><label>Descripción</label><textarea rows={3} value={service.description} onChange={e=>setService({...service,description:e.target.value})}/></div>
-   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Duración real</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>120 min</option><option value={180}>180 min</option></select></div><div className="field" style={{flex:1,minWidth:150}}><label>Precio</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>
+   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Duración real</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>120 min</option><option value={180}>180 min</option></select></div><div className="field" style={{flex:1,minWidth:150}}><label>Precio</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(service.price||0),service.currency||'USD')}
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService}>{service.id?'Guardar cambios':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='location'&&<div className="modal-backdrop"><div className="modal"><h2>{locationForm.id?'Editar ubicación':'Nueva ubicación'}</h2><div className="form">
@@ -253,7 +268,7 @@ export default function Medico(){
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'add_availability',...av})}><Clock3 size={16}/> Publicar horario</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='settings'&&<div className="modal-backdrop"><div className="modal"><h2>Configuración de reservas</h2><div className="form">
-   <div className="row" style={{gap:12,alignItems:'stretch'}}><div className="field" style={{flex:1}}><label>Precio base</label><input type="number" value={settings.price??0} onChange={e=>setSettings({...settings,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1}}><label>Moneda</label><select value={settings.currency||'USD'} onChange={e=>setSettings({...settings,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>
+   <div className="row" style={{gap:12,alignItems:'stretch'}}><div className="field" style={{flex:1}}><label>Precio base</label><input type="number" value={settings.price??0} onChange={e=>setSettings({...settings,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1}}><label>Moneda</label><select value={settings.currency||'USD'} onChange={e=>setSettings({...settings,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(settings.price||0),settings.currency||'USD')}
    <div className="field"><label>Duración predeterminada</label><input type="number" value={settings.defaultMinutes||30} onChange={e=>setSettings({...settings,defaultMinutes:Number(e.target.value)})}/></div>
    <div className="field"><label>Instrucciones de pago</label><textarea rows={4} value={settings.paymentInstructions||''} onChange={e=>setSettings({...settings,paymentInstructions:e.target.value})}/></div>
    <label className="notice row"><input type="checkbox" checked={settings.acceptsOnlineBooking!==false} onChange={e=>setSettings({...settings,acceptsOnlineBooking:e.target.checked})}/><span>Aceptar reservas en línea</span></label>
