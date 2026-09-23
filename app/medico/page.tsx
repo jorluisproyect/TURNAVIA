@@ -2,12 +2,34 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2, ExternalLink, CheckCircle2, MapPin, ScanLine, FileText } from 'lucide-react';
+import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2, ExternalLink, CheckCircle2, MapPin, ScanLine, FileText, ImagePlus, X, Navigation } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
-import { COUNTRY_SUGGESTIONS } from '@/lib/provider-catalog';
+import { COUNTRY_SUGGESTIONS, COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
+import { categoryUsesWorkReferences } from '@/lib/provider-media';
 
 const labels:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Llegó',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asistió'};
+
+function splitPhone(value:string){
+ const v=String(value||'').trim();
+ const found=[...COUNTRY_PHONE_CODES].sort((a,b)=>b.code.length-a.code.length).find(x=>v.startsWith(x.code));
+ return found?{code:found.code,local:v.slice(found.code.length).trim()}:{code:'+58',local:v};
+}
+function compactPhone(code:string,local:string){return (code+' '+String(local||'').replace(/^0+/,'').trim()).trim()}
+async function resizeImage(file:File,width:number,height:number,quality=.72){
+ if(file.size>5_000_000)throw new Error('La imagen supera 5 MB.');
+ const src=URL.createObjectURL(file);
+ try{
+  const img=await new Promise<HTMLImageElement>((resolve,reject)=>{const x=new Image();x.onload=()=>resolve(x);x.onerror=reject;x.src=src});
+  const ratio=Math.max(width/img.width,height/img.height);
+  const sw=width/ratio,sh=height/ratio,sx=(img.width-sw)/2,sy=(img.height-sh)/2;
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  canvas.getContext('2d')?.drawImage(img,sx,sy,sw,sh,0,0,width,height);
+  return canvas.toDataURL('image/webp',quality);
+ }finally{URL.revokeObjectURL(src)}
+}
+function mapQuery(l:any){return [l?.address,l?.city,l?.state,l?.country].filter(Boolean).join(', ')}
+
 
 export default function Medico(){
  const [data,setData]=useState<any>(null);
@@ -25,7 +47,8 @@ export default function Medico(){
  const load=()=>fetch('/api/me/provider').then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{
    if(!ok){setError(j.error||'No se pudo abrir tu panel');return}
    setData(j);setError('');
-   setProfile({name:j.provider.name,phone:j.provider.phone,category:j.provider.category,activity:j.provider.activity,type:j.provider.type,locationName:j.provider.location?.name||'',address:j.provider.location?.address||'',city:j.provider.location?.city||'',state:j.provider.location?.state||'',country:j.provider.location?.country||'Venezuela'});
+   const phoneParts=splitPhone(j.provider.phone||'');
+   setProfile({name:j.provider.name,phoneCode:phoneParts.code,phoneLocal:phoneParts.local,category:j.provider.category,activity:j.provider.activity,type:j.provider.type,profileImage:j.provider.profileImage||'',workImages:j.provider.workImages||[],locationName:j.provider.location?.name||'',address:j.provider.location?.address||'',city:j.provider.location?.city||'',state:j.provider.location?.state||'',country:j.provider.location?.country||'Venezuela'});
    setSettings({price:j.provider.price,currency:j.provider.currency,paymentInstructions:j.provider.paymentInstructions,defaultMinutes:j.provider.defaultMinutes,acceptsOnlineBooking:j.provider.acceptsOnlineBooking});
    setDayStatus({status:j.provider.dayStatus,delayMinutes:j.provider.delayMinutes,note:''});
  }).catch(()=>setError('No se pudo conectar con TUCITA.'));
@@ -40,6 +63,17 @@ export default function Medico(){
    const j=await r.json();
    if(!r.ok){setToast(j.error||'No se pudo guardar');return false}
    setModal(null);setToast(j.message||'Cambios guardados');await load();setTimeout(()=>setToast(''),2800);return true;
+ }
+ async function profileImageChange(file?:File){
+   if(!file)return;
+   try{const dataUrl=await resizeImage(file,256,256,.75);setProfile((x:any)=>({...x,profileImage:dataUrl}));}
+   catch(e:any){setToast(e?.message||'No se pudo procesar la imagen.')}
+ }
+ async function workImageChange(file?:File){
+   if(!file)return;
+   if((profile.workImages||[]).length>=4){setToast('Puedes cargar hasta 4 fotos de referencia.');return}
+   try{const dataUrl=await resizeImage(file,360,240,.7);setProfile((x:any)=>({...x,workImages:[...(x.workImages||[]),dataUrl].slice(0,4)}));}
+   catch(e:any){setToast(e?.message||'No se pudo procesar la imagen.')}
  }
  async function copy(){
    const path=data?.provider?.publicPath||(data?.provider?.slug?'/reservar/'+data.provider.slug:'');
@@ -91,10 +125,11 @@ export default function Medico(){
  const publicPath=p.publicPath||('/reservar/'+p.slug);
  const publicUrl=(origin||'https://tucita.com.ve')+publicPath;
  const activity=String(p.activity||'').toLowerCase();
+ const referencesEnabled=categoryUsesWorkReferences(p.category,p.activity);
  const serviceHint=activity.includes('barber')?'Ej.: Corte clásico, Fade, Corte + barba, Barba completa':activity.includes('manicur')||activity.includes('uña')?'Ej.: Manicura, Semipermanente, Acrílicas, Jelly, Nail art, Retiro, Mantenimiento':'Crea cada servicio por separado con su duración y precio.';
 
  return <div className="dashboard"><Sidebar role="medico"/><main className="main">
-  <div id="perfil" className="topbar"><div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1>{p.subscriptionStatus==='TRIAL'&&p.trialEndsAt&&<div className="muted" style={{fontSize:12}}>Prueba disponible hasta {new Date(p.trialEndsAt).toLocaleDateString('es-VE')}</div>}{p.subscriptionStatus==='ACTIVO'&&p.renewalDueAt&&<div className="muted" style={{fontSize:12}}>Próxima renovación aproximada: {new Date(p.renewalDueAt).toLocaleDateString('es-VE')}</div>}</div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':p.subscriptionStatus==='REVISION_BINANCE'?'Pago en revisión':'Prueba gratis'}</span>{p.clientId&&p.subscriptionStatus!=='ACTIVO'&&<Link className="btn btn-primary" href={'/pago?client='+p.clientId}>Activar / pagar</Link>}{p.clientId&&p.subscriptionStatus==='ACTIVO'&&<Link className="btn btn-secondary" href={'/pago?client='+p.clientId}>Renovación</Link>}<Link className="btn btn-secondary" href="/scan"><ScanLine size={16}/> Leer QR</Link><button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
+  <div id="perfil" className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{p.profileImage?<img src={p.profileImage} alt="" style={{width:54,height:54,borderRadius:18,objectFit:'cover',flex:'0 0 auto'}}/>:<div className="profile-avatar" style={{width:54,height:54}}><UserRound size={24}/></div>}<div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1>{p.subscriptionStatus==='TRIAL'&&p.trialEndsAt&&<div className="muted" style={{fontSize:12}}>Prueba disponible hasta {new Date(p.trialEndsAt).toLocaleDateString('es-VE')}</div>}{p.subscriptionStatus==='ACTIVO'&&p.renewalDueAt&&<div className="muted" style={{fontSize:12}}>Próxima renovación aproximada: {new Date(p.renewalDueAt).toLocaleDateString('es-VE')}</div>}</div></div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':p.subscriptionStatus==='REVISION_BINANCE'?'Pago en revisión':'Prueba gratis'}</span>{p.clientId&&p.subscriptionStatus!=='ACTIVO'&&<Link className="btn btn-primary" href={'/pago?client='+p.clientId}>Activar / pagar</Link>}{p.clientId&&p.subscriptionStatus==='ACTIVO'&&<Link className="btn btn-secondary" href={'/pago?client='+p.clientId}>Renovación</Link>}<Link className="btn btn-secondary" href="/scan"><ScanLine size={16}/> Leer QR</Link><button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
 
   {p.subscriptionStatus==='ACTIVO'&&<section className="panel" style={{marginBottom:18,border:'1px solid #7dd3c7',background:'linear-gradient(135deg,#f0fdfa,#ffffff)'}}>
     <div className="row space" style={{gap:16,flexWrap:'wrap'}}>
@@ -121,7 +156,7 @@ export default function Medico(){
 
   <section className="panel" id="ubicaciones" style={{marginTop:18}}>
    <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>Lugares de atención</h2><div className="muted" style={{fontSize:13}}>Agrega todos los lugares donde trabajas. Luego asigna cada horario a uno de ellos.</div></div><button className="btn btn-primary" onClick={newLocation}><Plus size={16}/> Agregar ubicación</button></div>
-   {!data.locations?.length?<div className="notice" style={{marginTop:14}}>Agrega al menos una ubicación para publicar horarios.</div>:<div className="grid-3" style={{marginTop:14}}>{data.locations.map((l:any)=><div className="card" key={l.id}><MapPin size={18}/><h3>{l.name}</h3><p>{[l.address,l.city,l.state,l.country].filter(Boolean).join(' · ')||'Dirección por completar'}{l.room?<><br/><strong>{l.room}</strong></>:null}</p><div className="row" style={{gap:8,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editLocation(l)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'delete_location',id:l.id})}><Trash2 size={15}/> Eliminar</button></div></div>)}</div>}
+   {!data.locations?.length?<div className="notice" style={{marginTop:14}}>Agrega al menos una ubicación para publicar horarios.</div>:<div className="grid-3" style={{marginTop:14}}>{data.locations.map((l:any)=><div className="card" key={l.id}><MapPin size={18}/><h3>{l.name}</h3><p>{[l.address,l.city,l.state,l.country].filter(Boolean).join(' · ')||'Dirección por completar'}{l.room?<><br/><strong>{l.room}</strong></>:null}</p>{mapQuery(l)&&<a className="btn btn-secondary" style={{marginBottom:10}} href={'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(l))} target="_blank" rel="noreferrer"><Navigation size={15}/> Ver mapa</a>}<div className="row" style={{gap:8,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editLocation(l)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'delete_location',id:l.id})}><Trash2 size={15}/> Eliminar</button></div></div>)}</div>}
   </section>
 
   <section className="panel" id="agenda" style={{marginTop:18}}>
@@ -179,14 +214,16 @@ export default function Medico(){
  </main>
 
  {modal==='profile'&&<div className="modal-backdrop"><div className="modal"><h2>Editar perfil</h2><div className="form">
+   <div className="field"><label>Foto de perfil</label><div className="row" style={{gap:12,alignItems:'center',flexWrap:'wrap'}}>{profile.profileImage?<img src={profile.profileImage} alt="Vista previa" style={{width:82,height:82,borderRadius:22,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:82,height:82}}><UserRound size={30}/></div>}<label className="btn btn-secondary" style={{cursor:'pointer'}}><ImagePlus size={16}/> {profile.profileImage?'Cambiar foto':'Subir foto'}<input type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={e=>profileImageChange(e.target.files?.[0])}/></label>{profile.profileImage&&<button type="button" className="btn btn-secondary" onClick={()=>setProfile({...profile,profileImage:''})}><Trash2 size={15}/> Quitar</button>}</div><small className="muted">TUCITA la recorta automáticamente en formato cuadrado para que nunca se deforme.</small></div>
    <div className="field"><label>Nombre visible</label><input value={profile.name||''} onChange={e=>setProfile({...profile,name:e.target.value})}/></div>
-   <div className="field"><label>Teléfono / WhatsApp</label><input value={profile.phone||''} onChange={e=>setProfile({...profile,phone:e.target.value})}/></div>
+   <div className="field"><label>Teléfono / WhatsApp</label><div className="row" style={{gap:8,alignItems:'stretch'}}><select value={profile.phoneCode||'+58'} onChange={e=>setProfile({...profile,phoneCode:e.target.value})} style={{maxWidth:190}}>{COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.code}>{x.country} {x.code}</option>)}</select><input style={{flex:1}} value={profile.phoneLocal||''} onChange={e=>setProfile({...profile,phoneLocal:e.target.value})} placeholder="Número sin código de país"/></div></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:200}}><label>Rubro</label><input value={profile.category||''} onChange={e=>setProfile({...profile,category:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:200}}><label>Actividad</label><input value={profile.activity||''} onChange={e=>setProfile({...profile,activity:e.target.value})}/></div></div>
    <div className="field"><label>Tipo</label><select value={profile.type||'Profesional independiente'} onChange={e=>setProfile({...profile,type:e.target.value})}><option>Profesional independiente</option><option>Negocio / local</option></select></div>
+   {referencesEnabled&&<div className="field"><label>Referencias de trabajos</label><div className="muted" style={{fontSize:12,marginBottom:8}}>Puedes mostrar hasta 4 mini fotos. TUCITA las ajusta sin deformarlas.</div><div className="row" style={{gap:8,flexWrap:'wrap'}}>{(profile.workImages||[]).map((img:string,i:number)=><div key={i} style={{position:'relative'}}><img src={img} alt={'Trabajo '+(i+1)} style={{width:112,height:76,borderRadius:12,objectFit:'cover'}}/><button type="button" onClick={()=>setProfile({...profile,workImages:(profile.workImages||[]).filter((_:string,j:number)=>j!==i)})} aria-label="Quitar foto" style={{position:'absolute',top:4,right:4,border:0,borderRadius:999,width:24,height:24,cursor:'pointer'}}><X size={14}/></button></div>)}{(profile.workImages||[]).length<4&&<label className="btn btn-secondary" style={{cursor:'pointer',height:76}}><ImagePlus size={16}/> Agregar<input type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={e=>workImageChange(e.target.files?.[0])}/></label>}</div></div>}
    <div className="field"><label>Nombre de ubicación</label><input value={profile.locationName||''} onChange={e=>setProfile({...profile,locationName:e.target.value})}/></div>
    <div className="field"><label>Dirección</label><input value={profile.address||''} onChange={e=>setProfile({...profile,address:e.target.value})}/></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>Ciudad</label><input value={profile.city||''} onChange={e=>setProfile({...profile,city:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>Estado / Provincia</label><input value={profile.state||''} onChange={e=>setProfile({...profile,state:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>País</label><input list="profile-countries" value={profile.country||''} onChange={e=>setProfile({...profile,country:e.target.value})}/><datalist id="profile-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div></div>
- </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile})}>Guardar perfil</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile,phone:compactPhone(profile.phoneCode||'+58',profile.phoneLocal||'')})}>Guardar perfil</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='service'&&<div className="modal-backdrop"><div className="modal"><h2>{service.id?'Editar servicio':'Nuevo servicio'}</h2><div className="form">
    <div className="notice">{serviceHint}</div>
