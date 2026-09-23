@@ -34,5 +34,7 @@ export async function signInUser(_prev:{error?:string}|null, formData:FormData){
           updated_at=now()`;
     }
   }
+  const next=String(formData.get('next')||'');
+  if(next.startsWith('/equipo/aceptar?invite=') && next.length<500 && !/[\\r\\n]/.test(next))redirect(next);
   redirect('/panel');
 }
