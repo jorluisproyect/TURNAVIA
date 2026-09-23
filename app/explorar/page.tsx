@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { sql } from '@/lib/db';
 import { Brand } from '@/components/Brand';
-import { ArrowRight, Search, Sparkles } from 'lucide-react';
+import { ArrowRight, Search, Sparkles, UserRound } from 'lucide-react';
+import { parseProviderMedia } from '@/lib/provider-media';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-catalog';
 
 export const dynamic='force-dynamic';
@@ -10,7 +11,7 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
   const sp=await searchParams;
   const selectedCategory=String(sp.category||'').trim();
 
-  const rows=sql?await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,u.full_name,
+  const rows=sql?await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.bio,u.full_name,
       l.city,l.state,l.country,COUNT(ps.id) FILTER (WHERE ps.active=true)::int AS services
     FROM doctors d JOIN users u ON u.id=d.user_id
     LEFT JOIN organizations o ON o.id=u.organization_id
@@ -65,15 +66,15 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
       </div>
 
       {visible.length===0?<section className="profile-card" style={{marginTop:14}}><div className="empty">{selectedCategory?<>Todavía no hay profesionales públicos disponibles en <strong>{selectedCategory}</strong>. Puedes explorar otro rubro o ver el <Link href="/demo">demo multirrubro</Link>.</>:<>Todavía no hay profesionales públicos disponibles. Puedes ver el <Link href="/demo">demo multirrubro</Link>.</>}</div></section>:
-      <div className="role-grid" style={{marginTop:14}}>{visible.map((r:any)=><Link key={r.public_slug} className="role-card" href={'/reservar/'+r.public_slug}>
-        <div className="iconbox"><Sparkles/></div>
-        <span className="eyebrow">{r.provider_category||'Servicio'}</span>
+      <div className="role-grid" style={{marginTop:14}}>{visible.map((r:any)=>{const media=parseProviderMedia(r.bio);return <Link key={r.public_slug} className="role-card" href={'/reservar/'+r.public_slug}>
+        {media.profileImage?<img src={media.profileImage} alt="" style={{width:76,height:76,borderRadius:22,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:76,height:76}}><UserRound size={28}/></div>}
+        <span className="eyebrow" style={{marginTop:12}}>{r.provider_category||'Servicio'}</span>
         <h3>{r.full_name}</h3>
         <p>{r.provider_activity||'Servicio'} · {r.provider_type||'Profesional independiente'}</p>
         <div className="muted" style={{fontSize:12}}>{[r.city,r.state,r.country].filter(Boolean).join(' · ')||'Ubicación por configurar'}</div>
         <div className="muted" style={{fontSize:12,marginTop:5}}>{r.services} servicio{Number(r.services)===1?'':'s'} activo{Number(r.services)===1?'':'s'}</div>
         <div className="go">Ver agenda <ArrowRight size={16}/></div>
-      </Link>)}</div>}
+      </Link>})}</div>}
     </section>
   </div></main>;
 }
