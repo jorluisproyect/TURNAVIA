@@ -508,3 +508,31 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
 .register-phone-number>input{min-width:0;width:100%;border:0;box-shadow:none!important;border-radius:0}
 @media(max-width:800px){.account-choice-grid{grid-template-columns:1fr}.account-choice-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;padding:16px;gap:14px}.account-choice-card>svg:last-child{align-self:center}.account-chooser{margin-top:24px}.register-phone-row{flex-wrap:wrap}.register-phone-row>select{max-width:none;flex:1 1 100%}.register-phone-number{min-height:46px}}
 @media(prefers-reduced-motion:reduce){.account-choice-card{transition:none}}
+
+
+/* TUCITA action feedback standard
+   Every write action must visibly enter a busy state and block repeated clicks. */
+.btn:disabled,
+button:disabled{
+  cursor:not-allowed;
+  opacity:.66;
+}
+.btn[aria-busy="true"]{
+  pointer-events:none;
+  position:relative;
+}
+.btn[aria-busy="true"]::before{
+  content:"";
+  width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;
+  border-radius:999px;display:inline-block;vertical-align:-2px;margin-right:7px;
+  animation:tucita-spin .72s linear infinite;
+}
+.action-status{
+  display:flex;align-items:flex-start;gap:9px;margin-top:10px;padding:11px 13px;
+  border:1px solid var(--line);border-radius:13px;background:var(--surface-2);
+  font-size:13px;line-height:1.4;
+}
+.action-status.success{border-color:#9fd9c8;background:#eefaf6}
+.action-status.error{border-color:#f0b5b5;background:#fff4f4}
+@keyframes tucita-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.btn[aria-busy="true"]::before{animation:none}}
