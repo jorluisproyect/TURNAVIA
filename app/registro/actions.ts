@@ -54,7 +54,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
         const orgSlug=slugify(name)+'-'+String(authUserId).slice(0,6);
         businessPublicPath='/negocio/'+orgSlug;
         const org=await sql`INSERT INTO organizations(name,slug,type,phone,email,subscription_status,monthly_price,activation_price,trial_ends_at)
-          VALUES(${name},${orgSlug},'BUSINESS',${phone},${email},'TRIAL',49,100,now()+interval '5 days')
+          VALUES(${name},${orgSlug},'BUSINESS',${phone},${email},'TRIAL',49,100,now()+interval '15 days')
           ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name,phone=EXCLUDED.phone,email=EXCLUDED.email
           RETURNING id`;
         organizationId=(org[0] as any)?.id;
@@ -96,12 +96,12 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
       if(existingCommercial.length){
         commercialClientId=String((existingCommercial[0] as any).id);
         await sql`UPDATE commercial_clients SET name=${name},type=${providerType},category=${category},subcategory=${activity},specialty=${activity||category},phone=${phone},auth_user_id=${String(authUserId)},
-          status=CASE WHEN status IN ('SUSPENDIDO','ACTIVO','REVISION_BINANCE') THEN status ELSE 'TRIAL' END,
-          trial_ends_at=CASE WHEN status IN ('SUSPENDIDO','ACTIVO','REVISION_BINANCE') THEN trial_ends_at ELSE GREATEST(COALESCE(trial_ends_at,now()),now()+interval '5 days') END
+          status=CASE WHEN status='TRIAL' AND trial_ends_at<=now() THEN 'PAGO_PENDIENTE' ELSE status END,
+          trial_ends_at=COALESCE(trial_ends_at,now()+interval '15 days')
           WHERE id=${(existingCommercial[0] as any).id}`;
       }else{
         const commercial=await sql`INSERT INTO commercial_clients(name,type,category,subcategory,specialty,phone,email,status,trial_ends_at,auth_user_id)
-          VALUES(${name},${providerType},${category},${activity},${activity||category},${phone},${email},'TRIAL',now()+interval '5 days',${String(authUserId)})
+          VALUES(${name},${providerType},${category},${activity},${activity||category},${phone},${email},'TRIAL',now()+interval '15 days',${String(authUserId)})
           RETURNING id`;
         commercialClientId=String((commercial[0] as any)?.id||'');
       }
