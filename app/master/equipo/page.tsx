@@ -17,6 +17,7 @@ export default function MasterEquipo(){
   const [members,setMembers]=useState<Member[]>([]);
   const [form,setForm]=useState({name:'',email:'',role:'FRONTEND'});
   const [msg,setMsg]=useState('');
+  const [invitationUrl,setInvitationUrl]=useState('');
   const [busy,setBusy]=useState(false);
 
   async function load(){
@@ -34,6 +35,7 @@ export default function MasterEquipo(){
     const j=await r.json();
     setBusy(false);
     if(!r.ok)return setMsg(j.error||'No se pudo agregar.');
+    setInvitationUrl(String(j.invitationUrl||''));
     setForm({name:'',email:'',role:'FRONTEND'});
     setMsg(j.emailSent?'Invitación enviada correctamente.':'Invitación creada. Puedes compartir el enlace cuando el correo esté listo.');
     load();
@@ -71,6 +73,12 @@ export default function MasterEquipo(){
         </div>
         <button className="btn btn-primary" onClick={add} disabled={busy}><UserPlus size={16}/>{busy?' Agregando...':' Agregar e invitar'}</button>
         {msg&&<div className="notice">{msg}</div>}
+        {invitationUrl&&<div className="notice" style={{display:'grid',gap:9}}>
+          <strong>Enlace privado para tu compañero</strong>
+          <input readOnly value={invitationUrl} aria-label="Enlace privado de invitación" style={{width:'100%',minWidth:0,border:'1px solid var(--line)',borderRadius:10,padding:10}}/>
+          <button type="button" className="btn btn-secondary" onClick={async()=>{try{await navigator.clipboard.writeText(invitationUrl);setMsg('Enlace copiado. Compártelo de forma privada con tu compañero.')}catch{setMsg('Copia el enlace desde el campo de arriba.')}}}>Copiar invitación</button>
+          <small className="muted">El enlace dura 7 días y solo sirve con el correo invitado. No lo publiques.</small>
+        </div>}
       </div>
     </section>
 
