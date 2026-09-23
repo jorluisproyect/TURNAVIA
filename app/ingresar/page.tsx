@@ -15,6 +15,6 @@ export default function Ingresar(){
     <div className="field"><div className="row space"><label>Contraseña</label><Link href="/olvidar-contrasena" style={{fontSize:13}}>¿La olvidaste?</Link></div><div style={{position:'relative'}}><input name="password" type={showPassword?'text':'password'} required style={{paddingRight:46}}/><button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
     {state?.error&&<div className="notice danger">{state.error}</div>}
     <button className="btn btn-primary" disabled={pending}>{pending?'Ingresando...':'Ingresar'}</button>
-    <div className="button-row"><Link href="/registro?role=DOCTOR" className="btn btn-secondary">Crear cuenta profesional</Link><Link href="/registro?role=PATIENT" className="btn btn-secondary">Crear cuenta cliente</Link></div>
+    <div className="button-row"><Link href="/registro" className="btn btn-secondary">Crear cuenta TUCITA</Link></div>
   </form></section></div></main>
 }

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { validateProviderMedia } from '@/lib/provider-media';
+import { validatePhone } from '@/lib/phone';
+import { normalizedBirthDate, normalizedDocument, dateForInput } from '@/lib/personal-profile';
 
 export const dynamic='force-dynamic';
 
@@ -11,7 +13,7 @@ async function currentPatient(){
   if(!session?.user) return null;
   const authId=String(session.user.id);
   const email=String((session.user as any).email||'').toLowerCase();
-  const rows=await sql`SELECT p.id,p.full_name,p.phone,p.email,p.national_id,p.auth_user_id,u.id AS user_id
+  const rows=await sql`SELECT p.id,p.full_name,p.phone,p.email,p.national_id,p.birth_date,p.auth_user_id,u.id AS user_id
     FROM patients p LEFT JOIN users u ON u.id=p.user_id
     WHERE p.auth_user_id=${authId} OR lower(p.email)=lower(${email})
     ORDER BY p.created_at DESC LIMIT 1`;
@@ -28,7 +30,7 @@ export async function GET(){
   const profileRows=await sql`SELECT avatar_data_url FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} OR lower(email)=lower(${email}) ORDER BY updated_at DESC NULLS LAST LIMIT 1`;
   const avatar=String((profileRows[0] as any)?.avatar_data_url||'');
 
-  if(!p) return NextResponse.json({patient:{name,email,phone:'',nationalId:'',profileImage:avatar},appointments:[]});
+  if(!p) return NextResponse.json({patient:{name,email,phone:'',nationalId:'',birthDate:'',profileImage:avatar},appointments:[]});
 
   const aps=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.service_id,a.service_name,a.consultation_price,a.consultation_currency,
       a.payment_method,a.payment_reference,a.reschedule_used,a.receipt_number,a.checked_in_at,a.completed_at,
@@ -48,7 +50,7 @@ export async function GET(){
     ORDER BY a.starts_at DESC LIMIT 100`;
 
   return NextResponse.json({
-    patient:{name:p.full_name||name,email:p.email||email,phone:p.phone||'',nationalId:p.national_id||'',profileImage:avatar},
+    patient:{name:p.full_name||name,email:p.email||email,phone:p.phone||'',nationalId:p.national_id||'',birthDate:dateForInput(p.birth_date),profileImage:avatar},
     appointments:aps.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceId:a.service_id?String(a.service_id):'',serviceName:a.service_name||a.provider_activity||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,providerName:a.provider_name,providerSlug:a.public_slug,category:a.provider_category||'',activity:a.provider_activity||'',location:[a.location_name,a.address,a.city,a.state,a.country,a.room].filter(Boolean).join(' · ')}))
   });
 }
@@ -64,19 +66,25 @@ export async function PATCH(req:Request){
 
   if(action==='profile'){
     const name=String(body.name||'').trim();
-    const phone=String(body.phone||'').trim();
-    const nationalId=String(body.nationalId||'').trim();
+    const phoneResult=validatePhone(String(body.phoneCountry||''),String(body.phoneLocal||''));
+    const phone=phoneResult.phone;
+    const national=normalizedDocument(body.nationalId);
+    const birth=normalizedBirthDate(body.birthDate);
     const profileImage=String(body.profileImage||'');
     const mediaError=validateProviderMedia(profileImage,[]);
     if(mediaError)return NextResponse.json({error:mediaError},{status:400});
-    if(!name||!phone) return NextResponse.json({error:'Nombre y teléfono son obligatorios'},{status:400});
-    await sql`UPDATE app_user_profiles SET full_name=${name},phone=${phone},avatar_data_url=${profileImage||null},updated_at=now() WHERE lower(email)=lower(${email})`;
+    if(!name)return NextResponse.json({error:'Escribe tu nombre.'},{status:400});
+    if(phoneResult.error)return NextResponse.json({error:phoneResult.error},{status:400});
+    if(national.error)return NextResponse.json({error:national.error},{status:400});
+    if(birth.error)return NextResponse.json({error:birth.error},{status:400});
+    await sql`UPDATE app_user_profiles SET full_name=${name},phone=${phone},avatar_data_url=${profileImage||null},updated_at=now() WHERE auth_user_id=${String(session.user.id)}`;
     await sql`UPDATE users SET full_name=${name},phone=${phone} WHERE lower(email)=lower(${email})`;
     if(p){
-      await sql`UPDATE patients SET full_name=${name},phone=${phone},national_id=${nationalId||null},email=${email},auth_user_id=${String(session.user.id)} WHERE id=${p.id}`;
+      await sql`UPDATE patients SET full_name=${name},phone=${phone},national_id=${national.value||null},birth_date=${birth.value}::date,email=${email},auth_user_id=${String(session.user.id)} WHERE id=${p.id}`;
     }else{
       const u=await sql`SELECT id FROM users WHERE lower(email)=lower(${email}) LIMIT 1`;
-      await sql`INSERT INTO patients(user_id,auth_user_id,full_name,national_id,phone,email) VALUES(${(u[0] as any)?.id||null},${String(session.user.id)},${name},${nationalId||null},${phone},${email})`;
+      await sql`INSERT INTO patients(user_id,auth_user_id,full_name,national_id,birth_date,phone,email)
+        VALUES(${(u[0] as any)?.id||null},${String(session.user.id)},${name},${national.value||null},${birth.value}::date,${phone},${email})`;
     }
     return NextResponse.json({ok:true});
   }

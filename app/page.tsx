@@ -11,7 +11,7 @@ export default function Home(){
       <span className="eyebrow"><HeartPulse size={16}/> Citas, turnos y reservas para cualquier servicio</span>
       <h1>Tu servicio, <span>a tu hora.</span></h1>
       <p>TUCITA conecta profesionales, negocios y clientes en una sola agenda. Publicas disponibilidad, el cliente reserva, registra su pago y el negocio organiza todo desde un mismo lugar.</p>
-      <div className="hero-actions"><Link className="btn btn-primary" href="/demo">Explorar demo <ArrowRight size={17}/></Link><Link className="btn btn-secondary" href="/venta">Crear mi cuenta</Link><Link className="btn btn-secondary" href="/explorar">Explorar servicios</Link></div>
+      <div className="hero-actions"><Link className="btn btn-primary" href="/demo">Explorar demo <ArrowRight size={17}/></Link><Link className="btn btn-secondary" href="/registro">Crear mi cuenta</Link><Link className="btn btn-secondary" href="/explorar">Explorar servicios</Link></div>
       <div className="hero-proof"><span><CheckCircle2 size={16}/> Sin instalar nada</span><span><CheckCircle2 size={16}/> Funciona en móvil y PC</span><span><CheckCircle2 size={16}/> Diseñado para crecer globalmente</span></div>
     </div>
     <div className="phone-wrap">

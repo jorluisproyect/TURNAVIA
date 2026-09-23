@@ -5,6 +5,8 @@ import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { redirect } from 'next/navigation';
 import { passwordIssues } from '@/lib/password-policy';
 import { validPendingInvitation } from '@/lib/master-team';
+import { existingAccountKind, existingAccountMessage } from '@/lib/account-availability';
+import { validatePhone } from '@/lib/phone';
 
 function slugify(input:string){
   return input.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,42)||'profesional';
@@ -14,7 +16,10 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const name=String(formData.get('name')||'').trim();
   const email=String(formData.get('email')||'').trim().toLowerCase();
   const password=String(formData.get('password')||'');
-  const phone=String(formData.get('phone')||'').trim();
+  const phoneCountry=String(formData.get('phoneCountry')||'Venezuela');
+  const phoneLocal=String(formData.get('phoneLocal')||'').trim();
+  const phoneValidation=validatePhone(phoneCountry,phoneLocal);
+  const phone=phoneValidation.phone;
   const rawRole=String(formData.get('role')||'PATIENT');
   const accountType=String(formData.get('accountType')||'PATIENT');
   const category=String(formData.get('category')||'Salud').trim();
@@ -31,14 +36,29 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   let providerPublicPath='';
   let businessPublicPath='';
 
-  if(!name||!email||!phone) return {error:'Completa nombre, correo y teléfono.'};
+  if(!name||!email||!phoneLocal) return {error:'Completa nombre, correo y teléfono.'};
+  if(!/^\S+@\S+\.\S+$/.test(email)||email.length>254)return {error:'Escribe un correo válido.'};
+  if(phoneValidation.error)return {error:phoneValidation.error};
+  if(!sql)return {error:'No se pudo conectar con la base de datos. Intenta de nuevo en unos minutos.'};
   const teamInvite=teamToken?await validPendingInvitation(email,teamToken):null;
   if(teamToken&&!teamInvite)return {error:'La invitación de equipo caducó, ya fue usada o no corresponde a este correo.'};
+  let existing;
+  try{existing=await existingAccountKind(email)}catch{return {error:'No se pudo verificar el correo. Intenta de nuevo.'}}
+  if(existing){
+    if(teamInvite)return {error:'Este correo ya tiene cuenta. Inicia sesión con él y acepta la invitación.'};
+    return {error:existingAccountMessage(existing)};
+  }
   const passwordProblems=passwordIssues(password);
   if(passwordProblems.length) return {error:'La contraseña necesita '+passwordProblems.join(', ')+'.'};
 
   const {data,error}=await auth.signUp.email({name,email,password});
-  if(error) return {error:error.message||'No se pudo crear la cuenta.'};
+  if(error){
+    try{
+      const already=await existingAccountKind(email);
+      if(already)return {error:existingAccountMessage(already)};
+    }catch{}
+    return {error:error.message||'No se pudo crear la cuenta.'};
+  }
 
   let authUserId=(data as any)?.user?.id || (data as any)?.id;
   if(!authUserId && sql){
