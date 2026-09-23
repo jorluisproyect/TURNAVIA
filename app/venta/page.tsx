@@ -24,6 +24,39 @@ export default function Venta(){
       </a>
     </div>
 
+
+    <section className="panel" style={{marginTop:20,marginBottom:18}}>
+      <div className="demo-head" style={{marginBottom:14}}>
+        <span className="eyebrow">ANTES Y DESPUÉS</span>
+        <h2 style={{fontSize:30,margin:'10px 0'}}>Menos tareas manuales. Más claridad al reservar.</h2>
+        <p className="muted">Compara una agenda repartida en mensajes con el flujo organizado de TUCITA.</p>
+      </div>
+      <div className="panel-grid">
+        <div className="card" style={{background:'#fff8f6'}}>
+          <h3 style={{marginTop:0}}>Sin TUCITA</h3>
+          <div style={{display:'grid',gap:10}}>
+            <div className="notice" style={{background:'#fff',color:'#82483c'}}>✕ Confirmar disponibilidad por mensajes.</div>
+            <div className="notice" style={{background:'#fff',color:'#82483c'}}>✕ Recordar precios y duración en cada conversación.</div>
+            <div className="notice" style={{background:'#fff',color:'#82483c'}}>✕ Buscar referencias y comprobantes en varios chats.</div>
+            <div className="notice" style={{background:'#fff',color:'#82483c'}}>✕ Revisar manualmente cuáles citas están confirmadas.</div>
+          </div>
+        </div>
+        <div className="card" style={{borderColor:'#8acdbb',background:'#f2fbf8'}}>
+          <span className="pill">CON TUCITA</span>
+          <h3>Una agenda clara para todos</h3>
+          <div style={{display:'grid',gap:10}}>
+            <div className="notice"><CheckCircle2 size={16}/> Horarios publicados en un enlace de reservas.</div>
+            <div className="notice"><CheckCircle2 size={16}/> Cada servicio muestra precio y duración.</div>
+            <div className="notice"><CheckCircle2 size={16}/> Pagos y comprobantes asociados a cada reserva.</div>
+            <div className="notice"><CheckCircle2 size={16}/> El cliente y el profesional consultan el estado de la cita.</div>
+          </div>
+        </div>
+      </div>
+      <div className="notice" style={{marginTop:14,textAlign:'center',fontSize:15}}>
+        <strong>El resultado:</strong> reservas, disponibilidad y pagos en un mismo lugar.
+      </div>
+    </section>
+
     <div id="planes" className="panel-grid" style={{marginTop:18,scrollMarginTop:24}}>
       <section className="panel">
         <span className="eyebrow">PROFESIONAL INDEPENDIENTE</span>
