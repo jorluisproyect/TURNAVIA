@@ -14,7 +14,7 @@ type AppNotification={
   created_at:string;
 };
 
-export function NotificationBell(){
+export function NotificationBell({mobile=false}:{mobile?:boolean}={}){
   const [items,setItems]=useState<AppNotification[]>([]);
   const [unread,setUnread]=useState(0);
   const [open,setOpen]=useState(false);
@@ -61,7 +61,7 @@ export function NotificationBell(){
       {unread>0&&<span style={{marginLeft:'auto',minWidth:22,height:22,padding:'0 6px',borderRadius:999,display:'grid',placeItems:'center',fontSize:11,fontWeight:800,background:'var(--brand)',color:'white'}}>{unread>9?'9+':unread}</span>}
     </button>
 
-    {open&&<div style={{position:'absolute',left:'calc(100% + 10px)',bottom:0,width:360,maxWidth:'80vw',maxHeight:480,overflow:'auto',zIndex:1000,background:'white',border:'1px solid var(--line)',borderRadius:16,boxShadow:'0 18px 50px rgba(0,0,0,.18)',padding:12}}>
+    {open&&<div style={mobile?{position:'fixed',left:12,right:12,bottom:92,width:'auto',maxHeight:'60dvh',overflow:'auto',zIndex:1300,background:'white',border:'1px solid var(--line)',borderRadius:18,boxShadow:'0 18px 50px rgba(0,0,0,.18)',padding:12,color:'var(--text)'}:{position:'absolute',left:'calc(100% + 10px)',bottom:0,width:360,maxWidth:'80vw',maxHeight:480,overflow:'auto',zIndex:1000,background:'white',border:'1px solid var(--line)',borderRadius:16,boxShadow:'0 18px 50px rgba(0,0,0,.18)',padding:12}}>
       <div className="row space" style={{gap:10,padding:'4px 4px 10px'}}>
         <div><strong>Notificaciones</strong><div className="muted" style={{fontSize:12}}>{unread} sin leer</div></div>
         {unread>0&&<button type="button" className="btn btn-secondary" style={{padding:'7px 9px'}} onClick={markAll}><CheckCheck size={14}/> Leer todo</button>}
