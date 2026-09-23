@@ -17,7 +17,7 @@ export default function RegistroClient(){
   const team=sp.get('team')==='1';
   const type=sp.get('type');
   const preset=team?'PATIENT':type==='BUSINESS'?'BUSINESS':sp.get('role')==='PATIENT'?'PATIENT':sp.get('role')==='DOCTOR'||type==='PROFESSIONAL'?'PROFESSIONAL':null;
-  const accountType=preset;
+  const accountType=preset||'PATIENT';
   const provider=!team&&accountType!=='PATIENT';
   const [category,setCategory]=useState('Salud');
   const [activity,setActivity]=useState('Médico');
@@ -101,7 +101,7 @@ export default function RegistroClient(){
           <div className="field" style={{flex:1,minWidth:190}}><label>Actividad</label><select name="activity" value={activity} onChange={e=>setActivity(e.target.value)}>{categories[category].map(a=><option key={a}>{a}</option>)}</select></div>
         </div>}
         {category==='Servicios 18+'&&provider&&<div className="notice">Categoría reservada a mayores de edad y actividades permitidas por la legislación aplicable.</div>}
-        {provider&&<div className="field"><label>País donde prestas el servicio</label><input name="country" list="tucita-countries" value={country} onChange={e=>{const next=e.target.value;setCountry(next);if(COUNTRY_SUGGESTIONS.includes(next)) {setPhoneCountry(next);setPhoneLocal('')}}} required placeholder="Ej. Venezuela"/><datalist id="tucita-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div>}
+        {provider&&<div className="field"><label>País donde prestas el servicio</label><input name="country" list="tucita-countries" value={country} onChange={e=>{const next=e.target.value;setCountry(next);if(COUNTRY_PHONE_CODES.some(x=>x.country===next)) {setPhoneCountry(next);setPhoneLocal('')}}} required placeholder="Ej. Venezuela"/><datalist id="tucita-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div>}
         <div className="field"><label>{provider?'Nombre profesional o del establecimiento':'Nombre completo'}</label><input name="name" required maxLength={120} placeholder={provider?'Ej. Ana Pérez / Barbería Central':'Nombre y apellido'}/></div>
         <div className="field">
           <label>Correo de acceso</label>
