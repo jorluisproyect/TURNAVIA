@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
 import { CalendarPlus, Copy, Plus, Trash2, Users, BriefcaseBusiness, ExternalLink, Eye, ImagePlus, Pencil, UserRound, MapPin } from 'lucide-react';
 import { COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
+import { showActionFeedback, useActionLock } from '@/components/ActionFeedback';
 
 type Member={
   id:string;name:string;email:string;phone:string;slug:string;category:string;activity:string;isOwner:boolean;
@@ -37,6 +38,7 @@ export default function EquipoPage(){
   const [data,setData]=useState<any>(null);
   const [selected,setSelected]=useState('');
   const [msg,setMsg]=useState('');
+  const {busy:saving,run:runSave}=useActionLock();
   const [error,setError]=useState('');
   const [member,setMember]=useState({name:'',activity:'',category:'',phoneCode:'+58',phoneLocal:'',email:'',profileImage:'',about:'',licenseNumber:'',employeeStatus:'AVAILABLE',locationId:''});
   const [editMember,setEditMember]=useState<any>(null);
@@ -57,10 +59,23 @@ export default function EquipoPage(){
   const current:Member|undefined=useMemo(()=>data?.team?.find((m:Member)=>m.id===selected)||data?.team?.[0],[data,selected]);
 
   async function action(body:any){
-    const r=await fetch('/api/me/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
-    const j=await r.json();
-    if(!r.ok){setMsg(j.error||'No se pudo guardar');return false}
-    setMsg('Cambios guardados');await load();setTimeout(()=>setMsg(''),1800);return true;
+    return (await runSave(async()=>{
+      const labels:Record<string,string>={
+        add_member:'Miembro agregado al equipo.',update_member:'Ficha actualizada.',remove_member:'Miembro desactivado.',
+        add_service:'Servicio agregado.',update_service:'Servicio actualizado.',add_availability:'Horario publicado.',
+        delete_availability:'Horario eliminado.',approve_payment:'Pago aprobado.',reject_payment:'Pago rechazado.',
+        appointment_status:'Estado de la reserva actualizado.'
+      };
+      showActionFeedback('saving','Guardando cambios del equipo…');
+      try{
+        const r=await fetch('/api/me/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json();
+        if(!r.ok){showActionFeedback('error',j.error||'No se pudo guardar.');return false}
+        showActionFeedback('success',j.message||labels[String(body.action)]||'Cambios guardados correctamente.');
+        await load();
+        return true;
+      }catch{showActionFeedback('error','No se pudo conectar con TUCITA. Intenta de nuevo.');return false}
+    }))??false;
   }
 
   async function addMember(){
@@ -139,7 +154,7 @@ export default function EquipoPage(){
           <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>País / código</label><select value={member.phoneCode} onChange={e=>setMember({...member,phoneCode:e.target.value})}>{COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.code}>{x.country} {x.code}</option>)}</select></div><div className="field" style={{flex:1,minWidth:180}}><label>Teléfono</label><input value={member.phoneLocal} onChange={e=>setMember({...member,phoneLocal:e.target.value})} placeholder="Número sin código"/></div></div>
           <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>Correo (opcional)</label><input type="email" value={member.email} onChange={e=>setMember({...member,email:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>Licencia / colegiatura (opcional)</label><input value={member.licenseNumber} onChange={e=>setMember({...member,licenseNumber:e.target.value})} placeholder="Solo cuando aplique"/></div></div>
           <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>Sede</label><select value={member.locationId} onChange={e=>setMember({...member,locationId:e.target.value})}><option value="">Sede principal</option>{(data.locations||[]).map((l:any)=><option key={l.id} value={l.id}>{l.name}</option>)}</select></div><div className="field" style={{flex:1,minWidth:180}}><label>Estado</label><select value={member.employeeStatus} onChange={e=>setMember({...member,employeeStatus:e.target.value})}><option value="AVAILABLE">Disponible</option><option value="BREAK">Descanso</option><option value="VACATION">Vacaciones</option><option value="INACTIVE">Inactivo</option></select></div></div>
-          <button className="btn btn-primary" disabled={data.team.length>=data.maxProfessionals} onClick={addMember}><Plus size={16}/> Agregar al equipo</button>
+          <button className="btn btn-primary" disabled={saving||data.team.length>=data.maxProfessionals} onClick={addMember}><Plus size={16}/> {saving?'Agregando…':'Agregar al equipo'}</button>
         </div>
       </section>
     </div>
@@ -148,20 +163,20 @@ export default function EquipoPage(){
       <section className="panel" style={{marginTop:18}}>
         <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
           <div className="row" style={{gap:14,alignItems:'center'}}>{current.profileImage?<img src={current.profileImage} alt="" style={{width:68,height:68,borderRadius:20,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:68,height:68}}><UserRound size={26}/></div>}<div><span className="eyebrow">AGENDA SELECCIONADA</span><h2 style={{marginTop:8,marginBottom:4}}>{current.name} · {current.activity}</h2><div className="row muted" style={{fontSize:12,gap:6}}><MapPin size={13}/>{current.location?.name||'Sede por asignar'} · {statusText[current.employeeStatus]||'Disponible'}</div>{current.about&&<p className="muted" style={{marginBottom:0,maxWidth:620}}>{current.about}</p>}</div></div>
-          <div className="button-row"><button className="btn btn-secondary" onClick={()=>openEditMember(current)}><Pencil size={16}/> Editar ficha</button><button className="btn btn-secondary" onClick={()=>copy(location.origin+'/reservar/'+current.slug)}><Copy size={16}/> Copiar reserva</button>{!current.isOwner&&<button className="btn btn-secondary" onClick={()=>action({action:'remove_member',doctorId:current.id})}><Trash2 size={16}/> Desactivar</button>}</div>
+          <div className="button-row"><button className="btn btn-secondary" onClick={()=>openEditMember(current)}><Pencil size={16}/> Editar ficha</button><button className="btn btn-secondary" onClick={()=>copy(location.origin+'/reservar/'+current.slug)}><Copy size={16}/> Copiar reserva</button>{!current.isOwner&&<button className="btn btn-secondary" disabled={saving} onClick={()=>action({action:'remove_member',doctorId:current.id})}><Trash2 size={16}/> Desactivar</button>}</div>
         </div>
       </section>
 
       <div className="panel-grid" style={{marginTop:18}}>
         <section className="panel">
           <h2>Servicios de {current.name}</h2>
-          <div style={{display:'grid',gap:8,marginTop:12}}>{current.services.map(s=><div className="card" key={s.id}><div className="row space"><div><strong>{s.name}</strong><div className="muted" style={{fontSize:12}}>{s.durationMinutes} min</div></div><strong>{s.currency} {s.price}</strong></div><button className="btn btn-secondary" style={{marginTop:9}} onClick={()=>action({action:'update_service',doctorId:current.id,serviceId:s.id,active:!s.active})}>{s.active?'Pausar':'Activar'}</button></div>)}</div>
+          <div style={{display:'grid',gap:8,marginTop:12}}>{current.services.map(s=><div className="card" key={s.id}><div className="row space"><div><strong>{s.name}</strong><div className="muted" style={{fontSize:12}}>{s.durationMinutes} min</div></div><strong>{s.currency} {s.price}</strong></div><button className="btn btn-secondary" style={{marginTop:9}} disabled={saving} onClick={()=>action({action:'update_service',doctorId:current.id,serviceId:s.id,active:!s.active})}>{s.active?'Pausar':'Activar'}</button></div>)}</div>
           <hr style={{border:0,borderTop:'1px solid var(--line)',margin:'18px 0'}}/>
           <div className="form">
             <h3>Nuevo servicio</h3>
             <div className="field"><label>Nombre</label><input value={service.name} onChange={e=>setService({...service,name:e.target.value})} placeholder="Ej. Corte + barba"/></div>
             <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:120}}><label>Duración</label><input type="number" min={5} value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Precio</label><input type="number" min={0} step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:100}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{pricePreview()}
-            <button className="btn btn-primary" onClick={addService}><BriefcaseBusiness size={16}/> Agregar servicio</button>
+            <button className="btn btn-primary" disabled={saving} onClick={addService}><BriefcaseBusiness size={16}/> {saving?'Guardando…':'Agregar servicio'}</button>
           </div>
         </section>
 
@@ -174,7 +189,7 @@ export default function EquipoPage(){
             <div className="field"><label>Fecha</label><input type="date" value={av.date} onChange={e=>setAv({...av,date:e.target.value})}/></div>
             <div className="row" style={{gap:10,alignItems:'stretch'}}><div className="field" style={{flex:1}}><label>Desde</label><input type="time" value={av.start} onChange={e=>setAv({...av,start:e.target.value})}/></div><div className="field" style={{flex:1}}><label>Hasta</label><input type="time" value={av.end} onChange={e=>setAv({...av,end:e.target.value})}/></div></div>
             <div className="field"><label>Inicio cada</label><select value={av.slotMinutes} onChange={e=>setAv({...av,slotMinutes:Number(e.target.value)})}><option value={10}>10 min</option><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option></select></div>
-            <button className="btn btn-primary" onClick={addAvailability}><CalendarPlus size={16}/> Publicar horario</button>
+            <button className="btn btn-primary" disabled={saving} onClick={addAvailability}><CalendarPlus size={16}/> {saving?'Publicando…':'Publicar horario'}</button>
           </div>
         </section>
       </div>
@@ -188,10 +203,10 @@ export default function EquipoPage(){
           <td>{a.paymentMethod||'—'}{a.paymentReference&&<div><strong>Ref: {a.paymentReference}</strong></div>}{a.paymentProofUrl&&<a href={a.paymentProofUrl} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{padding:'6px 8px',marginTop:5}}><Eye size={14}/> Ver</a>}</td>
           <td><span className={'status '+(a.status==='PAYMENT_REVIEW'?'warn':['CONFIRMED','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)?'ok':a.status==='PAYMENT_REJECTED'?'bad':'')}>{a.status==='PAYMENT_REVIEW'?'Pago en revisión':a.status==='PAYMENT_REJECTED'?'Pago rechazado':a.status==='CONFIRMED'?'Confirmada':a.status==='ARRIVED'?'Llegó':a.status==='IN_CONSULTATION'?'En atención':a.status==='COMPLETED'?'Completada':a.status}</span></td>
           <td><div className="row" style={{gap:6,flexWrap:'wrap'}}>
-            {a.status==='PAYMENT_REVIEW'&&<><button className="btn btn-primary" onClick={()=>action({action:'approve_payment',doctorId:current.id,appointmentId:a.id})}>Aprobar</button><button className="btn btn-secondary" onClick={()=>action({action:'reject_payment',doctorId:current.id,appointmentId:a.id})}>Rechazar</button></>}
-            {a.status==='CONFIRMED'&&<button className="btn btn-secondary" onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'ARRIVED'})}>Llegó</button>}
-            {a.status==='ARRIVED'&&<button className="btn btn-secondary" onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'IN_CONSULTATION'})}>Atender</button>}
-            {a.status==='IN_CONSULTATION'&&<button className="btn btn-primary" onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'COMPLETED'})}>Completar</button>}
+            {a.status==='PAYMENT_REVIEW'&&<><button className="btn btn-primary" disabled={saving} onClick={()=>action({action:'approve_payment',doctorId:current.id,appointmentId:a.id})}>Aprobar</button><button className="btn btn-secondary" disabled={saving} onClick={()=>action({action:'reject_payment',doctorId:current.id,appointmentId:a.id})}>Rechazar</button></>}
+            {a.status==='CONFIRMED'&&<button className="btn btn-secondary" disabled={saving} onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'ARRIVED'})}>Llegó</button>}
+            {a.status==='ARRIVED'&&<button className="btn btn-secondary" disabled={saving} onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'IN_CONSULTATION'})}>Atender</button>}
+            {a.status==='IN_CONSULTATION'&&<button className="btn btn-primary" disabled={saving} onClick={()=>action({action:'appointment_status',doctorId:current.id,appointmentId:a.id,status:'COMPLETED'})}>Completar</button>}
           </div></td>
         </tr>)}</tbody></table></div>}
       </section>
@@ -204,7 +219,7 @@ export default function EquipoPage(){
       <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>País / código</label><select value={editMember.phoneCode||'+58'} onChange={e=>setEditMember({...editMember,phoneCode:e.target.value})}>{COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.code}>{x.country} {x.code}</option>)}</select></div><div className="field" style={{flex:1,minWidth:180}}><label>Teléfono</label><input value={editMember.phoneLocal||''} onChange={e=>setEditMember({...editMember,phoneLocal:e.target.value})}/></div></div>
       <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>Licencia / colegiatura</label><input value={editMember.licenseNumber||''} onChange={e=>setEditMember({...editMember,licenseNumber:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>Sede</label><select value={editMember.locationId||''} onChange={e=>setEditMember({...editMember,locationId:e.target.value})}><option value="">Sin cambiar</option>{(data.locations||[]).map((l:any)=><option key={l.id} value={l.id}>{l.name}</option>)}</select></div></div>
       <div className="field"><label>Estado</label><select value={editMember.employeeStatus||'AVAILABLE'} onChange={e=>setEditMember({...editMember,employeeStatus:e.target.value})}><option value="AVAILABLE">Disponible</option><option value="BREAK">Descanso</option><option value="VACATION">Vacaciones</option><option value="INACTIVE">Inactivo</option></select></div>
-    </div></div><div className="button-row profile-modal-actions"><button className="btn btn-primary" onClick={saveMember}>Guardar ficha</button><button className="btn btn-secondary" onClick={()=>setEditMember(null)}>Cancelar</button></div></div></div>}
+    </div></div><div className="button-row profile-modal-actions"><button className="btn btn-primary" disabled={saving} onClick={saveMember}>{saving?'Guardando…':'Guardar ficha'}</button><button className="btn btn-secondary" onClick={()=>setEditMember(null)}>Cancelar</button></div></div></div>}
     {msg&&<div className="toast">{msg}</div>}
   </main></div>;
 }

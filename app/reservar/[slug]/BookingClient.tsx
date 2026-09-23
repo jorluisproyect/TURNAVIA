@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, MapPin, ShieldCheck, UploadCloud, CreditCard, Navigation } from 'lucide-react';
 import Link from 'next/link';
+import { showActionFeedback, useActionLock } from '@/components/ActionFeedback';
 
 type Slot={time:string;available:boolean;startsAt:string};
 type LocationInfo={id:string;name:string;address:string;city:string;state:string;country:string;room:string};
@@ -23,7 +24,7 @@ export default function BookingClient({slug}:{slug:string}){
  const [appointmentId,setAppointmentId]=useState('');
  const [receiptToken,setReceiptToken]=useState('');
  const [emailNotice,setEmailNotice]=useState<'sent'|'pending'>('pending');
- const [loading,setLoading]=useState(false);
+ const {busy:loading,run:runBook}=useActionLock();
  const [error,setError]=useState('');
  const [fx,setFx]=useState<any>(null);
  const [proof,setProof]=useState<{name:string;dataUrl:string}|null>(null);
@@ -104,15 +105,28 @@ export default function BookingClient({slug}:{slug:string}){
    if(requiresProof&&(!form.paymentReference||!proof)){
      setError('Este método requiere referencia y comprobante de pago.');return;
    }
-   setLoading(true);setError('');
-   const r=await fetch('/api/public/provider/'+encodeURIComponent(slug),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...form,serviceId:service.id,startsAt,locationId:selectedBlock?.location?.id||'',paymentProofName:proof?.name||'',paymentProofDataUrl:proof?.dataUrl||''})});
-   const j=await r.json();setLoading(false);
-   if(!r.ok){setError(j.error||'No se pudo enviar la reserva');return}
-   setAppointmentId(String(j.appointmentId||''));
-   setReceiptToken(String(j.receiptToken||''));
-   setEmailNotice(j.emailNotice==='sent'?'sent':'pending');
-   setResultStatus(j.status==='CONFIRMED'?'CONFIRMED':'PAYMENT_REVIEW');
-   setSent(true);
+   await runBook(async()=>{
+     setError('');
+     showActionFeedback('saving','Enviando tu reserva. No necesitas pulsar de nuevo…');
+     try{
+       const r=await fetch('/api/public/provider/'+encodeURIComponent(slug),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...form,serviceId:service.id,startsAt,locationId:selectedBlock?.location?.id||'',paymentProofName:proof?.name||'',paymentProofDataUrl:proof?.dataUrl||''})});
+       const j=await r.json();
+       if(!r.ok){
+         setError(j.error||'No se pudo enviar la reserva.');
+         showActionFeedback('error',j.error||'No se pudo confirmar la reserva. Puedes intentarlo nuevamente.');
+         return;
+       }
+       setAppointmentId(String(j.appointmentId||''));
+       setReceiptToken(String(j.receiptToken||''));
+       setEmailNotice(j.emailNotice==='sent'?'sent':'pending');
+       setResultStatus(j.status==='CONFIRMED'?'CONFIRMED':'PAYMENT_REVIEW');
+       setSent(true);
+       showActionFeedback('success',j.status==='CONFIRMED'?'¡Reserva confirmada! Ya tienes tu comprobante.':'Reserva enviada. Tu pago está en revisión, no lo envíes otra vez.');
+     }catch{
+       setError('No se pudo comprobar el envío. Revisa tu conexión y verifica tus reservas antes de intentarlo otra vez.');
+       showActionFeedback('error','No pudimos confirmar el envío. Comprueba tu reserva antes de reenviar.');
+     }
+   });
  }
 
  if(error&&!data)return <div className="booking"><div className="container booking-wrap"><div className="profile-card"><h1>No pudimos abrir esta agenda</h1><div className="notice danger">{error}</div><Link href="/explorar" className="btn btn-primary" style={{marginTop:16}}>Ver otros profesionales</Link></div></div></div>;

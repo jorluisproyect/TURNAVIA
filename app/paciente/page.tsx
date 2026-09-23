@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
 import { CalendarCheck2, CalendarClock, CarFront, CheckCircle2, MapPin, XCircle, FileText, UserRound, Search } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
+import { showActionFeedback, useActionLock } from '@/components/ActionFeedback';
 
 const label:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Ya llegaste',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asististe'};
 
@@ -11,6 +12,7 @@ export default function Paciente(){
  const [data,setData]=useState<any>(null);
  const [error,setError]=useState('');
  const [msg,setMsg]=useState('');
+ const {busy:saving,run:runSave}=useActionLock();
  const [reschedule,setReschedule]=useState<any>(null);
  const [resData,setResData]=useState<any>(null);
  const [resDate,setResDate]=useState('');
@@ -23,8 +25,17 @@ export default function Paciente(){
  const next=useMemo(()=>[...active].filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-3600000).sort((a:any,b:any)=>new Date(a.startsAt).getTime()-new Date(b.startsAt).getTime())[0],[active]);
 
  async function action(id:string,status:string){
-   const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'appointment_status',id,status})});
-   const j=await r.json();if(!r.ok){setMsg(j.error||'No se pudo completar');return}setMsg('Actualizado');await load();setTimeout(()=>setMsg(''),1500);
+   await runSave(async()=>{
+     showActionFeedback('saving','Actualizando tu reserva…');
+     try{
+       const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'appointment_status',id,status})});
+       const j=await r.json();
+       if(!r.ok){showActionFeedback('error',j.error||'No se pudo actualizar la reserva.');return}
+       const message=status==='ON_THE_WAY'?'El profesional ya sabe que vas en camino.':status==='ARRIVED'?'Tu llegada quedó registrada.':status==='CANCELLED'?'Tu reserva fue cancelada.':'Tu reserva fue actualizada.';
+       showActionFeedback('success',message);
+       await load();
+     }catch{showActionFeedback('error','No se pudo conectar con TUCITA. Intenta de nuevo.')}
+   });
  }
 
  async function openReschedule(ap:any){
@@ -43,10 +54,17 @@ export default function Paciente(){
 
  async function confirmReschedule(){
    if(!reschedule||!resStart)return;
-   const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'reschedule',id:reschedule.id,startsAt:resStart})});
-   const j=await r.json();
-   if(!r.ok){setMsg(j.error||'No se pudo reprogramar');return}
-   setReschedule(null);setResData(null);setMsg('Reserva reprogramada correctamente.');await load();setTimeout(()=>setMsg(''),2200);
+   await runSave(async()=>{
+     showActionFeedback('saving','Guardando la nueva fecha de tu reserva…');
+     try{
+       const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'reschedule',id:reschedule.id,startsAt:resStart})});
+       const j=await r.json();
+       if(!r.ok){showActionFeedback('error',j.error||'No se pudo reprogramar la reserva.');return}
+       setReschedule(null);setResData(null);
+       showActionFeedback('success','Tu reserva fue reprogramada correctamente.');
+       await load();
+     }catch{showActionFeedback('error','No se pudo conectar con TUCITA. Intenta de nuevo.')}
+   });
  }
 
  if(error&&!data)return <div className="dashboard"><Sidebar role="paciente"/><main className="main"><section className="panel"><h1>Mi cuenta</h1><div className="notice danger">{error}</div></section></main></div>;
@@ -75,11 +93,11 @@ export default function Paciente(){
       {ap.status==='PAYMENT_REVIEW'&&<div className="notice" style={{marginTop:14}}><strong>Tu pago está en revisión.</strong> La reserva se confirmará cuando el profesional o negocio valide el comprobante.</div>}
       {ap.status==='CONFIRMED'&&<div className="notice" style={{marginTop:14}}><strong>Reserva confirmada.</strong> Puedes avisar cuando vayas en camino o cuando hayas llegado.</div>}
       <div className="hero-actions" style={{marginTop:14}}>
-        {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<button className="btn btn-primary" onClick={()=>action(ap.id,'ON_THE_WAY')}><CarFront size={17}/> Estoy en camino</button>}
-        {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>action(ap.id,'ARRIVED')}><CheckCircle2 size={17}/> Ya llegué</button>}
+        {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<button className="btn btn-primary" disabled={saving} onClick={()=>action(ap.id,'ON_THE_WAY')}><CarFront size={17}/> Estoy en camino</button>}
+        {['CONFIRMED','ON_THE_WAY'].includes(ap.status)&&<button className="btn btn-secondary" disabled={saving} onClick={()=>action(ap.id,'ARRIVED')}><CheckCircle2 size={17}/> Ya llegué</button>}
         {!ap.rescheduleUsed&&['PAYMENT_REVIEW','CONFIRMED'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>openReschedule(ap)}><CalendarClock size={17}/> Reprogramar</button>}
         {ap.rescheduleUsed&&<span className="pill">Reprogramación usada</span>}
-        {!['COMPLETED','CANCELLED','IN_CONSULTATION'].includes(ap.status)&&<button className="btn btn-secondary" onClick={()=>action(ap.id,'CANCELLED')}><XCircle size={17}/> Cancelar</button>}
+        {!['COMPLETED','CANCELLED','IN_CONSULTATION'].includes(ap.status)&&<button className="btn btn-secondary" disabled={saving} onClick={()=>action(ap.id,'CANCELLED')}><XCircle size={17}/> Cancelar</button>}
         {ap.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(ap.status)&&<a className="btn btn-secondary" href={'/api/appointments/'+ap.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={16}/> Descargar recibo</a>}<Link className="btn btn-secondary" href={'/reservar/'+ap.providerSlug}>Reservar otra</Link>
       </div>
    </section>)}</div>}
@@ -93,7 +111,7 @@ export default function Paciente(){
        <div className="field"><label>Selecciona la hora</label><div className="booking-slots">{resData.availability.find((a:any)=>a.date===resDate)?.slots.map((s:any)=><button type="button" disabled={!s.available} className={resStart===s.startsAt?'selected':''} onClick={()=>setResStart(s.startsAt)} key={s.startsAt}>{s.time}</button>)}</div></div>
        {!resData.availability.some((a:any)=>a.slots.some((s:any)=>s.available))&&<div className="notice">No hay horarios disponibles por ahora.</div>}
      </>}
-     <div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" disabled={!resStart} onClick={confirmReschedule}>Confirmar nueva fecha</button><button className="btn btn-secondary" onClick={()=>{setReschedule(null);setResData(null)}}>Cancelar</button></div>
+     <div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" disabled={saving||!resStart} onClick={confirmReschedule}>{saving?'Guardando…':'Confirmar nueva fecha'}</button><button className="btn btn-secondary" onClick={()=>{setReschedule(null);setResData(null)}}>Cancelar</button></div>
    </div></div>}
    {msg&&<div className="toast">{msg}</div>}
  </main></div>;

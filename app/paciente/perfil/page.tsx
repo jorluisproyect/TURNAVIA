@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
+import { showActionFeedback, useActionLock } from '@/components/ActionFeedback';
 import { ImagePlus, Trash2, UserRound } from 'lucide-react';
 import { COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
 import { countryDialCode, digitsOnly, phoneMaxLength } from '@/lib/phone';
@@ -27,7 +28,7 @@ export default function PerfilPaciente(){
   const [form,setForm]=useState({name:'',email:'',phoneCountry:'Venezuela',phoneLocal:'',nationalId:'',birthDate:'',profileImage:''});
   const [msg,setMsg]=useState('');
   const [loading,setLoading]=useState(true);
-  const [saving,setSaving]=useState(false);
+  const {busy:saving,run:runSave}=useActionLock();
   const phoneCode=countryDialCode(form.phoneCountry);
   const phoneMax=phoneMaxLength(phoneCode);
 
@@ -39,13 +40,15 @@ export default function PerfilPaciente(){
   }
 
   async function save(){
-    setSaving(true);
-    try{
-      const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'profile',...form})});
-      const j=await r.json();
-      setMsg(r.ok?'Perfil actualizado':j.error||'No se pudo guardar');
-    }catch{setMsg('No se pudo conectar con TUCITA. Intenta de nuevo.')}
-    finally{setSaving(false)}
+    await runSave(async()=>{
+      showActionFeedback('saving','Guardando tus datos personales…');
+      try{
+        const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'profile',...form})});
+        const j=await r.json();
+        if(!r.ok){showActionFeedback('error',j.error||'No se pudo actualizar el perfil.');return}
+        showActionFeedback('success','Tus datos personales se guardaron correctamente.');
+      }catch{showActionFeedback('error','No se pudo conectar con TUCITA. Intenta de nuevo.')}
+    });
   }
 
   return <div className="dashboard"><Sidebar role="paciente"/><main className="main">

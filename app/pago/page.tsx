@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Brand } from '@/components/Brand';
 import { Bitcoin, CheckCircle2, CreditCard, ShieldCheck, Upload, WalletCards } from 'lucide-react';
 import { billingAmount, billingQuote, planFromType, type BillingCycleMonths } from '@/lib/plans';
+import { showActionFeedback, useActionLock } from '@/components/ActionFeedback';
 
 type PaymentMethod={
   id:string;
@@ -26,7 +27,7 @@ function PagoContent(){
   const [selectedId,setSelectedId]=useState('');
   const [reference,setReference]=useState('');
   const [proof,setProof]=useState<File|null>(null);
-  const [busy,setBusy]=useState(false);
+  const {busy,run:runPayment}=useActionLock();
   const [msg,setMsg]=useState('');
   const [success,setSuccess]=useState(false);
   const [loadError,setLoadError]=useState('');
@@ -64,43 +65,47 @@ function PagoContent(){
   }
 
   async function sendManual(){
-    if(underReview)return setMsg('Tu pago ya fue enviado y está esperando aprobación del Master.');
-    if(!selected)return setMsg('Selecciona un método de pago.');
-    if(!reference.trim())return setMsg('Escribe la referencia o ID de la transacción.');
-    if(selected.requires_proof!==false&&!proof)return setMsg('Adjunta el capture o comprobante del pago.');
-    if(proof&&proof.size>5*1024*1024)return setMsg('El comprobante debe pesar máximo 5 MB.');
-    if(proof&&!['image/jpeg','image/png','image/webp','application/pdf'].includes(proof.type))return setMsg('Usa JPG, PNG, WEBP o PDF.');
+    if(underReview||success){setMsg('Tu pago ya fue enviado y está esperando aprobación del Master.');return}
+    if(!selected){setMsg('Selecciona un método de pago.');return}
+    if(!reference.trim()){setMsg('Escribe la referencia o ID de la transacción.');return}
+    if(selected.requires_proof!==false&&!proof){setMsg('Adjunta el capture o comprobante del pago.');return}
+    if(proof&&proof.size>5*1024*1024){setMsg('El comprobante debe pesar máximo 5 MB.');return}
+    if(proof&&!['image/jpeg','image/png','image/webp','application/pdf'].includes(proof.type)){setMsg('Usa JPG, PNG, WEBP o PDF.');return}
 
-    setBusy(true);
-    setMsg('');
-    try{
-      const form=new FormData();
-      form.append('clientId',id);
-      form.append('reference',reference.trim());
-      form.append('paymentMethod',selected.type||selected.name);
-      form.append('paymentMethodId',selected.id);
-      form.append('comment',`TUCITA - ${c.name}`);
-      form.append('billingCycleMonths',String(cycleMonths));
-      if(proof)form.append('proof',proof);
-
-      const r=await fetch('/api/payments/binance',{method:'POST',body:form});
-      const raw=await r.text();
-      let j:any={};
-      try{j=raw?JSON.parse(raw):{}}catch{j={error:'El servidor respondió de forma inesperada. Intenta nuevamente.'}}
-      if(!r.ok||!j.ok){
-        setMsg(j.error||'No se pudo enviar el pago.');
-        return;
-      }
-
-      setC((prev:any)=>({...prev,...j.client,status:'REVISION_BINANCE'}));
-      setSuccess(true);
+    await runPayment(async()=>{
       setMsg('');
-      setProof(null);
-    }catch{
-      setMsg('No se pudo completar el envío. Verifica tu conexión e intenta nuevamente.');
-    }finally{
-      setBusy(false);
-    }
+      showActionFeedback('saving','Enviando comprobante. No lo envíes de nuevo mientras se procesa…');
+      try{
+        const form=new FormData();
+        form.append('clientId',id);
+        form.append('reference',reference.trim());
+        form.append('paymentMethod',selected.type||selected.name);
+        form.append('paymentMethodId',selected.id);
+        form.append('comment',`TUCITA - ${c.name}`);
+        form.append('billingCycleMonths',String(cycleMonths));
+        if(proof)form.append('proof',proof);
+
+        const r=await fetch('/api/payments/binance',{method:'POST',body:form});
+        const raw=await r.text();
+        let j:any={};
+        try{j=raw?JSON.parse(raw):{}}catch{j={error:'El servidor respondió de forma inesperada. Intenta nuevamente.'}}
+        if(!r.ok||!j.ok){
+          const message=j.error||'No se pudo enviar el pago.';
+          setMsg(message);
+          showActionFeedback('error',message);
+          return;
+        }
+        setC((prev:any)=>({...prev,...j.client,status:'REVISION_BINANCE'}));
+        setSuccess(true);
+        setMsg('');
+        setProof(null);
+        showActionFeedback('success','Pago recibido y enviado a revisión. No necesitas enviarlo otra vez.');
+      }catch{
+        const message='No se pudo confirmar el envío. Comprueba el estado de tu pago antes de reintentarlo.';
+        setMsg(message);
+        showActionFeedback('error',message);
+      }
+    });
   }
 
   if(!id)return <main className="demo-chooser"><div className="container booking-wrap"><Brand/><div className="profile-card" style={{marginTop:30}}>Falta identificar la cuenta. Vuelve a la página de venta y crea tu cuenta.</div></div></main>;
