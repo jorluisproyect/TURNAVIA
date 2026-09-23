@@ -185,3 +185,172 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
     padding-bottom:calc(18px + env(safe-area-inset-bottom))!important;
   }
 }
+
+
+/* Compact, thumb-friendly mobile dashboard */
+@media(max-width:600px){
+  .dashboard .main{
+    padding-top:12px;
+    padding-left:9px;
+    padding-right:9px;
+    padding-bottom:calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .dashboard .topbar{
+    margin-bottom:12px;
+    gap:8px;
+  }
+  .dashboard .topbar h1{
+    font-size:24px;
+    line-height:1.05;
+  }
+  .dashboard .topbar .muted{font-size:11px!important}
+
+  .dashboard .stat-grid{
+    display:flex;
+    overflow-x:auto;
+    gap:8px;
+    margin:0 -2px 12px;
+    padding:0 2px 3px;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+  }
+  .dashboard .stat-grid .stat{
+    flex:0 0 138px;
+    min-width:138px;
+    padding:12px;
+    border-radius:16px;
+    scroll-snap-align:start;
+  }
+  .dashboard .stat-grid .stat .n{
+    font-size:22px;
+    margin-top:5px;
+  }
+  .dashboard .stat-grid .stat small{font-size:10px}
+
+  .dashboard .panel{
+    padding:14px;
+    border-radius:18px;
+  }
+  .dashboard .panel h2{
+    font-size:17px;
+    margin-bottom:10px;
+  }
+  .dashboard .panel h3{margin-top:10px}
+
+  .dashboard .panel-grid{gap:10px}
+
+  .dashboard .grid-3{
+    display:flex;
+    overflow-x:auto;
+    gap:10px;
+    padding:2px 1px 6px;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+  }
+  .dashboard .grid-3 > .card{
+    flex:0 0 min(78vw,300px);
+    min-width:min(78vw,300px);
+    padding:15px;
+    border-radius:17px;
+    scroll-snap-align:start;
+  }
+
+  .dashboard .card{
+    padding:15px;
+    border-radius:17px;
+  }
+  .dashboard .card h3{
+    font-size:17px;
+    margin:10px 0 6px;
+  }
+  .dashboard .card p{
+    font-size:12px;
+    line-height:1.45;
+  }
+
+  .dashboard .notice{
+    padding:10px 11px;
+    border-radius:13px;
+    font-size:12px;
+  }
+
+  .dashboard .btn{
+    padding:9px 11px;
+    border-radius:12px;
+    font-size:12px;
+    gap:6px;
+  }
+
+  .dashboard .button-row{gap:7px}
+  .dashboard .eyebrow{
+    padding:6px 9px;
+    font-size:10px;
+  }
+
+  .dashboard .form{
+    gap:9px;
+    margin-top:11px;
+  }
+  .dashboard .field label{
+    font-size:11px;
+    margin-bottom:4px;
+  }
+  .dashboard .field input,
+  .dashboard .field select,
+  .dashboard .field textarea{
+    padding:10px 11px;
+    border-radius:11px;
+  }
+
+  .dashboard .quick-grid{gap:7px}
+  .dashboard .quick{
+    padding:11px;
+    border-radius:14px;
+  }
+
+  .dashboard .table th{font-size:10px;padding:8px 6px}
+  .dashboard .table td{font-size:12px;padding:10px 6px}
+
+  .dashboard .pill,
+  .dashboard .status{
+    padding:6px 8px;
+    font-size:10px;
+  }
+
+  .dashboard .profile-avatar{
+    border-radius:18px;
+  }
+
+  .mobile-bottom-nav{
+    height:62px;
+    padding:4px;
+  }
+  .mobile-nav-item{
+    height:50px;
+    font-size:9px;
+    gap:2px;
+  }
+  .mobile-nav-item svg{width:19px;height:19px}
+
+  .modal{padding:15px}
+  .modal h2{font-size:20px;margin-bottom:10px}
+  .profile-modal-actions{
+    margin:10px -15px -15px!important;
+    padding:11px 15px calc(13px + env(safe-area-inset-bottom))!important;
+  }
+
+  .dashboard .stat-grid,
+  .dashboard .grid-3,
+  .date-tabs{
+    scrollbar-width:none;
+  }
+  .dashboard .stat-grid::-webkit-scrollbar,
+  .dashboard .grid-3::-webkit-scrollbar,
+  .date-tabs::-webkit-scrollbar{
+    display:none;
+  }
+
+  .dashboard .panel{overflow:visible}
+  .dashboard *{touch-action:manipulation}
+}
