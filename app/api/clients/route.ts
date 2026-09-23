@@ -48,6 +48,44 @@ export async function PATCH(req:Request){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   if(!(await isMasterSession())) return NextResponse.json({error:'No autorizado'},{status:403});
   const body=await req.json();
+
+  if(body.deleteSubscription===true){
+    if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo el Master propietario puede eliminar una suscripción.'},{status:403});
+    if(typeof body.id!=='string')return NextResponse.json({error:'Cuenta no válida.'},{status:400});
+    const current=await sql`SELECT * FROM commercial_clients WHERE id=${body.id}::uuid LIMIT 1`;
+    const prev=current[0] as any;
+    if(!prev)return NextResponse.json({error:'Cliente no encontrado.'},{status:404});
+    if(String(prev.status)==='PAGO_PENDIENTE')return NextResponse.json({error:'Esta cuenta ya está sin suscripción activa.'},{status:409});
+
+    const rows=await sql`UPDATE commercial_clients SET
+      status='PAGO_PENDIENTE',
+      trial_ends_at=now(),
+      payment_reviewed_at=NULL,
+      payment_rejection_reason='Suscripción eliminada por el Master. Requiere una nueva activación o pago.'
+      WHERE id=${body.id}::uuid
+      RETURNING *`;
+    const client=mapClient(rows[0]);
+
+    await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+      VALUES('SUBSCRIPTION_DELETED','COMMERCIAL_CLIENT',${String(client.id)},jsonb_build_object(
+        'previousStatus',${String(prev.status||'')},
+        'deletedBy','MASTER_OWNER',
+        'previousPaymentReviewedAt',${prev.payment_reviewed_at?new Date(prev.payment_reviewed_at).toISOString():null},
+        'previousTrialEndsAt',${prev.trial_ends_at?new Date(prev.trial_ends_at).toISOString():null}
+      ))`;
+
+    if(prev.auth_user_id){
+      try{
+        await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+          VALUES(${String(prev.auth_user_id)},'WARNING','Suscripción TUCITA finalizada',
+            'El administrador finalizó tu suscripción actual. Tu perfil e historial se conservan, pero necesitas una nueva activación o pago para volver a utilizar las funciones de suscripción.',
+            ${'/pago?client='+String(client.id)})`;
+      }catch(error){console.error('TUCITA subscription deletion notification error',error)}
+    }
+
+    return NextResponse.json({ok:true,client,message:'Suscripción eliminada correctamente.'});
+  }
+
   if(body.extendTrialDays!==undefined){
     if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo el Master propietario puede extender una prueba.'},{status:403});
     if(body.extendTrialDays!==15 || typeof body.id!=='string')return NextResponse.json({error:'Duración de prueba no válida.'},{status:400});
@@ -112,7 +150,15 @@ export async function PATCH(req:Request){
       const monthsRaw=Number((paymentEvents[0] as any)?.metadata?.billingMonths||1);
       const billingMonths=[1,3,12].includes(monthsRaw)?monthsRaw:1;
       const previousPeriods=await sql`SELECT metadata->>'paidUntil' AS paid_until FROM audit_events
-        WHERE entity_type='COMMERCIAL_CLIENT' AND entity_id=${String(client.id)} AND action='PAYMENT_APPROVED'
+        WHERE entity_type='COMMERCIAL_CLIENT'
+          AND entity_id=${String(client.id)}
+          AND action='PAYMENT_APPROVED'
+          AND created_at>COALESCE((
+            SELECT MAX(created_at) FROM audit_events
+            WHERE entity_type='COMMERCIAL_CLIENT'
+              AND entity_id=${String(client.id)}
+              AND action='SUBSCRIPTION_DELETED'
+          ),'-infinity'::timestamptz)
         ORDER BY id DESC LIMIT 1`;
       const prior=String((previousPeriods[0] as any)?.paid_until||'');
       const priorDate=prior?new Date(prior):null;
