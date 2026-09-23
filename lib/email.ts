@@ -3,7 +3,10 @@ type MailArgs={to:string;subject:string;html:string;attachments?:MailAttachment[
 type MailResult={ok:boolean;skipped?:boolean;status?:number;error?:string;transport?:'smtp'|'resend'};
 
 function smtpConfig(){
-  const host=process.env.SMTP_HOST;
+  const rawHost=process.env.SMTP_HOST;
+  // cPanel currently displays "tepuysserver.net", but the public server hostname
+  // resolves under "tepuyserver.net". Normalize that provider typo so SMTP works.
+  const host=rawHost?.replace(/\.tepuysserver\.net$/i,'.tepuyserver.net');
   const user=process.env.SMTP_USER;
   const pass=process.env.SMTP_PASS;
   const port=Number(process.env.SMTP_PORT||465);
