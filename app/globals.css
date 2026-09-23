@@ -505,3 +505,28 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
 .register-phone-number>input{min-width:0;width:100%;border:0;box-shadow:none!important;border-radius:0}
 @media(max-width:800px){.account-choice-grid{grid-template-columns:1fr}.account-choice-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;padding:16px;gap:14px}.account-choice-card>svg:last-child{align-self:center}.account-chooser{margin-top:24px}.register-phone-row{flex-wrap:wrap}.register-phone-row>select{max-width:none;flex:1 1 100%}.register-phone-number{min-height:46px}}
 @media(prefers-reduced-motion:reduce){.account-choice-card{transition:none}}
+
+
+/* Consistent, accessible feedback for every saved action */
+.tucita-action-feedback{
+  position:fixed;bottom:calc(28px + env(safe-area-inset-bottom));right:24px;
+  width:min(410px,calc(100vw - 32px));z-index:3600;
+  display:flex;align-items:center;gap:13px;padding:15px 14px;
+  background:#fff;color:#173632;border:1px solid #a6d8c8;border-radius:18px;
+  box-shadow:0 18px 56px rgba(13,47,43,.22);min-height:78px;
+}
+.tucita-action-feedback.saving{border-color:#acc9ed;background:#f8fbff}
+.tucita-action-feedback.error{border-color:#e6a8a8;background:#fff9f9}
+.tucita-action-feedback-icon{display:grid;place-items:center;flex:0 0 43px;height:43px;
+  border-radius:14px;color:#06775b;background:#e7f8ef}
+.tucita-action-feedback.saving .tucita-action-feedback-icon{color:#245fa1;background:#e9f1fe}
+.tucita-action-feedback.error .tucita-action-feedback-icon{color:#b42332;background:#fbe9ec}
+.tucita-action-feedback-copy{display:grid;gap:3px;min-width:0;flex:1}
+.tucita-action-feedback-copy strong{font-size:15px;font-weight:850}
+.tucita-action-feedback-copy span{font-size:13px;line-height:1.45}
+.tucita-action-feedback>button{border:0;background:transparent;border-radius:9px;color:inherit;cursor:pointer;display:grid;place-items:center;padding:7px}
+.tucita-action-feedback>button:focus-visible{outline:3px solid #0f766e;outline-offset:2px}
+.tucita-action-spin{animation:tucita-action-spin 1.2s linear infinite}
+@keyframes tucita-action-spin{to{transform:rotate(360deg)}}
+@media(max-width:900px){.tucita-action-feedback{left:12px;right:12px;width:auto;bottom:calc(86px + env(safe-area-inset-bottom));padding:13px;border-radius:16px}}
+@media(prefers-reduced-motion:reduce){.tucita-action-spin{animation:none}}
