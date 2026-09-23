@@ -24,9 +24,6 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const role=requestedRole;
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
   const buyIntent=String(formData.get('buyIntent')||'0')==='1';
-  const teamInviteToken=String(formData.get('teamInviteToken')||'');
-  const wantsTeamInvite=String(formData.get('teamInvite')||'0')==='1';
-  const teamInvite=wantsTeamInvite&&sql?await validPendingInvitation(email,teamInviteToken):null;
   const teamToken=String(formData.get('teamInvite')||'');
   let commercialClientId='';
   let providerPublicPath='';
@@ -53,11 +50,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
       VALUES(${String(authUserId)},${profileRole}::user_role,${name},${email},${phone})
       ON CONFLICT(auth_user_id) DO UPDATE SET role=EXCLUDED.role,full_name=EXCLUDED.full_name,email=EXCLUDED.email,phone=EXCLUDED.phone,updated_at=now()`;
 
-    if(teamInvite){
-      await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
-        VALUES('MASTER_TEAM_ACCEPTED','MASTER_TEAM',${email},
-        jsonb_build_object('name',${teamInvite.name||name},'role',${teamInvite.role},'authUserId',${String(authUserId)}))`;
-    }else     if(role==='DOCTOR'){
+    if(!teamInvite && role==='DOCTOR'){
       const existingUser=await sql`SELECT id FROM users WHERE lower(email)=lower(${email}) LIMIT 1`;
       let internalUserId=(existingUser[0] as any)?.id;
       let organizationId:any=null;
@@ -163,7 +156,6 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     }catch(error){console.error('TUCITA welcome email audit error',error)}
   }
 
-  if(teamInvite) redirect('/master');
   if(teamInvite) redirect('/master');
   if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId));
   redirect('/panel');
