@@ -112,7 +112,7 @@ const categories=['Salud','Belleza','Bienestar','Servicios profesionales','Educa
 const demoDate=()=>new Date(Date.now()+2*86400000).toISOString().slice(0,10);
 
 export default function Demo(){
- const [view,setView]=useState<'home'|'master'|'professional'|'client'|'offer'>('home');
+ const [view,setView]=useState<'home'|'professional'|'client'|'offer'>('home');
  const [businesses,setBusinesses]=useState<Business[]>(seedBusinesses);
  const [appointments,setAppointments]=useState<Appointment[]>(seedAppointments);
  const [selectedBusiness,setSelectedBusiness]=useState('med-1');
@@ -207,8 +207,7 @@ export default function Demo(){
   {title:'4. Reserva del cliente',text:'El cliente selecciona servicio, fecha y hora. Solo aparecen horarios donde el servicio cabe completo dentro de la disponibilidad publicada.',view:'client' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
   {title:'5. Pago y comprobante',text:'El cliente registra método de pago, referencia y comprobante. La reserva queda preagendada mientras el profesional revisa el pago.',view:'client' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
   {title:'6. Confirmación del profesional',text:'La reserva llega al panel profesional. Desde aquí se puede aprobar o rechazar el pago y después completar la atención.',view:'professional' as const,businessId:tourBiz?.id||'bar-1',service:tourServiceName},
-  {title:'7. Control comercial Master',text:'El Master controla pruebas gratis, clientes, activaciones, suspensiones, planes y el crecimiento de toda la plataforma.',view:'master' as const,businessId:tourBiz?.id||'bar-1',service:''},
-  {title:'8. Resultado y planes',text:'Cerramos mostrando el cambio para el negocio, los planes de TUCITA y las opciones para iniciar una prueba o contactar por WhatsApp.',view:'offer' as const,businessId:tourBiz?.id||'bar-1',service:''}
+  {title:'7. Resultado y planes',text:'Cerramos mostrando el cambio para el negocio, los planes de TUCITA y las opciones para iniciar una prueba o contactar por WhatsApp.',view:'offer' as const,businessId:tourBiz?.id||'bar-1',service:''}
  ];
 
  const whatsappText=encodeURIComponent(`Hola, vi el demo de TUCITA para ${tourBiz?.activity||'mi negocio'} y quiero información para configurarlo.`);
@@ -235,7 +234,6 @@ export default function Demo(){
     <Brand/>
     <div className="row" style={{gap:8,flexWrap:'wrap'}}>
       {view!=='home'&&<button className="btn btn-secondary" onClick={()=>setView('home')}><ArrowLeft size={16}/> Demo</button>}
-      <button className="btn btn-primary" onClick={()=>goTour(0)}><PlayCircle size={16}/> Recorrido guiado</button>
       <button className="btn btn-secondary" onClick={reset}><RefreshCw size={16}/> Reiniciar</button>
       <Link href="/" className="btn btn-secondary">Inicio real</Link>
     </div>
@@ -249,10 +247,8 @@ export default function Demo(){
       <h1>Una agenda para prácticamente cualquier negocio por reserva.</h1>
       <p className="muted">TUCITA adapta servicios, duración, precio, disponibilidad, pagos y operación según el rubro. Este demo está precargado para mostrar la amplitud del producto sin tocar datos reales.</p>
       <div className="hero-actions" style={{marginTop:18}}>
-        <button className="btn btn-primary" onClick={()=>goTour(0)}><PlayCircle size={17}/> Ver demo explicado paso a paso</button>
         <button className="btn btn-secondary" onClick={()=>{setTourStep(-1);setCategoryFilter('Todos')}}><Eye size={17}/> Explorar libremente</button>
       </div>
-      <div className="notice" style={{marginTop:14,textAlign:'left'}}><Lightbulb size={17} style={{verticalAlign:'middle',marginRight:7}}/><strong>Para vender TUCITA:</strong> usa “Recorrido guiado”. Va explicando qué problema resuelve cada pantalla mientras tú solo vas pulsando “Siguiente”.</div>
     </div>
 
     <section className="panel" style={{marginTop:18}}>
@@ -273,7 +269,6 @@ export default function Demo(){
           <strong>{tourBiz?.name}</strong>
           <p>{tourBiz?.activity} · {tourBiz?.category}</p>
           <div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{tourBiz?.services.length||0} servicios</span><span className="pill">{tourBiz?.staff||1} profesional{(tourBiz?.staff||1)===1?'':'es'}</span></div>
-          <button className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:14}} onClick={()=>goTour(0)}><PlayCircle size={17}/> Mostrar TUCITA para este rubro</button>
         </div>
       </div>
     </section>
@@ -285,7 +280,6 @@ export default function Demo(){
     </div>
 
     <div className="role-grid" style={{marginTop:20}}>
-      <button className="role-card" onClick={()=>setView('master')}><div className="iconbox"><ShieldCheck/></div><h3>Master</h3><p>Clientes, pruebas, activaciones y control comercial.</p><div className="go">Entrar al Master</div></button>
       <button className="role-card" onClick={()=>setView('professional')}><div className="iconbox"><HeartPulse/></div><h3>Profesional / Negocio</h3><p>Servicios, disponibilidad, agenda, pagos y atención.</p><div className="go">Entrar al panel</div></button>
       <button className="role-card" onClick={()=>setView('client')}><div className="iconbox"><UserRound/></div><h3>Cliente</h3><p>Elige servicio, duración, fecha, hora y paga.</p><div className="go">Reservar ahora</div></button>
     </div>
@@ -307,32 +301,6 @@ export default function Demo(){
         <div className="muted" style={{fontSize:12,marginTop:10}}>{b.services.slice(0,3).map(s=>s.name).join(' · ')}{b.services.length>3?' · …':''}</div>
       </button>)}</div>
       <div className="notice" style={{marginTop:14}}>Servicios 18+ se mantiene discreto y limitado a mayores de edad y actividades permitidas por la legislación aplicable.</div>
-    </section>
-   </>}
-
-   {view==='master'&&<>
-    <div className="topbar" style={{marginTop:30}}><div><div className="muted" style={{fontSize:13}}>Administración comercial</div><h1>Panel Master · Demo</h1></div><button className="btn btn-primary" onClick={()=>setShowCreate(v=>!v)}><Plus size={16}/> Nueva prueba</button></div>
-    {showCreate&&<section className="panel" style={{marginBottom:18}}>
-      <h2>Crear negocio de prueba</h2>
-      <div className="form">
-       <div className="field"><label>Nombre</label><input value={newBiz.name} onChange={e=>setNewBiz({...newBiz,name:e.target.value})} placeholder="Ej. Barbería Central"/></div>
-       <div className="row" style={{alignItems:'stretch',gap:12,flexWrap:'wrap'}}>
-        <div className="field" style={{flex:1,minWidth:220}}><label>Rubro</label><select value={newBiz.category} onChange={e=>setNewBiz({...newBiz,category:e.target.value})}>{categories.map(cat=><option key={cat}>{cat}</option>)}</select></div>
-        <div className="field" style={{flex:1,minWidth:220}}><label>Actividad</label><input value={newBiz.activity} onChange={e=>setNewBiz({...newBiz,activity:e.target.value})} placeholder="Barbería / Spa / Contabilidad"/></div>
-        <div className="field" style={{flex:1,minWidth:220}}><label>Tipo</label><select value={newBiz.type} onChange={e=>setNewBiz({...newBiz,type:e.target.value})}><option>Profesional independiente</option><option>Negocio / local</option></select></div>
-       </div>
-       <button className="btn btn-primary" onClick={createBusiness}>Crear 15 días gratis</button>
-      </div>
-    </section>}
-    <div className="stat-grid">
-      <div className="stat"><Building2 size={18}/><small>Total clientes</small><div className="n">{businesses.length}</div></div>
-      <div className="stat"><CheckCircle2 size={18}/><small>Activos</small><div className="n">{businesses.filter(b=>b.status==='ACTIVO').length}</div></div>
-      <div className="stat"><Clock3 size={18}/><small>Pruebas</small><div className="n">{businesses.filter(b=>b.status==='TRIAL').length}</div></div>
-      <div className="stat"><DollarSign size={18}/><small>MRR demo</small><div className="n">{'$'}{businesses.filter(b=>b.status==='ACTIVO').reduce((n,b)=>n+(b.type.startsWith('Negocio')?49:15),0)}</div></div>
-    </div>
-    <section className="panel" style={{marginTop:18}}>
-     <h2>Clientes y suscripciones</h2>
-     <div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Cliente</th><th>Rubro</th><th>Plan</th><th>Equipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{businesses.map(b=><tr key={b.id}><td><strong>{b.name}</strong><div className="muted" style={{fontSize:12}}>{b.activity} · {b.location}</div></td><td>{b.category}</td><td>{b.type}</td><td>{b.staff}</td><td><span className={'status '+tone(b.status)}>{statusLabel(b.status)}</span>{b.trialEnds&&b.status==='TRIAL'&&<div className="muted" style={{fontSize:12}}>Hasta {b.trialEnds}</div>}</td><td><div className="row" style={{gap:6,flexWrap:'wrap'}}>{b.status!=='ACTIVO'&&<button className="btn btn-primary" onClick={()=>setBusinesses(v=>v.map(x=>x.id===b.id?{...x,status:'ACTIVO'}:x))}>Activar</button>}{b.status==='ACTIVO'&&<button className="btn btn-secondary" onClick={()=>setBusinesses(v=>v.map(x=>x.id===b.id?{...x,status:'SUSPENDIDO'}:x))}>Suspender</button>}{b.status==='SUSPENDIDO'&&<button className="btn btn-secondary" onClick={()=>setBusinesses(v=>v.map(x=>x.id===b.id?{...x,status:'ACTIVO'}:x))}>Reactivar</button>}</div></td></tr>)}</tbody></table></div>
     </section>
    </>}
 
@@ -434,7 +402,7 @@ export default function Demo(){
           <div className="notice"><CheckCircle2 size={16}/> Cada servicio muestra precio y duración.</div>
           <div className="notice"><CheckCircle2 size={16}/> Horas calculadas automáticamente sin solapamientos.</div>
           <div className="notice"><CheckCircle2 size={16}/> Pago, referencia y comprobante dentro de la reserva.</div>
-          <div className="notice"><CheckCircle2 size={16}/> Profesional, cliente y Master ven el estado correcto.</div>
+          <div className="notice"><CheckCircle2 size={16}/> El profesional y el cliente conocen el estado de la reserva.</div>
         </div>
       </section>
     </div>
@@ -484,6 +452,7 @@ export default function Demo(){
     </section>
    </>}
 
+   {tourStep<0&&<button type="button" className="demo-floating-cta" onClick={()=>goTour(0)} aria-label="Abrir demo guiado y explicado"><span className="demo-floating-arrow">↗</span><span>Demo guiado y explicado aquí</span><PlayCircle size={22}/></button>}
    {tourStep>=0&&<div style={{position:'fixed',right:18,bottom:18,zIndex:1000,width:'min(420px,calc(100vw - 36px))',background:'var(--surface)',border:'1px solid var(--line)',borderRadius:18,boxShadow:'0 18px 50px rgba(0,0,0,.22)',padding:18}}>
      <div className="row space" style={{gap:12,alignItems:'flex-start'}}>
        <div><span className="eyebrow">RECORRIDO GUIADO · {tourStep+1}/{tourSteps.length}</span><h3 style={{margin:'8px 0 6px'}}>{tourSteps[tourStep].title}</h3></div>
