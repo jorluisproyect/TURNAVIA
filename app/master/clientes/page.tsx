@@ -1,3 +1,5 @@
+import { isOwnerMasterSession } from '@/lib/access';
+import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { sql } from '@/lib/db';
 import Link from 'next/link';
@@ -9,6 +11,7 @@ export const dynamic='force-dynamic';
 const labels:any={TRIAL:'Prueba gratis',PAGO_PENDIENTE:'Pago pendiente',REVISION_BINANCE:'Pago en revisión',ACTIVO:'Activo',SUSPENDIDO:'Suspendido'};
 
 export default async function ClientesMaster({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+  if(!(await isOwnerMasterSession()))redirect('/master');
   const sp=await searchParams;
   const q=String(sp.q||'').trim().toLowerCase();
   const status=String(sp.status||'TODOS');
