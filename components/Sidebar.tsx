@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Brand } from "./Brand";
 import { LogoutButton } from "./LogoutButton";
 import { NotificationBell } from "./NotificationBell";
-import { CalendarDays, LayoutDashboard, Users, Clock3, Building2, Settings, HeartPulse, UserRound, BarChart3, BriefcaseBusiness, Search } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Users, Clock3, Building2, Settings, HeartPulse, UserRound, BarChart3, BriefcaseBusiness, Search, WalletCards } from "lucide-react";
 import { providerAudienceLabel } from "@/lib/provider-labels";
 import { useEffect,useState } from "react";
 
@@ -17,6 +17,7 @@ const config = {
     ["/medico/equipo", "Equipo", Users],
     ["/medico#pagos", "Pagos", BarChart3],
     ["/medico#perfil", "Perfil", Settings],
+    ["/medico/finanzas", "Finanzas", WalletCards],
     ["/cuenta/seguridad", "Seguridad", Settings],
   ],
   recepcion: [
