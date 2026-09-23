@@ -139,7 +139,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
       <section className="mobile-more-sheet" aria-label="Más opciones">
         <div className="row space" style={{gap:12}}><div><strong>Más opciones</strong><div className="muted" style={{fontSize:12}}>Lo menos frecuente, sin llenar tu pantalla.</div></div><button type="button" className="mobile-sheet-close" onClick={()=>setMoreOpen(false)}><X size={20}/></button></div>
         <div className="mobile-more-links">{mobileMore.map(([href,label,Icon])=><Link key={href} href={href} onClick={()=>setMoreOpen(false)} className="mobile-more-link"><span className="iconbox"><Icon size={18}/></span><span>{label}</span></Link>)}</div>
-        <div className="mobile-more-account"><NotificationBell/><LogoutButton/></div>
+        <div className="mobile-more-account"><NotificationBell mobile/><LogoutButton/></div>
       </section>
     </div>}
   </>;
