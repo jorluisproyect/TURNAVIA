@@ -12,6 +12,11 @@ export async function currentSession(){
   return session||null;
 }
 
+export async function isOwnerMasterSession(){
+  const session=await currentSession();
+  return Boolean(session?.user && String((session.user as any).email||'').toLowerCase()===MASTER_EMAIL);
+}
+
 export async function isMasterSession(){
   const session=await currentSession();
   if(!session?.user) return false;
