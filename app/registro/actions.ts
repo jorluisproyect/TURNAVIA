@@ -24,6 +24,8 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const role=requestedRole;
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
   const buyIntent=String(formData.get('buyIntent')||'0')==='1';
+  const requestedMonths=Number(formData.get('months')||1);
+  const billingMonths=([1,3,12].includes(requestedMonths)?requestedMonths:1);
   const teamToken=String(formData.get('teamInvite')||'');
   let commercialClientId='';
   let providerPublicPath='';
@@ -147,7 +149,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const welcomeMail=await sendTransactionalEmail({
     to:email,
     subject:'Tu cuenta TUCITA fue creada',
-    html:tucitaEmail('Bienvenido a TUCITA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${role==='DOCTOR'&&publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para que vean tus servicios, precios y horarios disponibles.</p>`:''}<p><a href="${appUrl}/ingresar">Entrar a mi panel TUCITA</a></p>${role==='DOCTOR'&&buyIntent&&commercialClientId?`<p><a href="${appUrl}/pago?client=${encodeURIComponent(commercialClientId)}">Completar activación / pago</a></p>`:''}`)
+    html:tucitaEmail('Bienvenido a TUCITA',`<p>Hola <strong>${name}</strong>.</p><p>Tu cuenta fue creada correctamente.</p><p><strong>Usuario:</strong> ${email}</p><p>Por seguridad, tu contraseña no se envía por correo.</p>${role==='DOCTOR'&&publicPath?`<p><strong>Tu enlace público personalizado:</strong><br/><a href="${appUrl}${publicPath}">${appUrl}${publicPath}</a></p><p>Compártelo con tus clientes para que vean tus servicios, precios y horarios disponibles.</p>`:''}<p><a href="${appUrl}/ingresar">Entrar a mi panel TUCITA</a></p>${role==='DOCTOR'&&buyIntent&&commercialClientId?`<p><a href="${appUrl}/pago?client=${encodeURIComponent(commercialClientId)}&months=${billingMonths}">Completar activación / pago</a></p>`:''}`)
   });
   if(sql&&commercialClientId){
     try{
@@ -157,6 +159,6 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   }
 
   if(teamInvite) redirect('/master');
-  if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId));
+  if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId)+'&months='+billingMonths);
   redirect('/panel');
 }
