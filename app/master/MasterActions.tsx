@@ -81,7 +81,7 @@ export default function MasterActions({id,status,showDeleteSubscription=false,na
       {status==='PAGO_PENDIENTE'&&<Link className="btn btn-secondary" href={`/pago?client=${id}`}>Reintentar pago</Link>}
       {status==='ACTIVO'&&<button className="btn btn-danger" disabled={busy} onClick={()=>setStatus('SUSPENDIDO')}>{busy?'Procesando…':'Suspender'}</button>}
       {status==='SUSPENDIDO'&&<button className="btn btn-secondary" disabled={busy} onClick={()=>setStatus('ACTIVO')}>{busy?'Procesando…':'Reactivar'}</button>}
-      {showDeleteSubscription&&status!=='PAGO_PENDIENTE'&&<button className="btn btn-danger" disabled={busy} onClick={deleteSubscription}><Trash2 size={15}/> {busy?'Procesando…':'Eliminar suscripción'}</button>}
+      {showDeleteSubscription&&status!=='PAGO_PENDIENTE'&&<button className="btn btn-danger" disabled={busy} onClick={deleteSubscription} title="Eliminar la suscripción actual sin borrar el perfil"><Trash2 size={15}/> {busy?'Procesando…':'Eliminar'}</button>}
     </div>
     {msg&&<div className="notice" role="status" aria-live="polite" style={{marginTop:8,fontSize:12}}>{msg}</div>}
   </div>;
