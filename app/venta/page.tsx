@@ -17,9 +17,9 @@ export default function Venta(){
     <div className="demo-head" style={{marginTop:42}}>
       <span className="eyebrow"><Sparkles size={15}/> TUCITA PARA TU NEGOCIO</span>
       <h1>Empieza hoy: prueba gratis o activa tu plan de una vez.</h1>
-      <p className="muted">Primero puedes ver los costos y elegir el plan que te conviene. Puedes comenzar con 5 días de prueba gratis o activar TUCITA de una vez.</p>
+      <p className="muted">Primero puedes ver los costos y elegir el plan que te conviene. Puedes comenzar con 15 días de prueba gratis o activar TUCITA de una vez.</p>
       <a href="#planes" className="trial-cta">
-        <span><strong>Regístrate y disfruta 5 días de prueba gratis</strong><small>Elige tu plan abajo. No necesitas pagar para comenzar la prueba.</small></span>
+        <span><strong>Regístrate y disfruta 15 días de prueba gratis</strong><small>Elige tu plan abajo. No necesitas pagar para comenzar la prueba.</small></span>
         <span className="trial-arrow"><ArrowDown size={24}/></span>
       </a>
     </div>
@@ -33,10 +33,10 @@ export default function Venta(){
           <div className="notice"><CheckCircle2 size={16}/> Agenda y disponibilidad</div>
           <div className="notice"><CheckCircle2 size={16}/> Servicios, duración y precios</div>
           <div className="notice"><CheckCircle2 size={16}/> Reservas, pagos y comprobantes</div>
-          <div className="notice"><CheckCircle2 size={16}/> 5 días de prueba sin tarjeta</div>
+          <div className="notice"><CheckCircle2 size={16}/> 15 días de prueba sin tarjeta</div>
         </div>
         <div className="button-row">
-          <Link href="/registro?role=DOCTOR&type=PROFESSIONAL" className="btn btn-secondary">Probar 5 días</Link>
+          <Link href="/registro?role=DOCTOR&type=PROFESSIONAL" className="btn btn-secondary">Probar 15 días</Link>
           <Link href="/registro?role=DOCTOR&type=PROFESSIONAL&buy=1" className="btn btn-primary"><CreditCard size={16}/> Comprar / activar ahora</Link>
         </div>
       </section>
@@ -49,10 +49,10 @@ export default function Venta(){
           <div className="notice"><CheckCircle2 size={16}/> Hasta 5 profesionales</div>
           <div className="notice"><CheckCircle2 size={16}/> Agenda y servicios por profesional</div>
           <div className="notice"><CheckCircle2 size={16}/> Página pública del negocio</div>
-          <div className="notice"><CheckCircle2 size={16}/> 5 días de prueba sin tarjeta</div>
+          <div className="notice"><CheckCircle2 size={16}/> 15 días de prueba sin tarjeta</div>
         </div>
         <div className="button-row">
-          <Link href="/registro?role=DOCTOR&type=BUSINESS" className="btn btn-secondary">Probar 5 días</Link>
+          <Link href="/registro?role=DOCTOR&type=BUSINESS" className="btn btn-secondary">Probar 15 días</Link>
           <Link href="/registro?role=DOCTOR&type=BUSINESS&buy=1" className="btn btn-primary"><CreditCard size={16}/> Comprar / activar ahora</Link>
         </div>
       </section>
@@ -63,7 +63,7 @@ export default function Venta(){
         <div style={{maxWidth:760}}>
           <span className="eyebrow"><ShieldCheck size={15}/> CÓMO FUNCIONA EL PAGO</span>
           <h2 style={{marginTop:12}}>Pago enviado → verificación → activación</h2>
-          <p className="muted">El cliente crea su cuenta, selecciona PayPal o Binance, registra la referencia y sube el comprobante. El Master verifica el pago y activa la cuenta. Mientras tanto, si todavía está dentro de sus 5 días de prueba, puede seguir probando TUCITA.</p>
+          <p className="muted">El cliente crea su cuenta, selecciona PayPal o Binance, registra la referencia y sube el comprobante. El Master verifica el pago y activa la cuenta. Mientras tanto, si todavía está dentro de sus 15 días de prueba, puede seguir probando TUCITA.</p>
         </div>
         <Link href="/demo" className="btn btn-secondary">Primero quiero ver el demo <ArrowRight size={16}/></Link>
       </div>
