@@ -58,7 +58,7 @@ export default function PerfilPaciente(){
       <div className="field"><label>Cédula / documento (opcional)</label><input maxLength={32} autoComplete="off" value={form.nationalId} onChange={e=>setForm({...form,nationalId:e.target.value})} placeholder="Ej. V-12345678"/></div>
       <div className="field"><label>Fecha de nacimiento (opcional)</label><input type="date" max={new Date().toISOString().slice(0,10)} value={form.birthDate} onChange={e=>setForm({...form,birthDate:e.target.value})}/></div>
       <div className="notice">Tu documento y fecha de nacimiento son privados. No aparecen en las páginas públicas de reservas.</div>
-      <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?'Guardando…':'Guardar cambios'}</button>
+      <button className="btn btn-primary" onClick={save} disabled={saving} aria-busy={saving}>{saving?'Guardando…':'Guardar cambios'}</button>
     </div>}</section>
     {msg&&<div className="toast">{msg}</div>}
   </main></div>;
