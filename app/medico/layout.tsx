@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { redirect } from 'next/navigation';
+import { profileIsDeleted } from '@/lib/profile-lifecycle';
 import { MASTER_EMAIL } from '@/lib/access';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 
@@ -9,6 +10,8 @@ export const dynamic='force-dynamic';
 export default async function MedicoLayout({children}:{children:React.ReactNode}){
   const {data:session}=await auth.getSession();
   if(!session?.user) redirect('/ingresar');
+  const deletedEmail=String((session.user as any).email||'').toLowerCase();
+  if(await profileIsDeleted(deletedEmail)) redirect('/cuenta/eliminada');
   const email=String((session.user as any).email||'').toLowerCase();
   if(email===MASTER_EMAIL) redirect('/master');
   if(!sql) redirect('/ingresar');
