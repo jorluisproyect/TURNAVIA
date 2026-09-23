@@ -45,7 +45,7 @@ export default function SeguridadCuenta(){
         <div className="field"><label>Nueva contraseña</label><div style={{position:'relative'}}><input type={showNew?'text':'password'} required minLength={8} value={newPassword} onChange={e=>setNewPassword(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showNew?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowNew(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showNew?<EyeOff size={18}/>:<Eye size={18}/>}</button></div><div className="muted" style={{fontSize:12,marginTop:6}}>{PASSWORD_HELP}</div></div>
         <div className="field"><label>Repite la nueva contraseña</label><div style={{position:'relative'}}><input type={showConfirm?'text':'password'} required minLength={8} value={confirm} onChange={e=>setConfirm(e.target.value)} style={{paddingRight:46}}/><button type="button" aria-label={showConfirm?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowConfirm(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showConfirm?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
         {error&&<div className="notice danger">{error}</div>}
-        <button className="btn btn-primary" disabled={busy}>{busy?'Actualizando...':'Cambiar contraseña'}</button>
+        <button className="btn btn-primary" disabled={busy} aria-busy={busy}>{busy?'Actualizando...':'Cambiar contraseña'}</button>
       </form>
     </section>
   </div></main>;
