@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { RestoreProfileButton } from '@/components/RestoreProfileButton';
+import { PermanentDeleteProfileButton } from '@/components/PermanentDeleteProfileButton';
 import { isOwnerMasterSession } from '@/lib/access';
 import { sql } from '@/lib/db';
 import { Trash2, UserRound } from 'lucide-react';
@@ -27,7 +28,7 @@ export default async function PerfilesEliminados(){
   return <div className="dashboard"><Sidebar role="master"/><main className="main">
     <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Master · Recuperación</div><h1>Perfiles eliminados</h1></div></div>
     <section className="panel">
-      <div className="row" style={{gap:10,alignItems:'flex-start'}}><Trash2 size={20}/><div><strong>Solo tú puedes ver esta sección.</strong><div className="muted" style={{fontSize:13,marginTop:4}}>Eliminar un perfil no borra su historial. Puedes restablecer el acceso desde aquí. Las suscripciones profesionales eliminadas no se recuperan.</div></div></div>
+      <div className="row" style={{gap:10,alignItems:'flex-start'}}><Trash2 size={20}/><div><strong>Solo tú puedes ver esta sección.</strong><div className="muted" style={{fontSize:13,marginTop:4}}><strong>Eliminar</strong> conserva el perfil para poder restablecerlo. <strong>Eliminar por completo</strong> es definitivo y borra la cuenta del sistema. Las suscripciones profesionales eliminadas no se recuperan.</div></div></div>
     </section>
     <section className="panel" style={{marginTop:18}}>
       {rows.length===0?<div className="notice">No hay perfiles eliminados.</div>:<div className="grid-3">{(rows as any[]).map((r:any)=>{
@@ -40,7 +41,10 @@ export default async function PerfilesEliminados(){
           <p className="muted" style={{wordBreak:'break-word'}}>{m.email}</p>
           <div className="muted" style={{fontSize:12}}>Rol anterior: {role}<br/>Eliminado: {new Date(r.created_at).toLocaleString('es-VE')}</div>
           {Boolean(m.hadActiveSubscription)&&<div className="notice danger" style={{marginTop:10,fontSize:12}}>La suscripción activa se perdió al eliminar el perfil.</div>}
-          <div style={{marginTop:14}}><RestoreProfileButton email={String(m.email)} name={String(m.name||m.email)} professional={professional}/></div>
+          <div className="button-row" style={{marginTop:14,alignItems:'flex-start'}}>
+            <RestoreProfileButton email={String(m.email)} name={String(m.name||m.email)} professional={professional}/>
+            <PermanentDeleteProfileButton email={String(m.email)} name={String(m.name||m.email)}/>
+          </div>
         </article>
       })}</div>}
     </section>
