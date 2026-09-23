@@ -26,7 +26,10 @@ export default async function Master(){
     return <TeamMasterDashboard member={member}/>;
   }
   await refreshAllCommercialStatuses();
-  const rows=sql ? await sql`SELECT * FROM commercial_clients ORDER BY created_at DESC` : [];
+  const rows=sql ? await sql`SELECT c.*,
+    (SELECT e.metadata FROM audit_events e WHERE e.action='PAYMENT_SUBMITTED' AND e.entity_type='COMMERCIAL_CLIENT' AND e.entity_id=c.id::text ORDER BY e.id DESC LIMIT 1) AS pending_payment,
+    (SELECT e.metadata FROM audit_events e WHERE e.action='PAYMENT_APPROVED' AND e.entity_type='COMMERCIAL_CLIENT' AND e.entity_id=c.id::text ORDER BY e.id DESC LIMIT 1) AS latest_approval
+    FROM commercial_clients c ORDER BY c.created_at DESC` : [];
   const clients=rows.map((r:any)=>({
     id:String(r.id),name:r.name||'Sin nombre',type:r.type||'—',category:r.category||'',subcategory:r.subcategory||'',specialty:r.specialty||'',phone:r.phone||'—',email:r.email||'—',
     status:(r.status||'TRIAL') as ClientStatus,
@@ -35,6 +38,7 @@ export default async function Master(){
     paymentSubmittedAt:r.payment_submitted_at?new Date(r.payment_submitted_at).toISOString():undefined,
     paymentReviewedAt:r.payment_reviewed_at?new Date(r.payment_reviewed_at).toISOString():undefined,
     hasProof:Boolean(r.payment_proof),paymentRejectionReason:r.payment_rejection_reason||'',
+    pendingPayment:r.pending_payment||null,latestApproval:r.latest_approval||null,
     demo:isDemo(String(r.email||''))
   }));
   const real=clients.filter(c=>!c.demo);
@@ -42,7 +46,7 @@ export default async function Master(){
   const professionals=active.filter(c=>c.type.startsWith('Profesional')).length;
   const businesses=active.filter(c=>c.type.startsWith('Negocio')).length;
   const trials=real.filter(c=>c.status==='TRIAL').length;
-  const mrr=professionals*15+businesses*49;
+  const mrr=active.reduce((n,c)=>n+(c.type.startsWith('Negocio')?49:(Number(c.latestApproval?.billingMonths)===12?125/12:15)),0);
   const reviews=real.filter(c=>c.status==='REVISION_BINANCE');
   const now=Date.now();
   const expiring=real.filter(c=>c.status==='TRIAL'&&c.trialEndsAt&&new Date(c.trialEndsAt).getTime()>=now&&new Date(c.trialEndsAt).getTime()<=now+86400000);
@@ -75,7 +79,7 @@ export default async function Master(){
         <div className="stat"><Building2 size={18}/><small style={{display:'block',marginTop:8}}>Negocios activos</small><div className="n">{businesses}</div></div>
         <div className="stat"><HeartPulse size={18}/><small style={{display:'block',marginTop:8}}>Profesionales activos</small><div className="n">{professionals}</div></div>
         <div className="stat"><Clock3 size={18}/><small style={{display:'block',marginTop:8}}>Pruebas reales</small><div className="n">{trials}</div></div>
-        <div className="stat"><DollarSign size={18}/><small style={{display:'block',marginTop:8}}>MRR real</small><div className="n">${mrr}</div><small>No incluye demos</small></div>
+        <div className="stat"><DollarSign size={18}/><small style={{display:'block',marginTop:8}}>MRR equivalente</small><div className="n">${mrr.toFixed(2)}</div><small>No incluye demos</small></div>
       </div>
 
       <section className="panel">
@@ -86,10 +90,12 @@ export default async function Master(){
         {reviews.length===0?<div className="notice" style={{marginTop:16}}><CheckCircle2 size={17}/> No tienes pagos pendientes de revisión.</div>:
         <div style={{overflowX:'auto',marginTop:12}}><table className="table"><thead><tr><th>Cliente</th><th>Plan / monto</th><th>Método</th><th>Comprobante</th><th>Acción</th></tr></thead><tbody>{reviews.map(c=>{
           const renewal=Boolean(c.paymentReviewedAt);
-          const amount=c.type.startsWith('Negocio')?(renewal?49:149):(renewal?15:40);
+          const audited=Number(c.pendingPayment?.amount||0);
+          const amount=audited>0?audited:c.type.startsWith('Negocio')?(renewal?49:149):(renewal?15:40);
+          const cycle=Number(c.pendingPayment?.billingMonths||1);
           return <tr key={c.id}>
             <td><Link href={'/master/clientes/'+c.id}><strong>{c.name}</strong></Link><div className="muted" style={{fontSize:12}}>{c.email} · {c.phone}</div></td>
-            <td>{c.type}<div><strong>USD {amount}</strong></div></td>
+            <td>{c.type}<div><strong>USD {amount}</strong> · {cycle===12?'1 año':cycle===3?'3 meses':'1 mes'}</div></td>
             <td>{c.paymentMethod||'—'}{c.paymentReference&&<div><strong>Ref: {c.paymentReference}</strong></div>}{c.paymentSubmittedAt&&<div className="muted" style={{fontSize:12}}>{new Date(c.paymentSubmittedAt).toLocaleString('es-VE')}</div>}</td>
             <td>{c.hasProof?<a className="btn btn-secondary" href={`/api/payments/proof?id=${c.id}`} target="_blank" rel="noreferrer"><Eye size={15}/> Ver comprobante</a>:<span className="muted">Sin archivo</span>}</td>
             <td><MasterActions id={c.id} status={c.status}/></td>
