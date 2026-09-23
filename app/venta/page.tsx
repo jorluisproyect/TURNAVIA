@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
+import BillingPlans from '@/components/BillingPlans';
 import { ArrowDown, ArrowRight, CheckCircle2, CreditCard, Eye, ShieldCheck, Sparkles } from 'lucide-react';
 
 export const dynamic='force-static';
@@ -57,49 +58,7 @@ export default function Venta(){
       </div>
     </section>
 
-    <div id="planes" className="panel-grid" style={{marginTop:18,scrollMarginTop:24}}>
-      <section className="panel">
-        <span className="eyebrow">PROFESIONAL INDEPENDIENTE</span>
-        <h2 style={{fontSize:34,margin:'14px 0 4px'}}>$40 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
-        <p className="muted">$25 de activación. Luego eliges el período que más te convenga.</p>
-        <div className="billing-cycle-grid" style={{marginTop:14}}>
-          <div className="billing-cycle"><span>1 mes</span><strong>$15</strong></div>
-          <div className="billing-cycle"><span>3 meses</span><strong>$45</strong></div>
-          <div className="billing-cycle active"><span>1 año</span><strong>$125</strong><small>Promo anual</small></div>
-        </div>
-        <div style={{display:'grid',gap:8,margin:'16px 0'}}>
-          <div className="notice"><CheckCircle2 size={16}/> Agenda y disponibilidad</div>
-          <div className="notice"><CheckCircle2 size={16}/> Servicios, duración y precios</div>
-          <div className="notice"><CheckCircle2 size={16}/> Reservas, pagos y comprobantes</div>
-          <div className="notice"><CheckCircle2 size={16}/> 15 días de prueba sin tarjeta</div>
-        </div>
-        <div className="button-row">
-          <Link href="/registro?role=DOCTOR&type=PROFESSIONAL" className="btn btn-secondary">Probar 15 días</Link>
-          <Link href="/registro?role=DOCTOR&type=PROFESSIONAL&buy=1" className="btn btn-primary"><CreditCard size={16}/> Comprar / activar ahora</Link>
-        </div>
-      </section>
-
-      <section className="panel">
-        <span className="eyebrow">NEGOCIO / LOCAL</span>
-        <h2 style={{fontSize:34,margin:'14px 0 4px'}}>$149 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
-        <p className="muted">$100 de activación. Luego eliges el período que más te convenga.</p>
-        <div className="billing-cycle-grid" style={{marginTop:14}}>
-          <div className="billing-cycle"><span>1 mes</span><strong>$49</strong></div>
-          <div className="billing-cycle"><span>3 meses</span><strong>$147</strong></div>
-          <div className="billing-cycle"><span>1 año</span><strong>$588</strong></div>
-        </div>
-        <div style={{display:'grid',gap:8,margin:'16px 0'}}>
-          <div className="notice"><CheckCircle2 size={16}/> Hasta 5 profesionales</div>
-          <div className="notice"><CheckCircle2 size={16}/> Agenda y servicios por profesional</div>
-          <div className="notice"><CheckCircle2 size={16}/> Página pública del negocio</div>
-          <div className="notice"><CheckCircle2 size={16}/> 15 días de prueba sin tarjeta</div>
-        </div>
-        <div className="button-row">
-          <Link href="/registro?role=DOCTOR&type=BUSINESS" className="btn btn-secondary">Probar 15 días</Link>
-          <Link href="/registro?role=DOCTOR&type=BUSINESS&buy=1" className="btn btn-primary"><CreditCard size={16}/> Comprar / activar ahora</Link>
-        </div>
-      </section>
-    </div>
+    <BillingPlans/>
 
     <section className="panel" style={{marginTop:18}}>
       <div className="row space" style={{gap:18,flexWrap:'wrap'}}>
