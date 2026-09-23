@@ -1,4 +1,7 @@
 export type PlanKey = 'PROFESSIONAL' | 'BUSINESS';
+export type BillingMonths=1|3|12;
+export const BILLING_MONTHS:BillingMonths[]=[1,3,12];
+export function validBillingMonths(value:number):value is BillingMonths{return BILLING_MONTHS.includes(value as BillingMonths)}
 export type BillingCycleMonths = 1 | 3 | 12;
 
 export const PLANS = {
@@ -43,4 +46,13 @@ export function billingAmount(type:string,months:BillingCycleMonths,isRenewal:bo
   const plan=planFromType(type);
   const renewal=plan.renewal[months];
   return isRenewal?renewal:plan.activation+renewal;
+}
+
+/** Public prices in USD. Professional annual promotion includes activation at no extra cost. */
+export function billingQuote(type:string,months:BillingMonths,isRenewal:boolean){
+  const plan=planFromType(type);
+  const base=plan.monthly*months;
+  const planAmount=months===12&&plan.key==='PROFESSIONAL'?125:base;
+  const activation=isRenewal||months===12&&plan.key==='PROFESSIONAL'?0:plan.activation;
+  return {months,planAmount,activation,total:planAmount+activation,savings:base-planAmount,plan};
 }
