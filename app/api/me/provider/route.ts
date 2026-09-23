@@ -5,6 +5,8 @@ import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
 import { parseProviderMedia, serializeProviderMedia, validateProviderMedia } from '@/lib/provider-media';
+import { validatePhone } from '@/lib/phone';
+import { normalizedBirthDate, normalizedDocument, dateForInput } from '@/lib/personal-profile';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -70,9 +72,15 @@ export async function GET(){
     WHERE doctor_id=${provider.doctor_id} ORDER BY updated_at DESC LIMIT 1`;
 
   const media=parseProviderMedia(provider.bio);
+  const privateRows=await sql`SELECT
+    (SELECT to_jsonb(ap)->>'national_id' FROM app_user_profiles ap WHERE lower(ap.email)=lower(${String(provider.email||'')}) ORDER BY ap.updated_at DESC LIMIT 1) AS national_id,
+    (SELECT to_jsonb(ap)->>'birth_date' FROM app_user_profiles ap WHERE lower(ap.email)=lower(${String(provider.email||'')}) ORDER BY ap.updated_at DESC LIMIT 1) AS birth_date,
+    (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='app_user_profiles' AND column_name IN ('national_id','birth_date')) AS private_columns`;
+  const privateProfile=privateRows[0] as any;
   return NextResponse.json({
     provider:{
       id:String(provider.doctor_id),slug:provider.public_slug,name:provider.full_name,email:provider.email||'',phone:provider.phone||'',profileImage:media.profileImage||'',workImages:media.workImages||[],
+      nationalId:String(privateProfile?.national_id||''),birthDate:dateForInput(privateProfile?.birth_date),personalFieldsReady:Number(privateProfile?.private_columns||0)===2,
       organizationSlug:provider.organization_slug||'',organizationName:provider.organization_name||'',
       publicPath:provider.organization_slug?'/negocio/'+provider.organization_slug:'/reservar/'+provider.public_slug,
       category:provider.provider_category||'Salud',activity:provider.provider_activity||provider.specialty||'Servicio',
@@ -104,13 +112,26 @@ export async function PATCH(req:Request){
     const mediaError=validateProviderMedia(String(body.profileImage||''),Array.isArray(body.workImages)?body.workImages:[]);
     if(mediaError)return NextResponse.json({error:mediaError},{status:400});
     const name=String(body.name||provider.full_name).trim();
-    const phone=String(body.phone||provider.phone||'').trim();
+    const phoneResult=validatePhone(String(body.phoneCountry||''),String(body.phoneLocal||''));
+    const phone=phoneResult.phone;
+    const national=normalizedDocument(body.nationalId);
+    const birth=normalizedBirthDate(body.birthDate);
+    if(!name)return NextResponse.json({error:'Escribe tu nombre.'},{status:400});
+    if(phoneResult.error)return NextResponse.json({error:phoneResult.error},{status:400});
+    if(national.error)return NextResponse.json({error:national.error},{status:400});
+    if(birth.error)return NextResponse.json({error:birth.error},{status:400});
+    const available=await sql`SELECT COUNT(*) AS n FROM information_schema.columns WHERE table_schema='public' AND table_name='app_user_profiles' AND column_name IN ('national_id','birth_date')`;
+    const detailsReady=Number((available[0] as any)?.n||0)===2;
+    if(!detailsReady&&(national.value||birth.value))return NextResponse.json({error:'La base de datos de perfiles está pendiente de actualización. Intenta de nuevo cuando se habiliten los datos personales.'},{status:503});
     const category=String(body.category||provider.provider_category||'Otro').trim();
     const activity=String(body.activity||provider.provider_activity||'Servicio').trim();
     const type=String(body.type||provider.provider_type||'Profesional independiente').trim();
     const email=String(provider.email||'').toLowerCase();
     await sql`UPDATE users SET full_name=${name},phone=${phone} WHERE id=${provider.user_id}`;
     await sql`UPDATE app_user_profiles SET full_name=${name},phone=${phone},updated_at=now() WHERE lower(email)=lower(${email})`;
+    if(detailsReady){
+      await sql`UPDATE app_user_profiles SET national_id=${national.value||null},birth_date=${birth.value}::date,updated_at=now() WHERE lower(email)=lower(${email})`;
+    }
     const mediaJson=serializeProviderMedia(provider.bio,{profileImage:String(body.profileImage||''),workImages:Array.isArray(body.workImages)?body.workImages:[]});
     await sql`UPDATE doctors SET specialty=${activity},provider_category=${category},provider_activity=${activity},provider_type=${type},bio=${mediaJson} WHERE id=${provider.doctor_id}`;
     await sql`UPDATE commercial_clients SET name=${name},phone=${phone},type=${type},category=${category},subcategory=${activity},specialty=${activity} WHERE lower(email)=lower(${email})`;
