@@ -457,3 +457,16 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
   .portrait-guard strong{display:block;font-size:20px;letter-spacing:-.025em}
   .portrait-guard span{display:block;margin-top:8px;color:var(--muted);font-size:14px;line-height:1.45}
 }
+
+/* One clear entry for the public guided demo */
+.demo-floating-cta{
+ position:fixed;right:18px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:750;
+ display:flex;align-items:center;gap:10px;max-width:min(94vw,390px);
+ background:var(--brand);color:#fff;border:2px solid #fff;border-radius:20px;
+ box-shadow:0 16px 44px rgba(11,111,105,.32);padding:15px 18px;
+ font-size:15px;font-weight:850;text-align:left;line-height:1.3;
+}
+.demo-floating-cta:hover{background:var(--brand-dark);transform:translateY(-2px)}
+.demo-floating-arrow{font-size:25px;line-height:1;font-weight:900}
+@media(max-width:600px){.demo-floating-cta{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));width:calc(100% - 24px);justify-content:center;font-size:15px;padding:16px 13px;border-radius:18px}}
+@media(prefers-reduced-motion:reduce){.demo-floating-cta{transition:none}}
