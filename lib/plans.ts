@@ -43,9 +43,7 @@ export function planFromType(type: string) {
 }
 
 export function billingAmount(type:string,months:BillingCycleMonths,isRenewal:boolean){
-  const plan=planFromType(type);
-  const renewal=plan.renewal[months];
-  return isRenewal?renewal:plan.activation+renewal;
+  return billingQuote(type,months,isRenewal).total;
 }
 
 /** Public prices in USD. Professional annual promotion includes activation at no extra cost. */
