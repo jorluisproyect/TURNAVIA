@@ -1,6 +1,7 @@
 'use client';
 import { useEffect,useState } from 'react';
 import { CreditCard, Plus, Power, PowerOff, Pencil, Trash2, X } from 'lucide-react';
+import { showActionFeedback, useActionLock } from '@/components/ActionFeedback';
 
 const blank={name:'',type:'OTRO',accountLabel:'',accountValue:'',instructions:'',currency:'USD',requiresProof:true};
 
@@ -10,6 +11,7 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza'}:{scope:'MASTE
   const [show,setShow]=useState(false);
   const [editingId,setEditingId]=useState('');
   const [msg,setMsg]=useState('');
+  const {busy,run}=useActionLock();
 
   async function load(){
     const r=await fetch(`/api/payment-methods?scope=${scope}&slug=${slug}`);
@@ -24,14 +26,22 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza'}:{scope:'MASTE
   }
 
   async function save(){
-    if(!form.name.trim())return setMsg('Escribe el nombre del método de pago.');
-    setMsg('');
-    const method=editingId?'PATCH':'POST';
-    const body=editingId?{id:editingId,...form}:{scope,slug,...form};
-    const r=await fetch('/api/payment-methods',{method,headers:{'content-type':'application/json'},body:JSON.stringify(body)});
-    const j=await r.json();
-    if(!r.ok)return setMsg(j.error||'No se pudo guardar.');
-    reset();await load();setMsg(editingId?'Método actualizado.':'Método agregado.');
+    if(!form.name.trim()){setMsg('Escribe el nombre del método de pago.');return}
+    await run(async()=>{
+      setMsg('');
+      const wasEditing=Boolean(editingId);
+      showActionFeedback('saving',wasEditing?'Actualizando método de pago…':'Guardando método de pago…');
+      try{
+        const method=wasEditing?'PATCH':'POST';
+        const body=wasEditing?{id:editingId,...form}:{scope,slug,...form};
+        const r=await fetch('/api/payment-methods',{method,headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json();
+        if(!r.ok){showActionFeedback('error',j.error||'No se pudo guardar el método de pago.');return}
+        reset();
+        showActionFeedback('success',wasEditing?'Método de pago actualizado correctamente.':'Método de pago agregado correctamente.');
+        await load();
+      }catch{showActionFeedback('error','No se pudo conectar con TUCITA. Revisa tu conexión.')}
+    });
   }
 
   function edit(m:any){
@@ -50,28 +60,39 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza'}:{scope:'MASTE
   }
 
   async function toggle(m:any){
-    setMsg('');
-    const r=await fetch('/api/payment-methods',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:m.id,active:!m.active})});
-    const j=await r.json();
-    if(!r.ok)return setMsg(j.error||'No se pudo actualizar.');
-    await load();
+    await run(async()=>{
+      setMsg('');
+      showActionFeedback('saving',m.active?'Desactivando método…':'Activando método…');
+      try{
+        const r=await fetch('/api/payment-methods',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:m.id,active:!m.active})});
+        const j=await r.json();
+        if(!r.ok){showActionFeedback('error',j.error||'No se pudo actualizar el método.');return}
+        showActionFeedback('success',m.active?'Método de pago desactivado.':'Método de pago activado.');
+        await load();
+      }catch{showActionFeedback('error','No se pudo conectar con TUCITA.')}
+    });
   }
 
   async function remove(m:any){
     if(!confirm(`¿Eliminar definitivamente el método "${m.name}"?`))return;
-    setMsg('');
-    const r=await fetch('/api/payment-methods',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({id:m.id})});
-    const j=await r.json();
-    if(!r.ok)return setMsg(j.error||'No se pudo eliminar.');
-    if(editingId===m.id)reset();
-    await load();
-    setMsg('Método eliminado.');
+    await run(async()=>{
+      setMsg('');
+      showActionFeedback('saving','Eliminando método de pago…');
+      try{
+        const r=await fetch('/api/payment-methods',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({id:m.id})});
+        const j=await r.json();
+        if(!r.ok){showActionFeedback('error',j.error||'No se pudo eliminar el método.');return}
+        if(editingId===m.id)reset();
+        showActionFeedback('success','Método de pago eliminado correctamente.');
+        await load();
+      }catch{showActionFeedback('error','No se pudo conectar con TUCITA.')}
+    });
   }
 
   return <section className="panel" style={{marginTop:18}}>
     <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
       <div><h2>Métodos de pago</h2><div className="muted" style={{fontSize:13}}>{scope==='MASTER'?'Cómo pagan profesionales y negocios a TUCITA.':'Solo los métodos activos se muestran a tus clientes.'}</div></div>
-      <button className="btn btn-primary" onClick={()=>{if(show)reset();else{setEditingId('');setForm(blank);setShow(true)}}}>{show?<><X size={16}/> Cerrar</>:<><Plus size={16}/> Agregar método</>}</button>
+      <button className="btn btn-primary" disabled={busy} onClick={()=>{if(show)reset();else{setEditingId('');setForm(blank);setShow(true)}}}>{show?<><X size={16}/> Cerrar</>:<><Plus size={16}/> Agregar método</>}</button>
     </div>
 
     {show&&<div className="form" style={{marginTop:16}}>
@@ -83,7 +104,7 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza'}:{scope:'MASTE
         <div className="field" style={{minWidth:160}}><label>Moneda</label><select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}><option>USD</option><option>USDT</option><option>VES</option><option>EUR</option></select></div>
         <label className="notice row" style={{fontSize:13,alignSelf:'end'}}><input type="checkbox" checked={form.requiresProof} onChange={e=>setForm({...form,requiresProof:e.target.checked})}/> Requiere comprobante o referencia</label>
       </div>
-      <div className="button-row"><button className="btn btn-primary" onClick={save}>{editingId?'Guardar cambios':'Guardar método'}</button>{editingId&&<button className="btn btn-secondary" onClick={reset}>Cancelar</button>}</div>
+      <div className="button-row"><button className="btn btn-primary" onClick={save} disabled={busy}>{busy?'Guardando…':editingId?'Guardar cambios':'Guardar método'}</button>{editingId&&<button className="btn btn-secondary" onClick={reset} disabled={busy}>Cancelar</button>}</div>
     </div>}
 
     {msg&&<div className="notice" style={{marginTop:12}}>{msg}</div>}
@@ -92,9 +113,9 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza'}:{scope:'MASTE
       <div className="iconbox"><CreditCard size={17}/></div>
       <div style={{flex:1,minWidth:220}}><strong>{m.name}</strong><div className="muted" style={{fontSize:12}}>{m.account_label||m.accountLabel}: {m.account_value||m.accountValue}</div><div className="muted" style={{fontSize:12}}>{m.instructions}</div></div>
       <span className={m.active?'status ok':'status'}>{m.active?'Activo':'Inactivo'}</span>
-      <button className="btn btn-secondary" onClick={()=>edit(m)}><Pencil size={14}/> Editar</button>
-      <button className="btn btn-secondary" onClick={()=>toggle(m)}>{m.active?<><PowerOff size={14}/> Desactivar</>:<><Power size={14}/> Activar</>}</button>
-      <button className="btn btn-secondary" onClick={()=>remove(m)}><Trash2 size={14}/> Eliminar</button>
+      <button className="btn btn-secondary" onClick={()=>edit(m)} disabled={busy}><Pencil size={14}/> Editar</button>
+      <button className="btn btn-secondary" onClick={()=>toggle(m)} disabled={busy}>{m.active?<><PowerOff size={14}/> Desactivar</>:<><Power size={14}/> Activar</>}</button>
+      <button className="btn btn-secondary" onClick={()=>remove(m)} disabled={busy}><Trash2 size={14}/> Eliminar</button>
     </div>)}</div>
   </section>
 }
