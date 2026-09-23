@@ -6,6 +6,10 @@ import { sql, hasDatabase } from '@/lib/db';
 import { neonAuthConfigured } from '@/lib/auth/config';
 import MasterActions from './MasterActions';
 import { refreshAllCommercialStatuses } from '@/lib/subscription';
+import { currentSession, isOwnerMasterSession } from '@/lib/access';
+import { teamMemberForUser } from '@/lib/master-team';
+import TeamMasterDashboard from './TeamMasterDashboard';
+import { redirect } from 'next/navigation';
 
 export const dynamic='force-dynamic';
 
@@ -15,6 +19,12 @@ const tone=(s:ClientStatus)=>s==='ACTIVO'?'ok':s==='SUSPENDIDO'?'bad':'warn';
 const isDemo=(email:string)=>{const e=email.toLowerCase();return e.startsWith('demo@')||e.includes('.demo@')};
 
 export default async function Master(){
+  if(!(await isOwnerMasterSession())){
+    const session=await currentSession();
+    const member=await teamMemberForUser(session?.user as any);
+    if(!member)redirect('/panel');
+    return <TeamMasterDashboard member={member}/>;
+  }
   await refreshAllCommercialStatuses();
   const rows=sql ? await sql`SELECT * FROM commercial_clients ORDER BY created_at DESC` : [];
   const clients=rows.map((r:any)=>({
