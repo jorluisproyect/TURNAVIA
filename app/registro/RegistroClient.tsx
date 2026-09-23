@@ -22,7 +22,9 @@ export default function RegistroClient(){
   const initialEmail=sp.get('email')||'';
   const [state,action,pending]=useActionState(registerUser,null);
   const [showPassword,setShowPassword]=useState(false);
-  const provider=accountType!=='PATIENT';
+  const teamInvite=sp.get('team')==='1';
+  const inviteToken=sp.get('invite')||'';
+  const provider=!teamInvite&&accountType!=='PATIENT';
 
   return <main className="demo-chooser"><div className="container booking-wrap">
     <div className="row space"><Brand/><Link href="/ingresar" className="btn btn-secondary">Ya tengo cuenta</Link></div>
