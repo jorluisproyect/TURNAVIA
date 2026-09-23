@@ -58,6 +58,7 @@ export default function Medico(){
  const upcoming=useMemo(()=>data?.appointments?.filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-86400000)||[],[data]);
  const review=useMemo(()=>upcoming.filter((a:any)=>a.status==='PAYMENT_REVIEW'),[upcoming]);
  const confirmed=useMemo(()=>upcoming.filter((a:any)=>['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION'].includes(a.status)),[upcoming]);
+ const nextAppointment=useMemo(()=>[...confirmed].filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-3600000).sort((a:any,b:any)=>new Date(a.startsAt).getTime()-new Date(b.startsAt).getTime())[0],[confirmed]);
 
  async function patch(body:any){
    const r=await fetch('/api/me/provider',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
@@ -172,6 +173,10 @@ export default function Medico(){
     <div className="stat"><small>Servicios</small><div className="n">{data.services.filter((s:any)=>s.active).length}</div></div>
     <div className="stat"><small>Bloques disponibles</small><div className="n">{data.availability.length}</div></div>
   </div>
+
+  {nextAppointment&&<section className="panel" style={{marginTop:18,background:'linear-gradient(145deg,#ffffff,#eef9f6)'}}>
+    <div className="row space" style={{gap:16,alignItems:'flex-start',flexWrap:'wrap'}}><div><span className="eyebrow"><Clock3 size={15}/> SIGUIENTE CITA</span><h2 style={{fontSize:24,margin:'10px 0 4px'}}>{nextAppointment.clientName}</h2><div className="muted">{nextAppointment.serviceName}</div><div style={{marginTop:9}}><strong>{new Date(nextAppointment.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit',timeZone:'America/Caracas'})}</strong></div><div className="row muted" style={{fontSize:12,marginTop:7}}><MapPin size={14}/>{[nextAppointment.location?.name,nextAppointment.location?.address].filter(Boolean).join(' · ')||'Ubicación por confirmar'}</div></div><div className="button-row"><Link className="btn btn-secondary" href="/medico/finanzas">Ver finanzas</Link>{nextAppointment.status==='CONFIRMED'&&<button className="btn btn-primary" onClick={()=>patch({action:'appointment_status',id:nextAppointment.id,status:'ARRIVED'})}>Registrar llegada</button>}</div></div>
+  </section>}
 
   <section className="panel" id="ubicaciones" style={{marginTop:18}}>
    <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>Lugares de atención</h2><div className="muted" style={{fontSize:13}}>Agrega todos los lugares donde trabajas. Luego asigna cada horario a uno de ellos.</div></div><button className="btn btn-primary" onClick={newLocation}><Plus size={16}/> Agregar ubicación</button></div>
