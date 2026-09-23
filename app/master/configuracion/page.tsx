@@ -1,3 +1,5 @@
+import { isOwnerMasterSession } from '@/lib/access';
+import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 import { hasDatabase, sql, databaseEnvName } from '@/lib/db';
@@ -12,6 +14,7 @@ function State({ok,label}:{ok:boolean;label:string}){
 }
 
 export default async function ConfiguracionMaster(){
+  if(!(await isOwnerMasterSession()))redirect('/master');
  const authReady=neonAuthConfigured;
  const appUrlReady=Boolean(process.env.APP_URL);
  const smtpReady=Boolean(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS);
