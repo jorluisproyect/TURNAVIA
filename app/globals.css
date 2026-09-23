@@ -354,3 +354,85 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
   .dashboard .panel{overflow:visible}
   .dashboard *{touch-action:manipulation}
 }
+
+
+/* Mobile accessibility: vertical-first content, no sideways navigation */
+@media(max-width:600px){
+  html,body{overflow-x:hidden}
+
+  .dashboard .stat-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    overflow:visible;
+    gap:8px;
+    margin:0 0 12px;
+    padding:0;
+    scroll-snap-type:none;
+  }
+  .dashboard .stat-grid .stat{
+    min-width:0;
+    width:auto;
+    flex:none;
+    scroll-snap-align:none;
+  }
+
+  .dashboard .grid-3{
+    display:grid;
+    grid-template-columns:1fr;
+    overflow:visible;
+    gap:10px;
+    padding:0;
+    scroll-snap-type:none;
+  }
+  .dashboard .grid-3 > .card{
+    min-width:0;
+    width:100%;
+    max-width:none;
+    flex:none;
+    scroll-snap-align:none;
+  }
+
+  .dashboard .panel-grid{
+    grid-template-columns:1fr;
+  }
+
+  .dashboard .row{
+    max-width:100%;
+  }
+
+  .dashboard img{
+    max-width:100%;
+  }
+
+  .dashboard .button-row{
+    width:100%;
+  }
+
+  .dashboard .button-row .btn{
+    min-height:42px;
+  }
+
+  .dashboard .topbar{
+    width:100%;
+  }
+
+  .dashboard .topbar > .row,
+  .dashboard .topbar .button-row{
+    width:100%;
+  }
+
+  .dashboard .topbar .btn{
+    flex:1;
+  }
+
+  .dashboard .table{
+    min-width:0;
+  }
+
+  .dashboard .panel{
+    max-width:100%;
+  }
+}
+@media(max-width:380px){
+  .dashboard .stat-grid{grid-template-columns:1fr}
+}
