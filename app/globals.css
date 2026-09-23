@@ -480,3 +480,5 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
 .billing-cycle small{font-size:10px;color:var(--brand);font-weight:850}
 .billing-cycle.active{border-color:var(--brand);background:#edf8f6;box-shadow:0 0 0 2px rgba(11,111,105,.08)}
 @media(max-width:560px){.billing-cycle-grid{grid-template-columns:1fr}.billing-cycle{grid-template-columns:1fr auto;align-items:center}.billing-cycle small{grid-column:1/-1}}
+
+@media(max-width:900px){.mobile-bottom-nav-compact{grid-template-columns:repeat(3,minmax(0,1fr));max-width:390px;margin:auto}}
