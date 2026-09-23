@@ -1,0 +1,58 @@
+name: TUCITA Domain Diagnostics
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/domain-diagnostics.yml'
+
+jobs:
+  check-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public DNS, HTTPS and email records
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, socket, ssl, urllib.request, urllib.error
+          from urllib.parse import urlencode
+          domain='tucita.com.ve'
+          records=[
+            (domain,'NS'),(domain,'A'),(domain,'AAAA'),(domain,'MX'),
+            (domain,'TXT'),('default._domainkey.'+domain,'TXT'),
+            ('_dmarc.'+domain,'TXT'),('www.'+domain,'A')
+          ]
+          print('DNS check for', domain)
+          answers={}
+          for host,rtype in records:
+            url='https://dns.google/resolve?'+urlencode({'name':host,'type':rtype})
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'TUCITA-Domain-Diagnostics/1.0'})
+              with urllib.request.urlopen(req,timeout=14) as response:
+                value=json.load(response)
+              result={'status':value.get('Status'), 'answers':[v.get('data') for v in value.get('Answer',[])]}
+              answers[(host,rtype)]=result
+              print(host,rtype,json.dumps(result,ensure_ascii=False))
+            except Exception as e:
+              answers[(host,rtype)]={'error':str(e)}
+              print(host,rtype,'LOOKUP ERROR',str(e))
+          print('HTTPS check:')
+          try:
+            req=urllib.request.Request('https://'+domain+'/',method='HEAD',headers={'User-Agent':'TUCITA-Domain-Diagnostics/1.0'})
+            with urllib.request.urlopen(req,timeout=18,context=ssl.create_default_context()) as r:
+              print('https_status',r.status,'final_url',r.url,'server',r.headers.get('Server',''))
+              https_ok=200 <= r.status < 400
+          except urllib.error.HTTPError as e:
+            print('https_http_error',e.code,'url',e.url)
+            https_ok=False
+          except Exception as e:
+            print('https_error',type(e).__name__,str(e))
+            https_ok=False
+          ns_ok=bool(answers.get((domain,'NS'),{}).get('answers'))
+          a_ok=bool(answers.get((domain,'A'),{}).get('answers') or answers.get((domain,'AAAA'),{}).get('answers'))
+          mx_ok=bool(answers.get((domain,'MX'),{}).get('answers'))
+          print('VERDICT ns=',ns_ok,'web_ip=',a_ok,'https=',https_ok,'mail_mx=',mx_ok)
+          if not(ns_ok and a_ok and https_ok):
+            raise SystemExit('Web domain is not fully ready from public resolver')
+          PY
