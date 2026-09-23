@@ -39,6 +39,7 @@ const config = {
     ["/master/clientes", "Clientes", Building2],
     ["/master/profesionales", "Profesionales", HeartPulse],
     ["/master/suscripciones", "Suscripciones", BarChart3],
+    ["/master/equipo", "Equipo de trabajo", Users],
     ["/master/configuracion", "Configuración", Settings],
     ["/cuenta/seguridad", "Seguridad", Settings],
   ],
@@ -109,6 +110,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
     ]:
     role==='master'?[
       ['/master/profesionales','Profesionales',HeartPulse],
+      ['/master/equipo','Equipo de trabajo',Users],
       ['/master/configuracion','Configuración',Settings],
       ['/cuenta/seguridad','Seguridad',ShieldCheck],
     ]:
