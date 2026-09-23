@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { ImagePlus, Trash2, UserRound } from 'lucide-react';
 import { COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
 import { countryDialCode, digitsOnly, phoneMaxLength } from '@/lib/phone';
+import { DeleteProfileButton } from '@/components/DeleteProfileButton';
 
 function splitPhone(value:string){
   const v=String(value||'').trim();
@@ -60,6 +61,7 @@ export default function PerfilPaciente(){
       <div className="notice">Tu documento y fecha de nacimiento son privados. No aparecen en las páginas públicas de reservas.</div>
       <button className="btn btn-primary" onClick={save} disabled={saving} aria-busy={saving}>{saving?'Guardando…':'Guardar cambios'}</button>
     </div>}</section>
+    <section className="panel" style={{marginTop:18}}><DeleteProfileButton accountKind="client"/></section>
     {msg&&<div className="toast">{msg}</div>}
   </main></div>;
 }
