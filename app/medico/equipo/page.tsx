@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
 import { CalendarPlus, Copy, Plus, Trash2, Users, BriefcaseBusiness, ExternalLink, Eye, ImagePlus, Pencil, UserRound, MapPin } from 'lucide-react';
 import { COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
+import { showActionFeedback, useActionLock } from '@/components/ActionFeedback';
 
 type Member={
   id:string;name:string;email:string;phone:string;slug:string;category:string;activity:string;isOwner:boolean;
@@ -37,6 +38,7 @@ export default function EquipoPage(){
   const [data,setData]=useState<any>(null);
   const [selected,setSelected]=useState('');
   const [msg,setMsg]=useState('');
+  const {busy:saving,run:runSave}=useActionLock();
   const [error,setError]=useState('');
   const [member,setMember]=useState({name:'',activity:'',category:'',phoneCode:'+58',phoneLocal:'',email:'',profileImage:'',about:'',licenseNumber:'',employeeStatus:'AVAILABLE',locationId:''});
   const [editMember,setEditMember]=useState<any>(null);
@@ -57,10 +59,23 @@ export default function EquipoPage(){
   const current:Member|undefined=useMemo(()=>data?.team?.find((m:Member)=>m.id===selected)||data?.team?.[0],[data,selected]);
 
   async function action(body:any){
-    const r=await fetch('/api/me/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
-    const j=await r.json();
-    if(!r.ok){setMsg(j.error||'No se pudo guardar');return false}
-    setMsg('Cambios guardados');await load();setTimeout(()=>setMsg(''),1800);return true;
+    return (await runSave(async()=>{
+      const labels:Record<string,string>={
+        add_member:'Miembro agregado al equipo.',update_member:'Ficha actualizada.',remove_member:'Miembro desactivado.',
+        add_service:'Servicio agregado.',update_service:'Servicio actualizado.',add_availability:'Horario publicado.',
+        delete_availability:'Horario eliminado.',approve_payment:'Pago aprobado.',reject_payment:'Pago rechazado.',
+        appointment_status:'Estado de la reserva actualizado.'
+      };
+      showActionFeedback('saving','Guardando cambios del equipo…');
+      try{
+        const r=await fetch('/api/me/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json();
+        if(!r.ok){showActionFeedback('error',j.error||'No se pudo guardar.');return false}
+        showActionFeedback('success',j.message||labels[String(body.action)]||'Cambios guardados correctamente.');
+        await load();
+        return true;
+      }catch{showActionFeedback('error','No se pudo conectar con TUCITA. Intenta de nuevo.');return false}
+    }))??false;
   }
 
   async function addMember(){
