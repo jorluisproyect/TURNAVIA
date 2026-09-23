@@ -18,7 +18,38 @@ export default async function MisProfesionales(){
      JOIN patients p ON p.id=a.patient_id
      JOIN doctors d ON d.id=a.doctor_id
      JOIN users u ON u.id=d.user_id
+     JOIN app_user_profiles ap ON lower(ap.email)=lower(u.email) AND ap.role::text='DOCTOR'
+     JOIN neon_auth."user" au ON lower(au.email)=lower(u.email)
+     LEFT JOIN organizations o ON o.id=u.organization_id
+     JOIN LATERAL (
+       SELECT cc.*
+       FROM commercial_clients cc
+       WHERE lower(cc.email)=lower(COALESCE(o.email,u.email))
+       ORDER BY cc.created_at DESC
+       LIMIT 1
+     ) c ON true
      WHERE lower(p.email)=lower(${email})
+       AND u.active=true
+       AND d.accepts_online_booking=true
+       AND (
+         (c.status IN ('TRIAL','REVISION_BINANCE') AND c.trial_ends_at IS NOT NULL AND c.trial_ends_at>now())
+         OR (
+           c.status='ACTIVO'
+           AND COALESCE(
+             (
+               SELECT NULLIF(ae.metadata->>'paidUntil','')::timestamptz
+               FROM audit_events ae
+               WHERE ae.entity_type='COMMERCIAL_CLIENT'
+                 AND ae.entity_id=c.id::text
+                 AND ae.action='PAYMENT_APPROVED'
+               ORDER BY ae.created_at DESC
+               LIMIT 1
+             ),
+             c.payment_reviewed_at + interval '31 days',
+             c.created_at + interval '31 days'
+           )>now()
+         )
+       )
      GROUP BY d.id,u.full_name
      ORDER BY max(a.starts_at) DESC`;
  }
