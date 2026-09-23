@@ -1,15 +1,14 @@
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { redirect } from 'next/navigation';
-import { MASTER_EMAIL } from '@/lib/access';
+import { isMasterSession } from '@/lib/access';
 
 export const dynamic='force-dynamic';
 
 export default async function Panel(){
   const {data:session}=await auth.getSession();
   if(!session?.user) redirect('/ingresar');
-  const sessionEmail=String((session.user as any).email||'').toLowerCase();
-  if(sessionEmail===MASTER_EMAIL){
+  if(await isMasterSession()){
     if(sql){
       const masterRows=await sql`SELECT must_change_password FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
       if(Boolean((masterRows[0] as any)?.must_change_password)) redirect('/cuenta/seguridad');
