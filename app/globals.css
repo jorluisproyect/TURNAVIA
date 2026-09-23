@@ -470,3 +470,13 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
 .demo-floating-arrow{font-size:25px;line-height:1;font-weight:900}
 @media(max-width:600px){.demo-floating-cta{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));width:calc(100% - 24px);justify-content:center;font-size:15px;padding:16px 13px;border-radius:18px}}
 @media(prefers-reduced-motion:reduce){.demo-floating-cta{transition:none}}
+
+
+/* Subscription period selector */
+.billing-cycle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.billing-cycle{border:1px solid var(--line);background:#fff;border-radius:15px;padding:12px;display:grid;gap:4px;text-align:left;color:var(--text)}
+.billing-cycle span{font-size:12px;font-weight:800;color:var(--muted)}
+.billing-cycle strong{font-size:22px;letter-spacing:-.03em}
+.billing-cycle small{font-size:10px;color:var(--brand);font-weight:850}
+.billing-cycle.active{border-color:var(--brand);background:#edf8f6;box-shadow:0 0 0 2px rgba(11,111,105,.08)}
+@media(max-width:560px){.billing-cycle-grid{grid-template-columns:1fr}.billing-cycle{grid-template-columns:1fr auto;align-items:center}.billing-cycle small{grid-column:1/-1}}
