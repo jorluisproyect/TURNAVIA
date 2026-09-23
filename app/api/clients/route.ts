@@ -104,6 +104,17 @@ export async function PATCH(req:Request){
     }catch(error){
       console.error('TUCITA in-app client notification error',error);
     }
+    let approvalMeta:any=null;
+    if(body.status==='ACTIVO'){
+      const paymentEvents=await sql`SELECT metadata FROM audit_events
+        WHERE entity_type='COMMERCIAL_CLIENT' AND entity_id=${String(client.id)} AND action='PAYMENT_SUBMITTED'
+        ORDER BY created_at DESC LIMIT 1`;
+      const monthsRaw=Number((paymentEvents[0] as any)?.metadata?.billingMonths||1);
+      const billingMonths=[1,3,12].includes(monthsRaw)?monthsRaw:1;
+      const paidUntil=new Date();
+      paidUntil.setMonth(paidUntil.getMonth()+billingMonths);
+      approvalMeta={billingMonths,paidUntil:paidUntil.toISOString()};
+    }
     const action=body.status==='ACTIVO'
       ? (prev.status==='SUSPENDIDO'?'CLIENT_REACTIVATED':'PAYMENT_APPROVED')
       : body.status==='SUSPENDIDO'
@@ -117,7 +128,9 @@ export async function PATCH(req:Request){
         'nextStatus',${String(body.status||'')},
         'reason',${body.rejectionReason||null},
         'paymentMethod',${client.paymentMethod||null},
-        'paymentReference',${client.paymentReference||null}
+        'paymentReference',${client.paymentReference||null},
+        'billingMonths',${approvalMeta?.billingMonths||null},
+        'paidUntil',${approvalMeta?.paidUntil||null}
       ))`;
   }
   if(body.status==='ACTIVO' && prev.status!=='ACTIVO'){
