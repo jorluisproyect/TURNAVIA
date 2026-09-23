@@ -92,3 +92,21 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
   .profile-modal{max-height:calc(100dvh - 16px)}
   .profile-modal-actions{margin:12px -18px -18px!important;padding:14px 18px 18px!important}
 }
+
+
+/* Professional finance dashboard */
+.finance-stat{position:relative;overflow:hidden}
+.finance-stat:after{content:"";position:absolute;width:110px;height:110px;border-radius:999px;background:linear-gradient(145deg,rgba(126,217,199,.18),rgba(11,111,105,.03));right:-34px;top:-34px}
+.finance-stat svg{color:var(--brand);position:relative;z-index:1}
+.finance-hero{background:linear-gradient(145deg,#ffffff,#f0faf7)}
+.finance-chart{height:225px;display:grid;grid-template-columns:repeat(8,minmax(52px,1fr));gap:10px;align-items:end;overflow-x:auto;padding:6px 4px 0}
+.finance-bar-wrap{border:0;background:transparent;display:grid;grid-template-rows:28px 170px 24px;align-items:end;justify-items:center;min-width:54px;color:var(--muted);padding:0;cursor:pointer}
+.finance-bar{width:min(34px,72%);border-radius:12px 12px 5px 5px;background:linear-gradient(180deg,#46b9a8,var(--brand));box-shadow:0 10px 20px rgba(11,111,105,.12);transition:.2s transform,.2s filter}
+.finance-bar-wrap:hover .finance-bar,.finance-bar-wrap.active .finance-bar{transform:translateY(-4px);filter:saturate(1.15)}
+.finance-bar-value{font-size:11px;font-weight:800;color:var(--brand);height:24px;white-space:nowrap}
+.finance-bar-wrap small{font-size:10px;white-space:nowrap}
+.finance-chart-note{margin-top:14px;background:#f8fbfa;border:1px solid var(--line);padding:11px 13px;border-radius:13px;color:var(--muted);font-size:12px}
+.fx-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.fx-chip{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:#f8fbfa}
+.fx-chip small{display:block;color:var(--muted);font-size:10px}.fx-chip strong{display:block;margin-top:3px;font-size:13px}
+@media(max-width:900px){.finance-chart{grid-template-columns:repeat(8,70px)}.fx-strip{grid-template-columns:repeat(2,1fr)}}
