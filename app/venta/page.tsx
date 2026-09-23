@@ -61,7 +61,12 @@ export default function Venta(){
       <section className="panel">
         <span className="eyebrow">PROFESIONAL INDEPENDIENTE</span>
         <h2 style={{fontSize:34,margin:'14px 0 4px'}}>$40 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
-        <p className="muted">$25 activación + $15 primer mes. Luego $15/mes.</p>
+        <p className="muted">$25 de activación. Luego eliges el período que más te convenga.</p>
+        <div className="billing-cycle-grid" style={{marginTop:14}}>
+          <div className="billing-cycle"><span>1 mes</span><strong>$15</strong></div>
+          <div className="billing-cycle"><span>3 meses</span><strong>$45</strong></div>
+          <div className="billing-cycle active"><span>1 año</span><strong>$125</strong><small>Promo anual</small></div>
+        </div>
         <div style={{display:'grid',gap:8,margin:'16px 0'}}>
           <div className="notice"><CheckCircle2 size={16}/> Agenda y disponibilidad</div>
           <div className="notice"><CheckCircle2 size={16}/> Servicios, duración y precios</div>
@@ -77,7 +82,12 @@ export default function Venta(){
       <section className="panel">
         <span className="eyebrow">NEGOCIO / LOCAL</span>
         <h2 style={{fontSize:34,margin:'14px 0 4px'}}>$149 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
-        <p className="muted">$100 activación + $49 primer mes. Luego $49/mes.</p>
+        <p className="muted">$100 de activación. Luego eliges el período que más te convenga.</p>
+        <div className="billing-cycle-grid" style={{marginTop:14}}>
+          <div className="billing-cycle"><span>1 mes</span><strong>$49</strong></div>
+          <div className="billing-cycle"><span>3 meses</span><strong>$147</strong></div>
+          <div className="billing-cycle"><span>1 año</span><strong>$588</strong></div>
+        </div>
         <div style={{display:'grid',gap:8,margin:'16px 0'}}>
           <div className="notice"><CheckCircle2 size={16}/> Hasta 5 profesionales</div>
           <div className="notice"><CheckCircle2 size={16}/> Agenda y servicios por profesional</div>
