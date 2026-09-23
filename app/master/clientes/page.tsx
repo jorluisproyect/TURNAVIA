@@ -1,7 +1,8 @@
 import { Sidebar } from '@/components/Sidebar';
 import { sql } from '@/lib/db';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { Search, UserRound, ExternalLink, Phone, Mail } from 'lucide-react';
+import { parseProviderMedia } from '@/lib/provider-media';
 
 export const dynamic='force-dynamic';
 
@@ -11,9 +12,14 @@ export default async function ClientesMaster({searchParams}:{searchParams:Promis
   const sp=await searchParams;
   const q=String(sp.q||'').trim().toLowerCase();
   const status=String(sp.status||'TODOS');
-  const rows=sql?await sql`SELECT id,name,type,category,subcategory,email,phone,status,trial_ends_at,created_at FROM commercial_clients ORDER BY created_at DESC`:[];
+  const rows=sql?await sql`SELECT c.id,c.name,c.type,c.category,c.subcategory,c.email,c.phone,c.status,c.trial_ends_at,c.created_at,
+      d.provider_activity,d.provider_category,d.public_slug,d.bio
+    FROM commercial_clients c
+    LEFT JOIN users u ON lower(u.email)=lower(c.email)
+    LEFT JOIN doctors d ON d.user_id=u.id
+    ORDER BY c.created_at DESC`:[];
   const filtered=(rows as any[]).filter(r=>{
-    const hay=[r.name,r.email,r.phone,r.category,r.subcategory,r.type].filter(Boolean).join(' ').toLowerCase();
+    const hay=[r.name,r.email,r.phone,r.category,r.subcategory,r.type,r.provider_activity,r.provider_category].filter(Boolean).join(' ').toLowerCase();
     return (!q||hay.includes(q))&&(status==='TODOS'||String(r.status)===status);
   });
   const real=filtered.filter((r:any)=>!String(r.email||'').toLowerCase().includes('demo'));
@@ -31,9 +37,23 @@ export default async function ClientesMaster({searchParams}:{searchParams:Promis
       <div className="muted" style={{fontSize:12,marginTop:10}}>{real.length} cliente{real.length===1?'':'s'} real{real.length===1?'':'es'} en este resultado.</div>
     </section>
 
-    <section className="panel" style={{marginTop:18}}>{filtered.length===0?<div className="notice">No encontramos clientes con esos filtros.</div>:<div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Cliente</th><th>Rubro</th><th>Plan</th><th>Estado</th><th>Prueba</th><th>Acción</th></tr></thead><tbody>{filtered.map((r:any)=>{
-      const demo=String(r.email||'').toLowerCase().includes('demo');
-      return <tr key={r.id}><td><strong>{r.name}</strong>{demo&&<span className="pill" style={{marginLeft:8}}>Demo</span>}<div className="muted" style={{fontSize:12}}>{r.email} · {r.phone}</div></td><td>{r.category||'—'}<div className="muted" style={{fontSize:12}}>{r.subcategory||''}</div></td><td>{r.type}</td><td><span className="pill">{labels[r.status]||r.status}</span></td><td>{r.trial_ends_at?new Date(r.trial_ends_at).toLocaleDateString('es-VE'):'—'}</td><td><Link href={'/master/clientes/'+r.id} className="btn btn-secondary">Abrir ficha</Link></td></tr>
-    })}</tbody></table></div>}</section>
+    <section className="panel" style={{marginTop:18}}>
+      {filtered.length===0?<div className="notice">No encontramos clientes con esos filtros.</div>:
+      <div className="grid-3">{filtered.map((r:any)=>{
+        const demo=String(r.email||'').toLowerCase().includes('demo');
+        const media=parseProviderMedia(r.bio);
+        const profession=r.provider_activity||r.subcategory||r.category||'Profesional';
+        return <article className="card" key={r.id} style={{display:'grid',gap:12}}>
+          <div className="row" style={{gap:12,alignItems:'center'}}>
+            {media.profileImage?<img src={media.profileImage} alt="" style={{width:64,height:64,borderRadius:18,objectFit:'cover',flex:'0 0 auto'}}/>:<div className="profile-avatar" style={{width:64,height:64,flex:'0 0 auto'}}><UserRound size={26}/></div>}
+            <div style={{minWidth:0}}><div className="row" style={{gap:6,flexWrap:'wrap'}}><strong>{r.name}</strong>{demo&&<span className="pill">Demo</span>}</div><div className="muted" style={{fontSize:13,marginTop:3}}>{profession}</div><div className="muted" style={{fontSize:12}}>{r.provider_category||r.category||'—'}</div></div>
+          </div>
+          <div className="row space" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{labels[r.status]||r.status}</span><span className="muted" style={{fontSize:12}}>{r.type}</span></div>
+          <div style={{display:'grid',gap:6,fontSize:13}}><div className="row" style={{gap:7}}><Mail size={14}/><span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{r.email}</span></div><div className="row" style={{gap:7}}><Phone size={14}/><span>{r.phone||'—'}</span></div></div>
+          <div className="muted" style={{fontSize:12}}>Prueba: {r.trial_ends_at?new Date(r.trial_ends_at).toLocaleDateString('es-VE'):'—'}</div>
+          <div className="button-row" style={{flexWrap:'wrap'}}><Link href={'/master/clientes/'+r.id} className="btn btn-primary">Abrir ficha</Link>{r.public_slug&&<a href={'/reservar/'+r.public_slug} target="_blank" rel="noreferrer" className="btn btn-secondary"><ExternalLink size={14}/> Página</a>}</div>
+        </article>
+      })}</div>}
+    </section>
   </main></div>;
 }
