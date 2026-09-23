@@ -1,5 +1,5 @@
 'use client';
-import { useEffect,useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { Code2, Database, UserPlus, Users, XCircle, RefreshCcw } from 'lucide-react';
 
@@ -19,6 +19,7 @@ export default function MasterEquipo(){
   const [msg,setMsg]=useState('');
   const [invitationUrl,setInvitationUrl]=useState('');
   const [busy,setBusy]=useState(false);
+  const busyRef=useRef(false);
 
   async function load(){
     const r=await fetch('/api/master/team',{cache:'no-store'});
@@ -30,32 +31,54 @@ export default function MasterEquipo(){
 
   async function add(){
     if(!form.name.trim()||!form.email.trim())return setMsg('Escribe nombre y correo.');
-    setBusy(true);setMsg('');
-    const r=await fetch('/api/master/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});
-    const j=await r.json();
-    setBusy(false);
-    if(!r.ok)return setMsg(j.error||'No se pudo agregar.');
-    setInvitationUrl(String(j.invitationUrl||''));
-    setForm({name:'',email:'',role:'FRONTEND'});
-    setMsg(j.emailSent?'Invitación enviada correctamente.':'Invitación creada. Puedes compartir el enlace cuando el correo esté listo.');
-    load();
+    if(busyRef.current)return;
+    busyRef.current=true;setBusy(true);setMsg('Creando invitación…');
+    try{
+      const r=await fetch('/api/master/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});
+      const j=await r.json();
+      if(!r.ok){setMsg(j.error||'No se pudo agregar.');return}
+      setInvitationUrl(String(j.invitationUrl||''));
+      setForm({name:'',email:'',role:'FRONTEND'});
+      setMsg(j.emailSent?'Invitación enviada correctamente.':'Invitación creada correctamente. Puedes compartir el enlace cuando el correo esté listo.');
+      await load();
+    }catch{
+      setMsg('No se pudo conectar con TUCITA. Intenta nuevamente.');
+    }finally{
+      busyRef.current=false;setBusy(false);
+    }
   }
 
   async function changeRole(email:string,role:string){
-    const r=await fetch('/api/master/team',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({email,role})});
-    const j=await r.json();
-    if(!r.ok)return setMsg(j.error||'No se pudo actualizar el rol.');
-    setMsg('Rol actualizado.');
-    load();
+    if(busyRef.current)return;
+    busyRef.current=true;setBusy(true);setMsg('Actualizando rol…');
+    try{
+      const r=await fetch('/api/master/team',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({email,role})});
+      const j=await r.json();
+      if(!r.ok){setMsg(j.error||'No se pudo actualizar el rol.');return}
+      setMsg('Rol actualizado correctamente.');
+      await load();
+    }catch{
+      setMsg('No se pudo conectar con TUCITA. Intenta nuevamente.');
+    }finally{
+      busyRef.current=false;setBusy(false);
+    }
   }
 
   async function revoke(email:string){
     if(!confirm('¿Quitar el acceso Master de '+email+'?'))return;
-    const r=await fetch('/api/master/team',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({email})});
-    const j=await r.json();
-    if(!r.ok)return setMsg(j.error||'No se pudo revocar.');
-    setMsg('Acceso revocado.');
-    load();
+    if(busyRef.current)return;
+    busyRef.current=true;setBusy(true);setMsg('Revocando acceso…');
+    try{
+      const r=await fetch('/api/master/team',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({email})});
+      const j=await r.json();
+      if(!r.ok){setMsg(j.error||'No se pudo revocar.');return}
+      setMsg('Acceso revocado correctamente.');
+      await load();
+    }catch{
+      setMsg('No se pudo conectar con TUCITA. Intenta nuevamente.');
+    }finally{
+      busyRef.current=false;setBusy(false);
+    }
   }
 
   return <div className="dashboard"><Sidebar role="master"/><main className="main">
@@ -89,8 +112,8 @@ export default function MasterEquipo(){
         <h3>{m.name||m.email}</h3>
         <p>{m.roleLabel}</p>
         <div className="muted" style={{fontSize:12,marginTop:8,wordBreak:'break-word'}}>{m.email}</div>
-        {m.status==='ACTIVE'&&<div className="field" style={{marginTop:12}}><label>Cambiar área</label><select value={m.role} onChange={e=>changeRole(m.email,e.target.value)}>{roles.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>}
-        {m.status!=='REVOKED'&&<button className="btn btn-danger" style={{marginTop:12}} onClick={()=>revoke(m.email)}><XCircle size={15}/> Quitar acceso</button>}
+        {m.status==='ACTIVE'&&<div className="field" style={{marginTop:12}}><label>Cambiar área</label><select value={m.role} disabled={busy} onChange={e=>changeRole(m.email,e.target.value)}>{roles.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>}
+        {m.status!=='REVOKED'&&<button className="btn btn-danger" style={{marginTop:12}} onClick={()=>revoke(m.email)} disabled={busy}><XCircle size={15}/> {busy?'Procesando…':'Quitar acceso'}</button>}
       </div>)}</div>}
     </section>
   </main></div>;
