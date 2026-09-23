@@ -36,7 +36,7 @@ export default function RegistroClient(){
         <option value="PATIENT">Cliente / paciente</option>
       </select></div>}
       <input type="hidden" name="role" value={provider?'DOCTOR':'PATIENT'}/>
-      <input type="hidden" name="buyIntent" value={sp.get('buy')==='1'?'1':'0'}/>
+      <input type="hidden" name="buyIntent" value={sp.get('buy')==='1'?'1':'0'}/><input type="hidden" name="months" value={sp.get('months')||'1'}/>
       {provider&&<div className="row" style={{alignItems:'stretch',gap:12,flexWrap:'wrap'}}>
         <div className="field" style={{flex:1,minWidth:220}}><label>Rubro</label><select name="category" value={category} onChange={e=>{const v=e.target.value;setCategory(v);setActivity(categories[v][0])}}>{Object.keys(categories).map(c=><option key={c}>{c}</option>)}</select></div>
         <div className="field" style={{flex:1,minWidth:220}}><label>Actividad</label><select name="activity" value={activity} onChange={e=>setActivity(e.target.value)}>{categories[category].map(a=><option key={a}>{a}</option>)}</select></div>
