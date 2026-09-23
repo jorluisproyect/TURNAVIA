@@ -128,7 +128,7 @@ export default function RegistroClient(){
         {team&&<div className="notice">Acceso de equipo por invitación, con permisos limitados a tu función.</div>}
         {provider&&<div className="notice">Tienes 15 días de prueba gratuita. El documento de identidad y la fecha de nacimiento se pueden completar después, desde tu perfil privado.</div>}
         {state?.error&&<div className="notice danger" role="alert">{state.error}</div>}
-        <button className="btn btn-primary" disabled={pending||availability?.state==='taken'}>{pending?'Creando cuenta...':team?'Unirme al equipo':'Crear cuenta '+kind}</button>
+        <button className="btn btn-primary" disabled={pending||availability?.state==='taken'} aria-busy={pending}>{pending?'Creando cuenta...':team?'Unirme al equipo':'Crear cuenta '+kind}</button>
         <div className="muted" style={{fontSize:13}}>Tus datos personales se utilizan para tu cuenta y sus operaciones, no se publican en tu página de reservas.</div>
       </form>
     </section>
