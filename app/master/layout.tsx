@@ -1,28 +1,18 @@
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { redirect } from 'next/navigation';
-import { MASTER_EMAIL } from '@/lib/access';
+import { isMasterSession } from '@/lib/access';
 
 export const dynamic='force-dynamic';
 
 export default async function MasterLayout({children}:{children:React.ReactNode}){
   const {data:session}=await auth.getSession();
   if(!session?.user) redirect('/ingresar');
+  if(!(await isMasterSession())) redirect('/panel');
 
-  const sessionEmail=String((session.user as any).email||'').toLowerCase();
-
-  if(sessionEmail===MASTER_EMAIL){
-    if(sql){
-      const rows=await sql`SELECT must_change_password FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
-      if(Boolean((rows[0] as any)?.must_change_password)) redirect('/cuenta/seguridad');
-    }
-    return children;
+  if(sql){
+    const rows=await sql`SELECT must_change_password FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
+    if(Boolean((rows[0] as any)?.must_change_password)) redirect('/cuenta/seguridad');
   }
-
-  if(!sql) redirect('/panel');
-  const rows=await sql`SELECT role,must_change_password FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
-  const profile=rows[0] as any;
-  if(String(profile?.role)!=='MASTER') redirect('/panel');
-  if(Boolean(profile?.must_change_password)) redirect('/cuenta/seguridad');
   return children;
 }
