@@ -8,7 +8,7 @@ export const PLANS = {
     monthly: 15,
     initial: 40,
     maxProfessionals: 1,
-    trialDays: 5,
+    trialDays: 15,
   },
   BUSINESS: {
     key: 'BUSINESS' as const,
@@ -17,7 +17,7 @@ export const PLANS = {
     monthly: 49,
     initial: 149,
     maxProfessionals: 5,
-    trialDays: 5,
+    trialDays: 15,
   },
 };
 
