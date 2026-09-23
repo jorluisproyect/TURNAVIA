@@ -20,6 +20,15 @@ export default async function ClientesMaster({searchParams}:{searchParams:Promis
     FROM commercial_clients c
     LEFT JOIN users u ON lower(u.email)=lower(c.email)
     LEFT JOIN doctors d ON d.user_id=u.id
+    WHERE COALESCE((
+      SELECT ae.action
+      FROM audit_events ae
+      WHERE ae.entity_type='ACCOUNT_PROFILE'
+        AND ae.action IN ('PROFILE_DELETED','PROFILE_RESTORED')
+        AND lower(ae.metadata->>'email')=lower(c.email)
+      ORDER BY ae.created_at DESC,ae.id DESC
+      LIMIT 1
+    ),'')<>'PROFILE_DELETED'
     ORDER BY c.created_at DESC`:[];
   const filtered=(rows as any[]).filter(r=>{
     const hay=[r.name,r.email,r.phone,r.category,r.subcategory,r.type,r.provider_activity,r.provider_category].filter(Boolean).join(' ').toLowerCase();
