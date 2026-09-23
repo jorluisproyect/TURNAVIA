@@ -1,14 +1,16 @@
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { redirect } from 'next/navigation';
-import { isMasterSession } from '@/lib/access';
+import { isOwnerMasterSession } from '@/lib/access';
+import { teamMemberForUser } from '@/lib/master-team';
 
 export const dynamic='force-dynamic';
 
 export default async function MasterLayout({children}:{children:React.ReactNode}){
   const {data:session}=await auth.getSession();
   if(!session?.user) redirect('/ingresar');
-  if(!(await isMasterSession())) redirect('/panel');
+  const owner=await isOwnerMasterSession();
+  if(!owner&&!(await teamMemberForUser({id:String(session.user.id),email:String((session.user as any).email||'')})))redirect('/panel');
 
   if(sql){
     const rows=await sql`SELECT must_change_password FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
