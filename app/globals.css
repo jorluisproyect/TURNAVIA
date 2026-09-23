@@ -482,3 +482,26 @@ button{font:inherit}.button-row{display:flex;gap:10px;flex-wrap:wrap}.modal-back
 @media(max-width:560px){.billing-cycle-grid{grid-template-columns:1fr}.billing-cycle{grid-template-columns:1fr auto;align-items:center}.billing-cycle small{grid-column:1/-1}}
 
 @media(max-width:900px){.mobile-bottom-nav-compact{grid-template-columns:repeat(3,minmax(0,1fr));max-width:390px;margin:auto}}
+
+
+/* One-tap registration flow — readable on phones and desktops */
+.account-chooser{margin:clamp(24px,6vw,68px) auto 36px;max-width:1120px;background:var(--surface);border:1px solid var(--line);padding:clamp(20px,3vw,34px);border-radius:26px;box-shadow:0 16px 45px rgba(20,49,47,.07)}
+.account-chooser h1{font-size:clamp(28px,3.5vw,42px);line-height:1.14;margin:14px 0 10px}
+.account-chooser>p{max-width:720px}
+.account-choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:24px}
+.account-choice-card{display:flex;flex-direction:column;align-items:flex-start;gap:15px;min-width:0;padding:22px;border:2px solid var(--line);border-radius:20px;background:#fff;color:var(--text);text-decoration:none;transition:border-color .16s,transform .16s,box-shadow .16s}
+.account-choice-card:hover,.account-choice-card:focus-visible{border-color:var(--brand);transform:translateY(-2px);box-shadow:0 14px 32px rgba(11,111,105,.12)}
+.account-choice-card:focus-visible{outline:3px solid var(--brand);outline-offset:3px}
+.account-choice-icon{width:52px;height:52px;display:grid;place-items:center;border-radius:17px;background:#e9f7f2;color:var(--brand)}
+.account-choice-body{display:grid;gap:8px;flex:1}
+.account-choice-body strong{font-size:22px;letter-spacing:-.03em}
+.account-choice-body>span{color:var(--muted);font-size:14px;line-height:1.48}
+.account-choice-card>svg:last-child{color:var(--brand);align-self:flex-end}
+.account-choice-commercial{background:#f4faf9;border-color:#a9d8ce}
+.register-phone-row{display:flex;gap:10px;align-items:stretch}
+.register-phone-row>select{max-width:240px;min-width:150px;flex:0 1 220px}
+.register-phone-number{display:flex;align-items:center;flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.register-phone-number>span{padding:0 12px;color:var(--brand);font-weight:800;border-right:1px solid var(--line);white-space:nowrap}
+.register-phone-number>input{min-width:0;width:100%;border:0;box-shadow:none!important;border-radius:0}
+@media(max-width:800px){.account-choice-grid{grid-template-columns:1fr}.account-choice-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;padding:16px;gap:14px}.account-choice-card>svg:last-child{align-self:center}.account-chooser{margin-top:24px}.register-phone-row{flex-wrap:wrap}.register-phone-row>select{max-width:none;flex:1 1 100%}.register-phone-number{min-height:46px}}
+@media(prefers-reduced-motion:reduce){.account-choice-card{transition:none}}
