@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { sql } from '@/lib/db';
 import { Brand } from '@/components/Brand';
-import { ArrowRight, Search, Sparkles, UserRound } from 'lucide-react';
+import { ArrowRight, Search, UserRound } from 'lucide-react';
 import { parseProviderMedia } from '@/lib/provider-media';
 import { PROVIDER_CATEGORIES } from '@/lib/provider-catalog';
 
@@ -26,55 +26,60 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
         OR (c.status='ACTIVO' AND COALESCE(c.payment_reviewed_at,c.created_at)>=now()-interval '31 days')
       )
     GROUP BY d.id,u.full_name,l.city,l.state,l.country
-    ORDER BY d.provider_category,u.full_name`:[];
+    ORDER BY u.full_name`:[];
 
-  const visible=selectedCategory
-    ? (rows as any[]).filter(r=>String(r.provider_category||'')===selectedCategory)
-    : rows as any[];
+  const all=rows as any[];
+  const visible=selectedCategory?all.filter(r=>String(r.provider_category||'')===selectedCategory):all;
+  const activeCategories=Array.from(new Set(all.map(r=>String(r.provider_category||'')).filter(Boolean)));
 
-  return <main className="demo-chooser"><div className="container" style={{paddingTop:28,paddingBottom:50}}>
-    <div className="row space" style={{gap:12,flexWrap:'wrap'}}><Brand/><Link href="/ingresar" className="btn btn-secondary">Ingresar</Link></div>
+  return <main className="demo-chooser"><div className="container explore-clean">
+    <div className="row space explore-top"><Brand/><Link href="/ingresar" className="btn btn-secondary">Ingresar</Link></div>
 
-    <div className="demo-head">
-      <span className="eyebrow"><Search size={15}/> Explorar TUCITA</span>
-      <h1>Encuentra el servicio que necesitas y reserva tu hora.</h1>
-      <p className="muted">TUCITA funciona para profesionales y negocios de múltiples rubros. Explora las categorías y luego elige quién te atenderá.</p>
+    <div className="explore-clean-head">
+      <span className="eyebrow"><Search size={15}/> Explorar servicios</span>
+      <h1>Encuentra y reserva.</h1>
+      <p className="muted">Los profesionales y negocios disponibles aparecerán aquí automáticamente.</p>
     </div>
 
-    <section className="panel">
-      <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
-        <div><h2>Rubros disponibles en TUCITA</h2><p className="muted" style={{marginTop:-6}}>Estas son las actividades que la plataforma puede organizar con servicios, precios, horarios y reservas.</p></div>
-        {selectedCategory&&<Link href="/explorar" className="btn btn-secondary">Ver todos los rubros</Link>}
-      </div>
+    {all.length===0?
+      <section className="explore-empty">
+        <div className="explore-empty-icon"><UserRound size={30}/></div>
+        <h2>Aún no hay profesionales publicados</h2>
+        <p>Cuando comiencen a registrarse y activen su agenda, aparecerán aquí para que puedas reservar.</p>
+      </section>
+      :
+      <>
+        <section>
+          <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
+            <div>
+              <h2 style={{margin:'0 0 4px'}}>Profesionales disponibles</h2>
+              <p className="muted" style={{margin:0}}>Elige quién te atenderá y consulta su agenda.</p>
+            </div>
+            {selectedCategory&&<Link href="/explorar" className="btn btn-secondary">Ver todos</Link>}
+          </div>
 
-      <div className="grid-3" style={{marginTop:16}}>
-        {Object.entries(PROVIDER_CATEGORIES).map(([category,activities])=>{
-          const active=selectedCategory===category;
-          return <Link key={category} href={'/explorar?category='+encodeURIComponent(category)} className="card" style={{textDecoration:'none',borderColor:active?'var(--brand)':'var(--line)',boxShadow:active?'0 0 0 2px rgba(15,118,110,.12)':'none'}}>
-            <div className="row space"><span className="eyebrow">{category}</span>{active&&<span className="status ok">Seleccionado</span>}</div>
-            <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:12}}>{activities.map(activity=><span key={activity} className="pill">{activity}</span>)}</div>
-            <div className="go" style={{marginTop:14}}>Ver profesionales <ArrowRight size={16}/></div>
-          </Link>
-        })}
-      </div>
-    </section>
+          {activeCategories.length>1&&<div className="explore-filters" aria-label="Filtrar por categoría">
+            <Link href="/explorar" className={!selectedCategory?'active':''}>Todos</Link>
+            {activeCategories.map(category=><Link key={category} href={'/explorar?category='+encodeURIComponent(category)} className={selectedCategory===category?'active':''}>{category}</Link>)}
+          </div>}
 
-    <section style={{marginTop:22}}>
-      <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
-        <div><h2 style={{marginBottom:4}}>{selectedCategory?'Profesionales en '+selectedCategory:'Profesionales disponibles'}</h2><p className="muted" style={{margin:0}}>Solo se muestran agendas que actualmente pueden recibir reservas.</p></div>
-        {selectedCategory&&<span className="pill">{visible.length} resultado{visible.length===1?'':'s'}</span>}
-      </div>
-
-      {visible.length===0?<section className="profile-card" style={{marginTop:14}}><div className="empty">{selectedCategory?<>Todavía no hay profesionales públicos disponibles en <strong>{selectedCategory}</strong>. Puedes explorar otro rubro o ver el <Link href="/demo">demo multirrubro</Link>.</>:<>Todavía no hay profesionales públicos disponibles. Puedes ver el <Link href="/demo">demo multirrubro</Link>.</>}</div></section>:
-      <div className="role-grid" style={{marginTop:14}}>{visible.map((r:any)=>{const media=parseProviderMedia(r.bio);return <Link key={r.public_slug} className="role-card" href={'/reservar/'+r.public_slug}>
-        {media.profileImage?<img src={media.profileImage} alt="" style={{width:76,height:76,borderRadius:22,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:76,height:76}}><UserRound size={28}/></div>}
-        <span className="eyebrow" style={{marginTop:12}}>{r.provider_category||'Servicio'}</span>
-        <h3>{r.full_name}</h3>
-        <p>{r.provider_activity||'Servicio'} · {r.provider_type||'Profesional independiente'}</p>
-        <div className="muted" style={{fontSize:12}}>{[r.city,r.state,r.country].filter(Boolean).join(' · ')||'Ubicación por configurar'}</div>
-        <div className="muted" style={{fontSize:12,marginTop:5}}>{r.services} servicio{Number(r.services)===1?'':'s'} activo{Number(r.services)===1?'':'s'}</div>
-        <div className="go">Ver agenda <ArrowRight size={16}/></div>
-      </Link>})}</div>}
-    </section>
+          {visible.length===0?
+            <div className="explore-empty compact"><h3>No hay profesionales en esta categoría todavía.</h3><Link href="/explorar" className="btn btn-secondary">Ver todos</Link></div>
+            :
+            <div className="explore-provider-grid">{visible.map((r:any)=>{const media=parseProviderMedia(r.bio);return <Link key={r.public_slug} className="explore-provider-card" href={'/reservar/'+r.public_slug}>
+              <div className="explore-provider-main">
+                {media.profileImage?<img src={media.profileImage} alt="" className="explore-provider-photo"/>:<div className="profile-avatar explore-provider-photo"><UserRound size={27}/></div>}
+                <div className="explore-provider-copy">
+                  <span className="eyebrow">{r.provider_category||'Servicio'}</span>
+                  <h3>{r.full_name}</h3>
+                  <p>{r.provider_activity||'Servicio'}{r.provider_type?' · '+r.provider_type:''}</p>
+                  <small>{[r.city,r.state,r.country].filter(Boolean).join(' · ')||'Ubicación por configurar'}</small>
+                </div>
+              </div>
+              <div className="explore-provider-action">Ver agenda <ArrowRight size={16}/></div>
+            </Link>})}</div>}
+        </section>
+      </>
+    }
   </div></main>;
 }
