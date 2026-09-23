@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { commercialClientAccess, MASTER_EMAIL } from '@/lib/access';
 import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
+import { billingAmount, type BillingCycleMonths } from '@/lib/plans';
 
 export const runtime='nodejs';
 
@@ -16,6 +17,8 @@ export async function POST(req:Request){
   const comment=String(form.get('comment')||'');
   const paymentMethod=String(form.get('paymentMethod')||'').trim();
   const paymentMethodId=String(form.get('paymentMethodId')||'').trim();
+  const rawCycle=Number(form.get('billingCycleMonths')||1);
+  const billingCycleMonths=([1,3,12].includes(rawCycle)?rawCycle:1) as BillingCycleMonths;
   const proof=form.get('proof');
   if(!reference) return NextResponse.json({error:'Indica la referencia o ID de transacción'},{status:400});
   const methodRows=paymentMethodId
@@ -43,12 +46,10 @@ export async function POST(req:Request){
     WHERE id=${clientId}::uuid RETURNING *`;
   if(!rows.length)return NextResponse.json({error:'Cliente no encontrado'},{status:404});
   const r=rows[0] as any;
-  const monthly=String(r.type||'').startsWith('Negocio')?49:15;
-  const initial=String(r.type||'').startsWith('Negocio')?149:40;
-  const amount=Boolean((access.client as any)?.payment_reviewed_at)?monthly:initial;
+  const amount=billingAmount(String(r.type||''),billingCycleMonths,Boolean((access.client as any)?.payment_reviewed_at));
   try{
     await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
-      VALUES('PAYMENT_SUBMITTED','COMMERCIAL_CLIENT',${clientId},jsonb_build_object('source','TUCITA_SUBSCRIPTION','method',${methodLabel},'reference',${reference},'amount',${amount},'currency','USD'))`;
+      VALUES('PAYMENT_SUBMITTED','COMMERCIAL_CLIENT',${clientId},jsonb_build_object('source','TUCITA_SUBSCRIPTION','method',${methodLabel},'reference',${reference},'amount',${amount},'currency','USD','billingMonths',${billingCycleMonths}))`;
   }catch(error){
     console.error('TUCITA payment audit error',error);
   }
@@ -71,7 +72,7 @@ export async function POST(req:Request){
   const masterMail=await sendTransactionalEmail({
     to:MASTER_EMAIL,
     subject:'Nuevo pago TUCITA por revisar',
-    html:tucitaEmail('Pago pendiente de verificación',`<p><strong>${r.name}</strong> envió un pago de TUCITA.</p><p><strong>Método:</strong> ${methodLabel}<br/><strong>Referencia:</strong> ${reference}</p><p>Ingresa al Panel Master para revisar el comprobante y aprobar o rechazar el pago.</p><p><a href="${process.env.APP_URL||'https://tucita.com.ve'}/master">Abrir Panel Master</a></p>`)
+    html:tucitaEmail('Pago pendiente de verificación',`<p><strong>${r.name}</strong> envió un pago de TUCITA.</p><p><strong>Método:</strong> ${methodLabel}<br/><strong>Referencia:</strong> ${reference}<br/><strong>Período:</strong> ${billingCycleMonths===12?'1 año':billingCycleMonths+' mes'+(billingCycleMonths===1?'':'es')}<br/><strong>Monto:</strong> USD ${amount}</p><p>Ingresa al Panel Master para revisar el comprobante y aprobar o rechazar el pago.</p><p><a href="${process.env.APP_URL||'https://tucita.com.ve'}/master">Abrir Panel Master</a></p>`)
   });
   let clientMail:any={ok:false,skipped:true};
   if(r.email){
