@@ -110,6 +110,11 @@ export async function POST(req:Request){
       const dupe=await sql`SELECT id FROM users WHERE lower(email)=lower(${email}) LIMIT 1`;
       if(dupe.length) return NextResponse.json({error:'Ese correo ya pertenece a otra cuenta o profesional.'},{status:409});
     }
+    let requestedLocationId:string|undefined=String(body.locationId||'')||undefined;
+    if(requestedLocationId){
+      const ownedLoc=await sql`SELECT id FROM locations WHERE id=${requestedLocationId}::uuid AND organization_id=${ctx.organization_id} AND active=true LIMIT 1`;
+      if(!ownedLoc.length)return NextResponse.json({error:'La sede seleccionada no pertenece al negocio.'},{status:400});
+    }
     const userRows=await sql`INSERT INTO users(organization_id,role,full_name,email,phone,active)
       VALUES(${ctx.organization_id},'DOCTOR',${name},${email||null},${phone||null},true) RETURNING id`;
     const userId=(userRows[0] as any).id;
@@ -118,13 +123,9 @@ export async function POST(req:Request){
     const doctorRows=await sql`INSERT INTO doctors(user_id,public_slug,specialty,provider_category,provider_activity,provider_type,consultation_price,consultation_currency,accepts_online_booking,bio)
       VALUES(${userId},${slug},${activity},${category},${activity},'Negocio / local',0,'USD',${employeeStatus!=='INACTIVE'},${mediaJson}) RETURNING id`;
     const doctorId=(doctorRows[0] as any).id;
-    let locationId:String|undefined=String(body.locationId||'')||undefined;
-    if(locationId){
-      const ownedLoc=await sql`SELECT id FROM locations WHERE id=${locationId}::uuid AND organization_id=${ctx.organization_id} AND active=true LIMIT 1`;
-      if(!ownedLoc.length)return NextResponse.json({error:'La sede seleccionada no pertenece al negocio.'},{status:400});
-    }
+    let locationId:string|undefined=requestedLocationId;
     const locRows=await sql`SELECT id FROM locations WHERE organization_id=${ctx.organization_id} AND active=true ORDER BY created_at LIMIT 1`;
-    if(!locationId) locationId=(locRows[0] as any)?.id;
+    if(!locationId) locationId=(locRows[0] as any)?.id?String((locRows[0] as any).id):undefined;
     if(!locationId){
       const ownerLoc=await sql`SELECT location_id AS id FROM doctor_locations WHERE doctor_id=${ctx.doctor_id} LIMIT 1`;
       locationId=(ownerLoc[0] as any)?.id;
@@ -168,7 +169,8 @@ export async function POST(req:Request){
     const phone=String(body.phone??member.phone??'').trim();
     const activity=String(body.activity||member.provider_activity||'Servicio').trim();
     const category=String(body.category||member.provider_category||'Otro').trim();
-    const mediaError=validateProviderMedia(String(body.profileImage??parseProviderMedia(member.bio).profileImage||''),[]);
+    const currentMedia=parseProviderMedia(member.bio);
+    const mediaError=validateProviderMedia(String(body.profileImage??currentMedia.profileImage??''),[]);
     if(mediaError)return NextResponse.json({error:mediaError},{status:400});
     const mediaJson=serializeProviderMedia(member.bio,{
       profileImage:body.profileImage!==undefined?String(body.profileImage):undefined,
@@ -176,7 +178,7 @@ export async function POST(req:Request){
       licenseNumber:body.licenseNumber!==undefined?String(body.licenseNumber):undefined,
       employeeStatus:body.employeeStatus!==undefined?String(body.employeeStatus):undefined
     });
-    const employeeStatus=String(body.employeeStatus||parseProviderMedia(member.bio).employeeStatus||'AVAILABLE');
+    const employeeStatus=String(body.employeeStatus||currentMedia.employeeStatus||'AVAILABLE');
     await sql`UPDATE users SET full_name=${name},phone=${phone||null} WHERE id=${member.user_id}`;
     await sql`UPDATE doctors SET specialty=${activity},provider_activity=${activity},provider_category=${category},bio=${mediaJson},accepts_online_booking=${employeeStatus!=='INACTIVE'} WHERE id=${doctorId}::uuid`;
     if(body.locationId){
