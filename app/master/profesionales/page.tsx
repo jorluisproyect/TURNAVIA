@@ -26,6 +26,15 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       WHERE lower(c.email)=lower(u.email)
       ORDER BY c.created_at DESC LIMIT 1
     ) cc ON true
+    WHERE COALESCE((
+      SELECT ae.action
+      FROM audit_events ae
+      WHERE ae.entity_type='ACCOUNT_PROFILE'
+        AND ae.action IN ('PROFILE_DELETED','PROFILE_RESTORED')
+        AND lower(ae.metadata->>'email')=lower(u.email)
+      ORDER BY ae.created_at DESC,ae.id DESC
+      LIMIT 1
+    ),'')<>'PROFILE_DELETED'
     GROUP BY d.id,u.full_name,u.email,u.phone,u.active,cc.status,cc.id
     ORDER BY u.full_name`:[];
   const filtered=(rows as any[]).filter(r=>{

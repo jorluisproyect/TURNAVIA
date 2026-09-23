@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Brand } from "./Brand";
 import { LogoutButton } from "./LogoutButton";
 import { NotificationBell } from "./NotificationBell";
-import { CalendarDays, LayoutDashboard, Users, Building2, Settings, HeartPulse, UserRound, BarChart3, BriefcaseBusiness, Search, WalletCards, Menu, X, ScanLine, MapPin, ShieldCheck } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Users, Building2, Settings, HeartPulse, UserRound, BarChart3, BriefcaseBusiness, Search, WalletCards, Menu, X, ScanLine, MapPin, ShieldCheck, RotateCcw } from "lucide-react";
 import { providerAudienceLabel } from "@/lib/provider-labels";
 import { useEffect,useState } from "react";
 
@@ -44,6 +44,7 @@ const config = {
     ["/master/profesionales", "Profesionales", HeartPulse],
     ["/master/suscripciones", "Suscripciones", BarChart3],
     ["/master/equipo", "Equipo de trabajo", Users],
+    ["/master/eliminados", "Perfiles eliminados", RotateCcw],
     ["/master/configuracion", "Configuración", Settings],
     ["/cuenta/seguridad", "Seguridad", Settings],
   ],
@@ -121,6 +122,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
     role==='master'?[
       ['/master/profesionales','Profesionales',HeartPulse],
       ['/master/equipo','Equipo de trabajo',Users],
+      ['/master/eliminados','Perfiles eliminados',RotateCcw],
       ['/master/configuracion','Configuración',Settings],
       ['/cuenta/seguridad','Seguridad',ShieldCheck],
     ]:

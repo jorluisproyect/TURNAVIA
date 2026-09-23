@@ -13,17 +13,40 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
 
   const rows=sql?await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.bio,u.full_name,
       l.city,l.state,l.country,COUNT(ps.id) FILTER (WHERE ps.active=true)::int AS services
-    FROM doctors d JOIN users u ON u.id=d.user_id
+    FROM doctors d
+    JOIN users u ON u.id=d.user_id
+    JOIN app_user_profiles ap ON lower(ap.email)=lower(u.email) AND ap.role::text='DOCTOR'
+    JOIN neon_auth."user" au ON lower(au.email)=lower(u.email)
     LEFT JOIN organizations o ON o.id=u.organization_id
-    LEFT JOIN commercial_clients c ON lower(c.email)=lower(COALESCE(o.email,u.email))
+    JOIN LATERAL (
+      SELECT cc.*
+      FROM commercial_clients cc
+      WHERE lower(cc.email)=lower(COALESCE(o.email,u.email))
+      ORDER BY cc.created_at DESC
+      LIMIT 1
+    ) c ON true
     LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
     LEFT JOIN locations l ON l.id=dl.location_id
     LEFT JOIN provider_services ps ON ps.doctor_id=d.id
     WHERE u.active=true AND d.accepts_online_booking=true
       AND (
-        c.id IS NULL
-        OR (c.status IN ('TRIAL','REVISION_BINANCE') AND c.trial_ends_at IS NOT NULL AND c.trial_ends_at>now())
-        OR (c.status='ACTIVO' AND COALESCE(c.payment_reviewed_at,c.created_at)>=now()-interval '31 days')
+        (c.status IN ('TRIAL','REVISION_BINANCE') AND c.trial_ends_at IS NOT NULL AND c.trial_ends_at>now())
+        OR (
+          c.status='ACTIVO'
+          AND COALESCE(
+            (
+              SELECT NULLIF(a.metadata->>'paidUntil','')::timestamptz
+              FROM audit_events a
+              WHERE a.entity_type='COMMERCIAL_CLIENT'
+                AND a.entity_id=c.id::text
+                AND a.action='PAYMENT_APPROVED'
+              ORDER BY a.created_at DESC
+              LIMIT 1
+            ),
+            c.payment_reviewed_at + interval '31 days',
+            c.created_at + interval '31 days'
+          )>now()
+        )
       )
     GROUP BY d.id,u.full_name,l.city,l.state,l.country
     ORDER BY u.full_name`:[];

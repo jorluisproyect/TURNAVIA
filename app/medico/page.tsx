@@ -8,6 +8,7 @@ import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 import { COUNTRY_SUGGESTIONS, COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
 import { categoryUsesWorkReferences } from '@/lib/provider-media';
 import { countryDialCode, digitsOnly, phoneMaxLength } from '@/lib/phone';
+import { DeleteProfileButton } from '@/components/DeleteProfileButton';
 
 const labels:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Llegó',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asistió'};
 
@@ -243,6 +244,8 @@ export default function Medico(){
     <section className="panel"><h2>Estado de atención</h2><div className="muted" style={{fontSize:13,marginBottom:10}}>{p.dayStatus==='DELAYED'?'Retraso de '+p.delayMinutes+' min':p.dayStatus==='SUSPENDED'?'Atención suspendida':'Atendiendo normalmente'}</div><button className="btn btn-secondary" onClick={()=>setModal('status')}>Cambiar estado</button></section>
    </aside>
   </div>
+
+  <section className="panel" style={{marginTop:18}}><DeleteProfileButton accountKind={String(p.type||'').toLowerCase().includes('negocio')?'commercial':'professional'} subscriptionActive={p.subscriptionStatus==='ACTIVO'}/></section>
 
   <section className="panel" id="pagos" style={{marginTop:18}}>
     <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>Métodos de pago</h2><div className="muted" style={{fontSize:13}}>Configura cómo te pagarán tus clientes.</div></div><button className="btn btn-secondary" onClick={()=>setModal('settings')}><Settings2 size={16}/> Configuración</button></div>
