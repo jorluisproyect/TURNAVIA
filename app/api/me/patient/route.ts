@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
+import { validateProviderMedia } from '@/lib/provider-media';
 
 export const dynamic='force-dynamic';
 
@@ -24,8 +25,10 @@ export async function GET(){
   const p=await currentPatient();
   const email=String((session.user as any).email||'');
   const name=String((session.user as any).name||'Cliente');
+  const profileRows=await sql`SELECT avatar_data_url FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} OR lower(email)=lower(${email}) ORDER BY updated_at DESC NULLS LAST LIMIT 1`;
+  const avatar=String((profileRows[0] as any)?.avatar_data_url||'');
 
-  if(!p) return NextResponse.json({patient:{name,email,phone:'',nationalId:''},appointments:[]});
+  if(!p) return NextResponse.json({patient:{name,email,phone:'',nationalId:'',profileImage:avatar},appointments:[]});
 
   const aps=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.service_id,a.service_name,a.consultation_price,a.consultation_currency,
       a.payment_method,a.payment_reference,a.reschedule_used,a.receipt_number,a.checked_in_at,a.completed_at,
@@ -45,7 +48,7 @@ export async function GET(){
     ORDER BY a.starts_at DESC LIMIT 100`;
 
   return NextResponse.json({
-    patient:{name:p.full_name||name,email:p.email||email,phone:p.phone||'',nationalId:p.national_id||''},
+    patient:{name:p.full_name||name,email:p.email||email,phone:p.phone||'',nationalId:p.national_id||'',profileImage:avatar},
     appointments:aps.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceId:a.service_id?String(a.service_id):'',serviceName:a.service_name||a.provider_activity||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,providerName:a.provider_name,providerSlug:a.public_slug,category:a.provider_category||'',activity:a.provider_activity||'',location:[a.location_name,a.address,a.city,a.state,a.country,a.room].filter(Boolean).join(' · ')}))
   });
 }
@@ -63,8 +66,11 @@ export async function PATCH(req:Request){
     const name=String(body.name||'').trim();
     const phone=String(body.phone||'').trim();
     const nationalId=String(body.nationalId||'').trim();
+    const profileImage=String(body.profileImage||'');
+    const mediaError=validateProviderMedia(profileImage,[]);
+    if(mediaError)return NextResponse.json({error:mediaError},{status:400});
     if(!name||!phone) return NextResponse.json({error:'Nombre y teléfono son obligatorios'},{status:400});
-    await sql`UPDATE app_user_profiles SET full_name=${name},phone=${phone},updated_at=now() WHERE lower(email)=lower(${email})`;
+    await sql`UPDATE app_user_profiles SET full_name=${name},phone=${phone},avatar_data_url=${profileImage||null},updated_at=now() WHERE lower(email)=lower(${email})`;
     await sql`UPDATE users SET full_name=${name},phone=${phone} WHERE lower(email)=lower(${email})`;
     if(p){
       await sql`UPDATE patients SET full_name=${name},phone=${phone},national_id=${nationalId||null},email=${email},auth_user_id=${String(session.user.id)} WHERE id=${p.id}`;
