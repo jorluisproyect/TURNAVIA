@@ -9,7 +9,7 @@ type Availability={days:number[],start:string,end:string};
 type Business={id:string,name:string,category:string,activity:string,type:string,status:'TRIAL'|'ACTIVO'|'SUSPENDIDO',trialEnds:string,location:string,staff:number,availability:Availability[],services:Service[]};
 type Appointment={id:string,businessId:string,client:string,email:string,service:string,date:string,time:string,amount:number,payment:string,reference:string,proof:string,status:'PAYMENT_REVIEW'|'CONFIRMED'|'REJECTED'|'COMPLETED'};
 
-const demoTrialEnd=()=>new Date(Date.now()+115*86400000).toISOString().slice(0,10);
+const demoTrialEnd=()=>new Date(Date.now()+15*86400000).toISOString().slice(0,10);
 
 const seedBusinesses:Business[]=[
  {id:'med-1',name:'Dra. Sofía Mendoza',category:'Salud',activity:'Cardiología',type:'Profesional independiente',status:'ACTIVO',trialEnds:'',location:'Caracas · Chacao',staff:1,availability:[{days:[1,2,3,4,5],start:'08:00',end:'13:00'}],services:[
@@ -417,14 +417,14 @@ export default function Demo(){
           <span className="eyebrow">PROFESIONAL INDEPENDIENTE</span>
           <h2 style={{fontSize:32,margin:'10px 0 4px'}}>$40 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
           <p>$25 activación + $15 primer mes.</p>
-          <div className="notice"><strong>Después: $15/mes</strong><br/>Para una agenda profesional individual.</div>
+          <div className="notice"><strong>Elige tu período</strong><br/>1 mes: $15 · 3 meses: $45 · <strong>1 año: $125 promo</strong></div>
           <Link href="/registro?role=DOCTOR" className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:12}}>Iniciar prueba profesional</Link>
         </div>
         <div className="card">
           <span className="eyebrow">NEGOCIO / LOCAL</span>
           <h2 style={{fontSize:32,margin:'10px 0 4px'}}>$149 <span className="muted" style={{fontSize:14,fontWeight:500}}>inicial</span></h2>
           <p>$100 activación + $49 primer mes.</p>
-          <div className="notice"><strong>Después: $49/mes</strong><br/>Pensado para negocios de hasta 5 profesionales.</div>
+          <div className="notice"><strong>Elige tu período</strong><br/>1 mes: $49 · 3 meses: $147 · 1 año: $588</div>
           <Link href="/registro?role=DOCTOR" className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:12}}>Iniciar prueba de negocio</Link>
         </div>
       </div>
