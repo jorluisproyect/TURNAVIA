@@ -25,6 +25,7 @@ export default function BookingClient({slug}:{slug:string}){
  const [emailNotice,setEmailNotice]=useState<'sent'|'pending'>('pending');
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState('');
+ const [fx,setFx]=useState<any>(null);
  const [proof,setProof]=useState<{name:string;dataUrl:string}|null>(null);
  const [form,setForm]=useState({clientName:'',nationalId:'',phone:'',email:'',note:'',paymentMethod:'',paymentReference:'',policyAccepted:false});
 
@@ -43,6 +44,7 @@ export default function BookingClient({slug}:{slug:string}){
 
  useEffect(()=>{
    loadProvider().catch(()=>setError('No se pudo cargar esta agenda.'));
+   fetch('/api/fx').then(r=>r.json()).then(setFx).catch(()=>{});
    fetch('/api/payment-methods?scope=DOCTOR&slug='+encodeURIComponent(slug)+'&active=1').then(r=>r.json()).then(j=>{
      const ms=j.methods||[];setMethods(ms);if(ms[0])setForm(f=>({...f,paymentMethod:ms[0].name}));
    }).catch(()=>{});
@@ -73,6 +75,19 @@ export default function BookingClient({slug}:{slug:string}){
  const service=useMemo(()=>data?.services.find(s=>s.id===serviceId)||data?.services[0],[data,serviceId]);
  const selectedMethod=useMemo(()=>methods.find(m=>m.name===form.paymentMethod),[methods,form.paymentMethod]);
  const requiresProof=selectedMethod?.requires_proof!==false;
+ function conv(amount:number,from:string,to:string){
+   const rates=fx?.rates||{};const f=Number(rates[from]),t=Number(rates[to]);if(!(f>0)||!(t>0))return null;return amount/f*t;
+ }
+ function eqText(){
+   if(!fx?.available||!service)return '';
+   const parts=['USD','EUR','USDT','VES'].filter(x=>x!==service.currency).map(cur=>{
+     const v=conv(service.price,service.currency,cur);
+     if(v===null)return '';
+     const n=new Intl.NumberFormat('es-VE',{maximumFractionDigits:cur==='VES'?2:2}).format(v);
+     return n+' '+cur;
+   }).filter(Boolean);
+   return parts.join(' · ');
+ }
 
  function fileChange(file?:File){
    if(!file)return;
@@ -120,7 +135,7 @@ export default function BookingClient({slug}:{slug:string}){
      <strong>1. Elige el servicio</strong>
      <div className="form" style={{marginTop:10}}>
        <div className="field"><select value={serviceId} onChange={e=>setServiceId(e.target.value)}>{data.services.map(s=><option key={s.id} value={s.id}>{s.name} · {s.currency} {s.price} · {s.durationMinutes} min</option>)}</select></div>
-       {service&&<div className="notice"><strong>{service.name}</strong> · {service.durationMinutes} min · {service.currency} {service.price}{service.description?<><br/>{service.description}</>:null}</div>}
+       {service&&<div className="notice"><strong>{service.name}</strong> · {service.durationMinutes} min · {service.currency} {service.price}{service.description?<><br/>{service.description}</>:null}{eqText()?<><br/><span className="muted" style={{fontSize:11}}>Equivalencia aprox.: {eqText()}</span></>:null}</div>}
      </div>
 
      <div style={{marginTop:22}}><strong>2. Selecciona el día disponible</strong><div className="date-tabs">{dates.map(d=><button key={d} className={'date-tab '+(date===d?'active':'')} onClick={()=>{setDate(d);const first=data.availability.find(a=>a.date===d&&a.slots.some(s=>s.available));setStartsAt(first?.slots.find(s=>s.available)?.startsAt||'')}}><strong>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11,marginTop:3}}>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div>{!data.availability.length&&<div className="notice" style={{marginTop:10}}>Todavía no hay horarios publicados.</div>}</div>
