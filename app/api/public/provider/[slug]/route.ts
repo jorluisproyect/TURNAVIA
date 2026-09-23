@@ -4,6 +4,7 @@ import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
 import { randomUUID } from 'crypto';
+import { parseProviderMedia } from '@/lib/provider-media';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -37,7 +38,7 @@ function slotList(block:any,appointments:any[],durationMinutes:number){
 async function providerBySlug(slug:string){
   if(!sql) return null;
   const rows=await sql`SELECT d.id,d.public_slug,d.specialty,d.provider_category,d.provider_activity,d.provider_type,
-      d.consultation_price,d.consultation_currency,d.payment_instructions,d.default_appointment_minutes,d.accepts_online_booking,
+      d.consultation_price,d.consultation_currency,d.payment_instructions,d.default_appointment_minutes,d.accepts_online_booking,d.bio,
       u.full_name,u.phone,u.email,u.organization_id,o.email AS organization_email,l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
     FROM doctors d JOIN users u ON u.id=d.user_id
     LEFT JOIN organizations o ON o.id=u.organization_id
@@ -80,11 +81,12 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     slots:slotList(b,aps as any[],durationMinutes)
   }));
   const initials=String(p.full_name||'T').replace(/^(Dr\.?|Dra\.?)\s*/i,'').split(/\s+/).slice(0,2).map((x:string)=>x[0]||'').join('').toUpperCase();
+  const media=parseProviderMedia(p.bio);
 
   return NextResponse.json({
     provider:{
       slug:p.public_slug,name:p.full_name,initials,category:p.provider_category||'Otro',activity:p.provider_activity||p.specialty||'Servicio',
-      type:p.provider_type||'Profesional independiente',phone:p.phone||'',specialty:p.specialty||'',
+      type:p.provider_type||'Profesional independiente',phone:p.phone||'',specialty:p.specialty||'',profileImage:media.profileImage||'',workImages:media.workImages||[],
       location:[p.location_name,p.address,p.city,p.state,p.country].filter(Boolean).join(' · '),
       country:p.country||'',
       dayStatus:(statusRows[0] as any)?.status||'NORMAL',delayMinutes:Number((statusRows[0] as any)?.delay_minutes||0)
