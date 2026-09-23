@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth/server';
 import { sql } from '@/lib/db';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
 import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
+import { parseProviderMedia, serializeProviderMedia, validateProviderMedia } from '@/lib/provider-media';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -28,7 +29,7 @@ async function context(){
 
 async function memberAllowed(ctx:any,doctorId:string){
   if(!sql||!ctx?.organization_id) return null;
-  const rows=await sql`SELECT d.id,d.user_id,u.full_name,u.email,u.phone,d.public_slug,d.provider_category,d.provider_activity
+  const rows=await sql`SELECT d.id,d.user_id,u.full_name,u.email,u.phone,d.public_slug,d.provider_category,d.provider_activity,d.bio,d.accepts_online_booking
     FROM doctors d JOIN users u ON u.id=d.user_id
     WHERE d.id=${doctorId}::uuid AND u.organization_id=${ctx.organization_id} AND u.active=true
     LIMIT 1`;
@@ -43,7 +44,7 @@ export async function GET(){
   if(commercial&&!subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)) return NextResponse.json({error:'Tu cuenta requiere activación o renovación.',clientId:String(commercial.id)},{status:402});
   if(!ctx.organization_id) return NextResponse.json({business:false,team:[]});
 
-  const members=await sql`SELECT d.id AS doctor_id,d.public_slug,d.provider_category,d.provider_activity,d.specialty,
+  const members=await sql`SELECT d.id AS doctor_id,d.public_slug,d.provider_category,d.provider_activity,d.specialty,d.bio,d.accepts_online_booking,
       u.id AS user_id,u.full_name,u.email,u.phone,
       l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country
     FROM users u
@@ -53,6 +54,7 @@ export async function GET(){
     WHERE u.organization_id=${ctx.organization_id} AND u.role='DOCTOR' AND u.active=true
     ORDER BY u.created_at ASC`;
 
+  const organizationLocations=await sql`SELECT id,name,address,city,state,country FROM locations WHERE organization_id=${ctx.organization_id} AND active=true ORDER BY created_at,name`;
   const team=[];
   for(const m of members as any[]){
     const services=await sql`SELECT id,name,description,duration_minutes,price,currency,active FROM provider_services WHERE doctor_id=${m.doctor_id} ORDER BY active DESC,created_at`;
@@ -62,9 +64,12 @@ export async function GET(){
       FROM appointments a JOIN patients p ON p.id=a.patient_id
       WHERE a.doctor_id=${m.doctor_id} AND a.starts_at>=now()-interval '1 day'
       ORDER BY a.starts_at ASC LIMIT 100`;
+    const media=parseProviderMedia(m.bio);
     team.push({
       id:String(m.doctor_id),userId:String(m.user_id),name:m.full_name,email:m.email||'',phone:m.phone||'',slug:m.public_slug,
       category:m.provider_category||'',activity:m.provider_activity||m.specialty||'Servicio',
+      profileImage:media.profileImage||'',about:media.about||'',licenseNumber:media.licenseNumber||'',employeeStatus:media.employeeStatus||'AVAILABLE',
+      acceptsOnlineBooking:Boolean(m.accepts_online_booking),
       isOwner:String(m.doctor_id)===String(ctx.doctor_id),
       location:{id:m.location_id?String(m.location_id):'',name:m.location_name||'',address:m.address||'',city:m.city||'',state:m.state||'',country:m.country||'Venezuela'},
       services:services.map((s:any)=>({id:String(s.id),name:s.name,description:s.description||'',durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD',active:Boolean(s.active)})),
@@ -73,7 +78,7 @@ export async function GET(){
     });
   }
 
-  return NextResponse.json({business:true,organization:{id:String(ctx.organization_id),name:ctx.organization_name,slug:ctx.organization_slug},maxProfessionals:5,team});
+  return NextResponse.json({business:true,organization:{id:String(ctx.organization_id),name:ctx.organization_name,slug:ctx.organization_slug},maxProfessionals:5,locations:organizationLocations.map((l:any)=>({id:String(l.id),name:l.name,address:l.address||'',city:l.city||'',state:l.state||'',country:l.country||''})),team});
 }
 
 export async function POST(req:Request){
@@ -94,6 +99,12 @@ export async function POST(req:Request){
     const category=String(body.category||'').trim()||'Otro';
     const phone=String(body.phone||'').trim();
     const email=String(body.email||'').trim().toLowerCase();
+    const profileImage=String(body.profileImage||'');
+    const about=String(body.about||'').trim();
+    const licenseNumber=String(body.licenseNumber||'').trim();
+    const employeeStatus=String(body.employeeStatus||'AVAILABLE');
+    const mediaError=validateProviderMedia(profileImage,[]);
+    if(mediaError)return NextResponse.json({error:mediaError},{status:400});
     if(!name) return NextResponse.json({error:'Escribe el nombre del profesional.'},{status:400});
     if(email){
       const dupe=await sql`SELECT id FROM users WHERE lower(email)=lower(${email}) LIMIT 1`;
@@ -103,11 +114,17 @@ export async function POST(req:Request){
       VALUES(${ctx.organization_id},'DOCTOR',${name},${email||null},${phone||null},true) RETURNING id`;
     const userId=(userRows[0] as any).id;
     const slug=slugify(name)+'-'+randomUUID().slice(0,6);
-    const doctorRows=await sql`INSERT INTO doctors(user_id,public_slug,specialty,provider_category,provider_activity,provider_type,consultation_price,consultation_currency,accepts_online_booking)
-      VALUES(${userId},${slug},${activity},${category},${activity},'Negocio / local',0,'USD',true) RETURNING id`;
+    const mediaJson=serializeProviderMedia(null,{profileImage,about,licenseNumber,employeeStatus});
+    const doctorRows=await sql`INSERT INTO doctors(user_id,public_slug,specialty,provider_category,provider_activity,provider_type,consultation_price,consultation_currency,accepts_online_booking,bio)
+      VALUES(${userId},${slug},${activity},${category},${activity},'Negocio / local',0,'USD',${employeeStatus!=='INACTIVE'},${mediaJson}) RETURNING id`;
     const doctorId=(doctorRows[0] as any).id;
+    let locationId:String|undefined=String(body.locationId||'')||undefined;
+    if(locationId){
+      const ownedLoc=await sql`SELECT id FROM locations WHERE id=${locationId}::uuid AND organization_id=${ctx.organization_id} AND active=true LIMIT 1`;
+      if(!ownedLoc.length)return NextResponse.json({error:'La sede seleccionada no pertenece al negocio.'},{status:400});
+    }
     const locRows=await sql`SELECT id FROM locations WHERE organization_id=${ctx.organization_id} AND active=true ORDER BY created_at LIMIT 1`;
-    let locationId=(locRows[0] as any)?.id;
+    if(!locationId) locationId=(locRows[0] as any)?.id;
     if(!locationId){
       const ownerLoc=await sql`SELECT location_id AS id FROM doctor_locations WHERE doctor_id=${ctx.doctor_id} LIMIT 1`;
       locationId=(ownerLoc[0] as any)?.id;
@@ -151,8 +168,24 @@ export async function POST(req:Request){
     const phone=String(body.phone??member.phone??'').trim();
     const activity=String(body.activity||member.provider_activity||'Servicio').trim();
     const category=String(body.category||member.provider_category||'Otro').trim();
+    const mediaError=validateProviderMedia(String(body.profileImage??parseProviderMedia(member.bio).profileImage||''),[]);
+    if(mediaError)return NextResponse.json({error:mediaError},{status:400});
+    const mediaJson=serializeProviderMedia(member.bio,{
+      profileImage:body.profileImage!==undefined?String(body.profileImage):undefined,
+      about:body.about!==undefined?String(body.about):undefined,
+      licenseNumber:body.licenseNumber!==undefined?String(body.licenseNumber):undefined,
+      employeeStatus:body.employeeStatus!==undefined?String(body.employeeStatus):undefined
+    });
+    const employeeStatus=String(body.employeeStatus||parseProviderMedia(member.bio).employeeStatus||'AVAILABLE');
     await sql`UPDATE users SET full_name=${name},phone=${phone||null} WHERE id=${member.user_id}`;
-    await sql`UPDATE doctors SET specialty=${activity},provider_activity=${activity},provider_category=${category} WHERE id=${doctorId}::uuid`;
+    await sql`UPDATE doctors SET specialty=${activity},provider_activity=${activity},provider_category=${category},bio=${mediaJson},accepts_online_booking=${employeeStatus!=='INACTIVE'} WHERE id=${doctorId}::uuid`;
+    if(body.locationId){
+      const locationId=String(body.locationId);
+      const ownedLoc=await sql`SELECT id FROM locations WHERE id=${locationId}::uuid AND organization_id=${ctx.organization_id} AND active=true LIMIT 1`;
+      if(!ownedLoc.length)return NextResponse.json({error:'La sede seleccionada no pertenece al negocio.'},{status:400});
+      await sql`DELETE FROM doctor_locations WHERE doctor_id=${doctorId}::uuid`;
+      await sql`INSERT INTO doctor_locations(doctor_id,location_id) VALUES(${doctorId}::uuid,${locationId}::uuid)`;
+    }
     return NextResponse.json({ok:true});
   }
 
