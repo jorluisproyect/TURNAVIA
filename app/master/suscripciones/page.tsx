@@ -1,3 +1,5 @@
+import { isOwnerMasterSession } from '@/lib/access';
+import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { StatusPill } from '@/components/StatusPill';
 import { sql } from '@/lib/db';
@@ -12,6 +14,7 @@ const labels:any={TRIAL:'Prueba gratis',PAGO_PENDIENTE:'Pago pendiente',REVISION
 const tone=(s:string)=>s==='ACTIVO'?'ok':s==='SUSPENDIDO'?'bad':'warn';
 
 export default async function SuscripcionesMaster({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+  if(!(await isOwnerMasterSession()))redirect('/master');
  await refreshAllCommercialStatuses();
  const sp=await searchParams;
  const q=String(sp.q||'').trim().toLowerCase();
