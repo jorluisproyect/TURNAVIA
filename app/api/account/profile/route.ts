@@ -120,3 +120,144 @@ export async function POST(req:Request){
 
   return NextResponse.json({ok:true,professional:Boolean(meta.professional)});
 }
+
+
+export async function PUT(req:Request){
+  if(!sql)return NextResponse.json({error:'Base de datos no disponible'},{status:503});
+  if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo el Master propietario puede eliminar perfiles por completo.'},{status:403});
+
+  const body=await req.json();
+  const email=String(body.email||'').trim().toLowerCase();
+  const confirmation=String(body.confirmation||'');
+  if(!email)return NextResponse.json({error:'Correo requerido.'},{status:400});
+  if(email===MASTER_EMAIL)return NextResponse.json({error:'La cuenta Master principal no puede eliminarse.'},{status:403});
+  if(confirmation!=='ELIMINAR')return NextResponse.json({error:'Confirmación final inválida.'},{status:400});
+
+  const deleted=await deletedProfileEvent(email);
+  if(!deleted)return NextResponse.json({error:'Primero debes eliminar el perfil de forma recuperable antes de borrarlo por completo.'},{status:409});
+
+  const db=sql;
+  try{
+    await db.transaction([
+      db`DELETE FROM app_notifications
+        WHERE auth_user_id IN (
+          SELECT auth_user_id FROM app_user_profiles WHERE lower(email)=lower(${email})
+          UNION
+          SELECT id::text FROM neon_auth."user" WHERE lower(email)=lower(${email})
+        )`,
+
+      db`DELETE FROM waitlist_entries
+        WHERE doctor_id IN (
+          SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(u.email)=lower(${email})
+        )
+        OR patient_id IN (
+          SELECT p.id FROM patients p WHERE lower(COALESCE(p.email,''))=lower(${email})
+        )`,
+
+      db`DELETE FROM appointments
+        WHERE doctor_id IN (
+          SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(u.email)=lower(${email})
+        )
+        OR patient_id IN (
+          SELECT p.id FROM patients p WHERE lower(COALESCE(p.email,''))=lower(${email})
+        )`,
+
+      db`DELETE FROM payment_methods
+        WHERE doctor_id IN (
+          SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(u.email)=lower(${email})
+        )`,
+
+      db`DELETE FROM subscriptions
+        WHERE doctor_id IN (
+          SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(u.email)=lower(${email})
+        )
+        OR organization_id IN (
+          SELECT o.id FROM organizations o
+          WHERE lower(COALESCE(o.email,''))=lower(${email})
+            AND NOT EXISTS (
+              SELECT 1 FROM users teammate
+              WHERE teammate.organization_id=o.id
+                AND lower(COALESCE(teammate.email,''))<>lower(${email})
+            )
+        )`,
+
+      db`DELETE FROM doctor_status_updates
+        WHERE doctor_id IN (
+          SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(u.email)=lower(${email})
+        )`,
+
+      db`DELETE FROM availability_blocks
+        WHERE doctor_id IN (
+          SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(u.email)=lower(${email})
+        )`,
+
+      db`DELETE FROM doctor_locations
+        WHERE doctor_id IN (
+          SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(u.email)=lower(${email})
+        )`,
+
+      db`DELETE FROM provider_services
+        WHERE doctor_id IN (
+          SELECT d.id FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(u.email)=lower(${email})
+        )`,
+
+      db`DELETE FROM doctors
+        WHERE user_id IN (SELECT id FROM users WHERE lower(email)=lower(${email}))`,
+
+      db`DELETE FROM patients
+        WHERE lower(COALESCE(email,''))=lower(${email})
+           OR auth_user_id IN (
+             SELECT auth_user_id FROM app_user_profiles WHERE lower(email)=lower(${email})
+           )`,
+
+      db`DELETE FROM payments
+        WHERE organization_id IN (
+          SELECT o.id FROM organizations o
+          WHERE lower(COALESCE(o.email,''))=lower(${email})
+            AND NOT EXISTS (
+              SELECT 1 FROM users teammate
+              WHERE teammate.organization_id=o.id
+                AND lower(COALESCE(teammate.email,''))<>lower(${email})
+            )
+        )`,
+
+      db`DELETE FROM locations
+        WHERE organization_id IN (
+          SELECT o.id FROM organizations o
+          WHERE lower(COALESCE(o.email,''))=lower(${email})
+            AND NOT EXISTS (
+              SELECT 1 FROM users teammate
+              WHERE teammate.organization_id=o.id
+                AND lower(COALESCE(teammate.email,''))<>lower(${email})
+            )
+        )`,
+
+      db`DELETE FROM organizations o
+        WHERE lower(COALESCE(o.email,''))=lower(${email})
+          AND NOT EXISTS (
+            SELECT 1 FROM users teammate
+            WHERE teammate.organization_id=o.id
+              AND lower(COALESCE(teammate.email,''))<>lower(${email})
+          )`,
+
+      db`DELETE FROM audit_events
+        WHERE lower(COALESCE(metadata->>'email',''))=lower(${email})
+           OR (
+             entity_type='COMMERCIAL_CLIENT'
+             AND entity_id IN (
+               SELECT id::text FROM commercial_clients WHERE lower(email)=lower(${email})
+             )
+           )`,
+
+      db`DELETE FROM commercial_clients WHERE lower(email)=lower(${email})`,
+      db`DELETE FROM users WHERE lower(email)=lower(${email})`,
+      db`DELETE FROM app_user_profiles WHERE lower(email)=lower(${email})`,
+      db`DELETE FROM neon_auth."user" WHERE lower(email)=lower(${email})`
+    ]);
+
+    return NextResponse.json({ok:true,message:'Perfil eliminado por completo del sistema.'});
+  }catch(error){
+    console.error('TUCITA permanent profile deletion error',error);
+    return NextResponse.json({error:'No se pudo completar el borrado definitivo. No se aplicaron cambios parciales.'},{status:500});
+  }
+}
