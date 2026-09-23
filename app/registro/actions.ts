@@ -4,6 +4,7 @@ import { sql } from '@/lib/db';
 import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { redirect } from 'next/navigation';
 import { passwordIssues } from '@/lib/password-policy';
+import { validPendingInvitation } from '@/lib/master-team';
 
 function slugify(input:string){
   return input.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,42)||'profesional';
@@ -23,11 +24,14 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const role=requestedRole;
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
   const buyIntent=String(formData.get('buyIntent')||'0')==='1';
+  const teamToken=String(formData.get('teamInvite')||'');
   let commercialClientId='';
   let providerPublicPath='';
   let businessPublicPath='';
 
   if(!name||!email||!phone) return {error:'Completa nombre, correo y teléfono.'};
+  const teamInvite=teamToken?await validPendingInvitation(email,teamToken):null;
+  if(teamToken&&!teamInvite)return {error:'La invitación de equipo caducó, ya fue usada o no corresponde a este correo.'};
   const passwordProblems=passwordIssues(password);
   if(passwordProblems.length) return {error:'La contraseña necesita '+passwordProblems.join(', ')+'.'};
 
@@ -106,7 +110,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
         commercialClientId=String((commercial[0] as any)?.id||'');
       }
 
-    }else if(role==='PATIENT'){
+    }else if(role==='PATIENT'&&!teamInvite){
       let internalUser=await sql`SELECT id FROM users WHERE lower(email)=lower(${email}) LIMIT 1`;
       let internalUserId=(internalUser[0] as any)?.id;
       if(!internalUserId){
@@ -124,10 +128,16 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     }
   }
 
+  if(teamInvite&&sql&&authUserId){
+    await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+      VALUES('MASTER_TEAM_ACCEPTED','MASTER_TEAM',${email},
+        jsonb_build_object('name',${teamInvite.name},'role',${teamInvite.role},'authUserId',${String(authUserId)}))`;
+  }
+
   if(sql&&authUserId){
     try{
       await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
-        VALUES(${String(authUserId)},'INFO','Bienvenido a TUCITA',${role==='DOCTOR'?'Tu cuenta fue creada. Configura tus servicios, horarios y enlace público desde tu panel.':'Tu cuenta fue creada correctamente. Ya puedes comenzar a reservar.'},'/panel')`;
+        VALUES(${String(authUserId)},'INFO','Bienvenido a TUCITA',${teamInvite?'Tu acceso como colaborador TUCITA ya está activo.':role==='DOCTOR'?'Tu cuenta fue creada. Configura tus servicios, horarios y enlace público desde tu panel.':'Tu cuenta fue creada correctamente. Ya puedes comenzar a reservar.'},'/panel')`;
     }catch(error){console.error('TUCITA welcome notification error',error)}
   }
 
@@ -145,6 +155,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     }catch(error){console.error('TUCITA welcome email audit error',error)}
   }
 
+  if(teamInvite) redirect('/master');
   if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId));
   redirect('/panel');
 }
