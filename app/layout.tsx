@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { PwaRegister } from '@/components/PwaRegister';
+import { PortraitGuard } from '@/components/PortraitGuard';
 
 export const metadata: Metadata = {
   title:'TUCITA · Tu servicio, a tu hora',
@@ -15,6 +16,7 @@ export default function RootLayout({children}:{children:React.ReactNode}){
     <html lang="es">
       <body>
         <PwaRegister/>
+        <PortraitGuard/>
         {children}
       </body>
     </html>
