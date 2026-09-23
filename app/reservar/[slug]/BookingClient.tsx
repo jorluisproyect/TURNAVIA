@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, MapPin, ShieldCheck, UploadCloud, CreditCard } from 'lucide-react';
+import { CheckCircle2, MapPin, ShieldCheck, UploadCloud, CreditCard, Navigation } from 'lucide-react';
 import Link from 'next/link';
 
 type Slot={time:string;available:boolean;startsAt:string};
@@ -8,7 +8,9 @@ type LocationInfo={id:string;name:string;address:string;city:string;state:string
 type Availability={id:string;date:string;slots:Slot[];location:LocationInfo};
 type Service={id:string;name:string;description:string;durationMinutes:number;price:number;currency:string};
 type PaymentMethod={id:string;name:string;type:string;account_label?:string;account_value?:string;instructions?:string;requires_proof?:boolean;active:boolean};
-type State={provider:{slug:string;name:string;initials:string;category:string;activity:string;type:string;location:string;dayStatus:string;delayMinutes:number};services:Service[];availability:Availability[];paymentInstructions:string};
+type State={provider:{slug:string;name:string;initials:string;category:string;activity:string;type:string;location:string;dayStatus:string;delayMinutes:number;profileImage?:string;workImages?:string[]};services:Service[];availability:Availability[];paymentInstructions:string};
+
+function mapQuery(l:LocationInfo){return [l.address,l.city,l.state,l.country].filter(Boolean).join(', ')}
 
 export default function BookingClient({slug}:{slug:string}){
  const [data,setData]=useState<State|null>(null);
@@ -110,7 +112,8 @@ export default function BookingClient({slug}:{slug:string}){
  return <div className="booking"><div className="container booking-wrap">
    <div className="booking-header"><Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link><p className="muted">Reserva tu servicio en pocos pasos</p></div>
    <section className="profile-card">
-     <div className="profile-top"><div className="profile-avatar">{provider.initials}</div><div><h1 style={{fontSize:25,margin:'0 0 4px'}}>{provider.name}</h1><div className="muted">{provider.activity} · {provider.category}</div><div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{provider.location||'Ubicación por confirmar'}</div></div></div>
+     <div className="profile-top">{provider.profileImage?<img src={provider.profileImage} alt={provider.name} style={{width:76,height:76,borderRadius:24,objectFit:'cover',flex:'0 0 auto'}}/>:<div className="profile-avatar">{provider.initials}</div>}<div><h1 style={{fontSize:25,margin:'0 0 4px'}}>{provider.name}</h1><div className="muted">{provider.activity} · {provider.category}</div><div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{provider.location||'Ubicación por confirmar'}</div></div></div>
+     {(provider.workImages||[]).length>0&&<div style={{marginTop:16}}><div className="muted" style={{fontSize:12,marginBottom:8}}>Referencias de trabajos</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8}}>{(provider.workImages||[]).map((img,i)=><img key={i} src={img} alt={'Referencia '+(i+1)} style={{width:'100%',height:92,borderRadius:14,objectFit:'cover'}}/>)}</div></div>}
      {provider.dayStatus==='DELAYED'&&<div className="notice" style={{marginTop:16}}>Este profesional presenta aproximadamente {provider.delayMinutes} minutos de retraso.</div>}
      <hr style={{border:0,borderTop:'1px solid var(--line)',margin:'24px 0'}}/>
 
@@ -123,7 +126,7 @@ export default function BookingClient({slug}:{slug:string}){
      <div style={{marginTop:22}}><strong>2. Selecciona el día disponible</strong><div className="date-tabs">{dates.map(d=><button key={d} className={'date-tab '+(date===d?'active':'')} onClick={()=>{setDate(d);const first=data.availability.find(a=>a.date===d&&a.slots.some(s=>s.available));setStartsAt(first?.slots.find(s=>s.available)?.startsAt||'')}}><strong>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11,marginTop:3}}>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div>{!data.availability.length&&<div className="notice" style={{marginTop:10}}>Todavía no hay horarios publicados.</div>}</div>
 
      <div style={{marginTop:22}}><strong>3. Selecciona la hora y el lugar</strong><div className="muted" style={{fontSize:12,marginTop:5}}>Cada bloque indica claramente dónde estará el profesional o negocio.</div><div style={{display:'grid',gap:12,marginTop:12}}>{currentBlocks.map(block=><div className="notice" key={block.id} style={{padding:14}}><div className="row" style={{alignItems:'flex-start',gap:8}}><MapPin size={17}/><div><strong style={{fontSize:15}}>Atención en {block.location.name||'ubicación por confirmar'}</strong><div className="muted" style={{fontSize:12,marginTop:3}}>{[block.location.address,block.location.city,block.location.state,block.location.country].filter(Boolean).join(' · ')}{block.location.room?<><br/><strong>{block.location.room}</strong></>:null}</div></div></div><div className="booking-slots" style={{marginTop:10}}>{block.slots.map(s=><button disabled={!s.available} type="button" className={startsAt===s.startsAt?'selected':''} onClick={()=>setStartsAt(s.startsAt)} key={block.id+'-'+s.startsAt}>{s.time}</button>)}</div></div>)}</div></div>
-     {selectedBlock&&startsAt&&<div className="notice" style={{marginTop:14,border:'2px solid #0f766e'}}><strong>Tu cita será en: {selectedBlock.location.name}</strong><br/>{[selectedBlock.location.address,selectedBlock.location.city,selectedBlock.location.state,selectedBlock.location.country].filter(Boolean).join(' · ')}{selectedBlock.location.room?<><br/><strong>{selectedBlock.location.room}</strong></>:null}</div>}
+     {selectedBlock&&startsAt&&<div className="notice" style={{marginTop:14,border:'2px solid #0f766e'}}><strong>Tu cita será en: {selectedBlock.location.name}</strong><br/>{[selectedBlock.location.address,selectedBlock.location.city,selectedBlock.location.state,selectedBlock.location.country].filter(Boolean).join(' · ')}{selectedBlock.location.room?<><br/><strong>{selectedBlock.location.room}</strong></>:null}{mapQuery(selectedBlock.location)&&<><div style={{marginTop:12,borderRadius:14,overflow:'hidden',border:'1px solid var(--line)'}}><iframe title={'Mapa de '+selectedBlock.location.name} src={'https://www.google.com/maps?q='+encodeURIComponent(mapQuery(selectedBlock.location))+'&output=embed'} width="100%" height="220" style={{border:0,display:'block'}} loading="lazy" referrerPolicy="no-referrer-when-downgrade"/></div><a href={'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(selectedBlock.location))} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{marginTop:10}}><Navigation size={15}/> Cómo llegar</a></>}</div>}
 
      <div style={{marginTop:26}}><strong>4. Tus datos</strong><div className="form">
        <div className="field"><label>Nombre completo</label><input value={form.clientName} onChange={e=>setForm({...form,clientName:e.target.value})} placeholder="Escribe tu nombre real"/></div>
