@@ -31,7 +31,7 @@ export default function PerfilPaciente(){
 
   async function photo(file?:File){
     if(!file)return;
-    try{setForm(x=>({...x,profileImage:await resizeAvatar(file)}))}catch(e:any){setMsg(e?.message||'No se pudo procesar la foto.');setTimeout(()=>setMsg(''),1800)}
+    try{const img=await resizeAvatar(file);setForm(x=>({...x,profileImage:img}))}catch(e:any){setMsg(e?.message||'No se pudo procesar la foto.');setTimeout(()=>setMsg(''),1800)}
   }
 
   async function save(){
