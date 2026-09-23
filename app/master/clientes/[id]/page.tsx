@@ -1,3 +1,5 @@
+import { isOwnerMasterSession } from '@/lib/access';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
@@ -27,6 +29,7 @@ const actionLabels:any={
 };
 
 export default async function ClienteMasterDetalle({params}:{params:Promise<{id:string}>}){
+  if(!(await isOwnerMasterSession()))redirect('/master');
   if(!sql) return <div className="dashboard"><Sidebar role="master"/><main className="main"><div className="notice danger">Base de datos no disponible.</div></main></div>;
   const {id}=await params;
   if(!validUuid(id)) notFound();
