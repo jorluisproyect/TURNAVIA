@@ -59,7 +59,7 @@ export default function Paciente(){
      <div className="row space" style={{gap:16,alignItems:'flex-start',flexWrap:'wrap'}}><div><span className="eyebrow"><CalendarCheck2 size={15}/> PRÓXIMA CITA</span><h2 style={{fontSize:26,margin:'10px 0 5px'}}>{next.providerName}</h2><div className="muted">{next.serviceName} · {next.activity}</div><div style={{marginTop:10}}><strong>{new Date(next.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}</strong></div><div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{next.location||'Ubicación por confirmar'}</div></div><div className="button-row"><Link className="btn btn-secondary" href={'/reservar/'+next.providerSlug}>Reservar otra vez</Link>{next.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(next.status)&&<a className="btn btn-primary" href={'/api/appointments/'+next.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={16}/> Recibo + QR</a>}</div></div>
    </section>}
 
-   {active.length===0?<section className="panel"><div className="empty">No tienes reservas activas. <Link href="/explorar">Explorar profesionales y negocios</Link>.</div></section>:
+   <div id="reservas"/>{active.length===0?<section className="panel"><div className="empty">No tienes reservas activas. <Link href="/explorar">Explorar profesionales y negocios</Link>.</div></section>:
    <div style={{display:'grid',gap:18}}>{active.map((ap:any)=><section className="panel" key={ap.id}>
       <span className="eyebrow"><CalendarCheck2 size={15}/> Reserva preagendada</span>
       <div className="row space" style={{padding:'18px 0 10px',gap:14,alignItems:'flex-start',flexWrap:'wrap'}}>
