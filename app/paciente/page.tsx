@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { CalendarCheck2, CalendarClock, CarFront, CheckCircle2, MapPin, XCircle, FileText } from 'lucide-react';
+import { CalendarCheck2, CalendarClock, CarFront, CheckCircle2, MapPin, XCircle, FileText, UserRound, Search } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 
 const label:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Ya llegaste',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asististe'};
@@ -20,6 +20,7 @@ export default function Paciente(){
  useEffect(()=>{load()},[]);
  const active=useMemo(()=>data?.appointments?.filter((a:any)=>!['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
  const history=useMemo(()=>data?.appointments?.filter((a:any)=>['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
+ const next=useMemo(()=>[...active].filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-3600000).sort((a:any,b:any)=>new Date(a.startsAt).getTime()-new Date(b.startsAt).getTime())[0],[active]);
 
  async function action(id:string,status:string){
    const r=await fetch('/api/me/patient',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'appointment_status',id,status})});
@@ -52,7 +53,11 @@ export default function Paciente(){
  if(!data)return <div className="dashboard"><Sidebar role="paciente"/><main className="main">Cargando…</main></div>;
 
  return <div className="dashboard"><Sidebar role="paciente"/><main className="main">
-   <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Mis reservas</div><h1>Hola, {data.patient.name}</h1></div><Link className="btn btn-primary" href="/explorar">Reservar servicio</Link></div>
+   <div className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{data.patient.profileImage?<img src={data.patient.profileImage} alt="" style={{width:56,height:56,borderRadius:18,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:56,height:56,borderRadius:18}}><UserRound size={23}/></div>}<div><div className="muted" style={{fontSize:13}}>Mi TUCITA</div><h1>Hola, {data.patient.name}</h1></div></div><Link className="btn btn-primary" href="/explorar"><Search size={16}/> Explorar</Link></div>
+
+   {next&&<section className="panel" style={{marginBottom:18,background:'linear-gradient(145deg,#ffffff,#eef9f6)'}}>
+     <div className="row space" style={{gap:16,alignItems:'flex-start',flexWrap:'wrap'}}><div><span className="eyebrow"><CalendarCheck2 size={15}/> PRÓXIMA CITA</span><h2 style={{fontSize:26,margin:'10px 0 5px'}}>{next.providerName}</h2><div className="muted">{next.serviceName} · {next.activity}</div><div style={{marginTop:10}}><strong>{new Date(next.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}</strong></div><div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{next.location||'Ubicación por confirmar'}</div></div><div className="button-row"><Link className="btn btn-secondary" href={'/reservar/'+next.providerSlug}>Reservar otra vez</Link>{next.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(next.status)&&<a className="btn btn-primary" href={'/api/appointments/'+next.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={16}/> Recibo + QR</a>}</div></div>
+   </section>}
 
    {active.length===0?<section className="panel"><div className="empty">No tienes reservas activas. <Link href="/explorar">Explorar profesionales y negocios</Link>.</div></section>:
    <div style={{display:'grid',gap:18}}>{active.map((ap:any)=><section className="panel" key={ap.id}>
