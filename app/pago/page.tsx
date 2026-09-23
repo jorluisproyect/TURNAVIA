@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
 import { Bitcoin, CheckCircle2, CreditCard, ShieldCheck, Upload, WalletCards } from 'lucide-react';
+import { billingAmount, planFromType, type BillingCycleMonths } from '@/lib/plans';
 
 type PaymentMethod={
   id:string;
@@ -29,6 +30,7 @@ function PagoContent(){
   const [msg,setMsg]=useState('');
   const [success,setSuccess]=useState(false);
   const [loadError,setLoadError]=useState('');
+  const [cycleMonths,setCycleMonths]=useState<BillingCycleMonths>(1);
 
   useEffect(()=>{
     if(!id)return;
@@ -48,10 +50,11 @@ function PagoContent(){
 
   const selected=useMemo(()=>methods.find(m=>m.id===selectedId)||null,[methods,selectedId]);
   const clinic=String(c?.type||'').startsWith('Negocio')||String(c?.type||'').startsWith('Clínica');
-  const initial=clinic?149:40;
-  const monthly=clinic?49:15;
+  const plan=planFromType(c?.type||'');
+  const monthly=plan.monthly;
   const isRenewal=Boolean(c?.paymentReviewedAt);
-  const amountDue=isRenewal?monthly:initial;
+  const cyclePrice=plan.renewal[cycleMonths];
+  const amountDue=billingAmount(c?.type||'',cycleMonths,isRenewal);
   const underReview=c?.status==='REVISION_BINANCE'||success;
 
   function iconFor(method:PaymentMethod){
@@ -76,6 +79,7 @@ function PagoContent(){
       form.append('paymentMethod',selected.type||selected.name);
       form.append('paymentMethodId',selected.id);
       form.append('comment',`TUCITA - ${c.name}`);
+      form.append('billingCycleMonths',String(cycleMonths));
       if(proof)form.append('proof',proof);
 
       const r=await fetch('/api/payments/binance',{method:'POST',body:form});
@@ -107,11 +111,26 @@ function PagoContent(){
     {loadError&&<div className="notice danger">{loadError}</div>}
 
     {c&&<><section className="profile-card">
-      <h2>{isRenewal?'Renovación mensual':'Activación inicial'}</h2>
-      {isRenewal?
-        <div className="stat-grid" style={{gridTemplateColumns:'1fr 1fr'}}><div className="stat"><small>Renovación</small><div className="n">${monthly}</div></div><div className="stat"><small>Total hoy</small><div className="n">${amountDue}</div></div></div>
-        :<div className="stat-grid" style={{gridTemplateColumns:'repeat(3,1fr)'}}><div className="stat"><small>Activación</small><div className="n">${clinic?100:25}</div></div><div className="stat"><small>Primer mes</small><div className="n">${monthly}</div></div><div className="stat"><small>Total hoy</small><div className="n">${initial}</div></div></div>}
-      <p className="muted">{isRenewal?<>Esta renovación mantiene tu cuenta activa por el siguiente ciclo mensual.</>:<>Después de este pago, la renovación es de <strong>${monthly}/mes</strong>.</>}</p>
+      <h2>{isRenewal?'Renovación':'Activación y suscripción'}</h2>
+      <div className="field" style={{marginTop:14}}><label>Elige cuánto tiempo quieres pagar</label>
+        <div className="billing-cycle-grid">
+          {([1,3,12] as BillingCycleMonths[]).map(months=>{
+            const price=plan.renewal[months];
+            const selected=cycleMonths===months;
+            return <button type="button" key={months} className={'billing-cycle '+(selected?'active':'')} onClick={()=>setCycleMonths(months)}>
+              <span>{months===1?'1 mes':months===3?'3 meses':'1 año'}</span>
+              <strong>${price}</strong>
+              {!clinic&&months===12&&<small>Promo anual</small>}
+            </button>
+          })}
+        </div>
+      </div>
+      <div className="stat-grid" style={{gridTemplateColumns:isRenewal?'1fr 1fr':'repeat(3,1fr)',marginTop:16}}>
+        {!isRenewal&&<div className="stat"><small>Activación</small><div className="n">${plan.activation}</div></div>}
+        <div className="stat"><small>{cycleMonths===1?'1 mes':cycleMonths===3?'3 meses':'1 año'}</small><div className="n">${cyclePrice}</div></div>
+        <div className="stat"><small>Total hoy</small><div className="n">${amountDue}</div></div>
+      </div>
+      <p className="muted">{!clinic&&cycleMonths===12?<><strong>Promo anual:</strong> 12 meses por <strong>$125</strong>.</>:<>Tu acceso se mantiene durante el período pagado.</>}</p>
     </section>
 
     <div style={{height:16}}/>
