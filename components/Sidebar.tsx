@@ -34,6 +34,10 @@ const config = {
     ["/paciente/perfil", "Perfil", Settings],
     ["/cuenta/seguridad", "Seguridad", Settings],
   ],
+  masterTeam: [
+    ["/master", "Mi espacio Master", LayoutDashboard],
+    ["/cuenta/seguridad", "Seguridad", ShieldCheck],
+  ],
   master: [
     ["/master", "Resumen", LayoutDashboard],
     ["/master/clientes", "Clientes", Building2],
@@ -89,6 +93,11 @@ export function Sidebar({role}:{role:keyof typeof config}){
       ['/recepcion/pacientes','Clientes',Users],
       ['__more__','Más',Menu],
     ]:
+    role==='masterTeam'?[
+      ['/master','Mi espacio',LayoutDashboard],
+      ['/cuenta/seguridad','Seguridad',ShieldCheck],
+      ['__more__','Más',Menu],
+    ]:
     role==='master'?[
       ['/master','Resumen',LayoutDashboard],
       ['/master/clientes','Clientes',Building2],
@@ -108,6 +117,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
       ['/recepcion/medicos','Profesionales',HeartPulse],
       ['/recepcion/sedes','Sedes',Building2],
     ]:
+    role==='masterTeam'?[]:
     role==='master'?[
       ['/master/profesionales','Profesionales',HeartPulse],
       ['/master/equipo','Equipo de trabajo',Users],
@@ -129,7 +139,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
       return <Link key={String(href)} href={href} className={`side-link ${active?"active":""}`}><Icon size={18}/>{visibleLabel}</Link>
     })}<div style={{marginTop:'auto',display:'grid',gap:6}}><NotificationBell/><LogoutButton/></div></aside>
 
-    <nav className="mobile-bottom-nav" aria-label="Navegación principal">
+    <nav className={`mobile-bottom-nav ${role==='masterTeam'?'mobile-bottom-nav-compact':''}`} aria-label="Navegación principal">
       {mobilePrimary.map(([href,label,Icon])=>href==='__more__'
         ?<button key="more" type="button" className={`mobile-nav-item ${moreOpen?'active':''}`} onClick={()=>setMoreOpen(v=>!v)}><Icon size={21}/><span>{label}</span></button>
         :<Link key={href} href={href} onClick={()=>setMoreOpen(false)} className={`mobile-nav-item ${activeFor(href)?'active':''}`}><Icon size={21}/><span>{label}</span></Link>
