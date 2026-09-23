@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
 import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, BriefcaseBusiness, Pencil, Trash2, ExternalLink, CheckCircle2, MapPin, ScanLine, FileText, ImagePlus, X, Navigation } from 'lucide-react';
@@ -36,6 +36,8 @@ export default function Medico(){
  const [data,setData]=useState<any>(null);
  const [error,setError]=useState('');
  const [toast,setToast]=useState('');
+ const [saving,setSaving]=useState(false);
+ const savingRef=useRef(false);
  const [origin,setOrigin]=useState('');
  const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|'location'|null>(null);
  const [profile,setProfile]=useState<any>({});
@@ -62,10 +64,18 @@ export default function Medico(){
  const nextAppointment=useMemo(()=>[...confirmed].filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-3600000).sort((a:any,b:any)=>new Date(a.startsAt).getTime()-new Date(b.startsAt).getTime())[0],[confirmed]);
 
  async function patch(body:any){
-   const r=await fetch('/api/me/provider',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
-   const j=await r.json();
-   if(!r.ok){setToast(j.error||'No se pudo guardar');return false}
-   setModal(null);setToast(j.message||'Cambios guardados');await load();setTimeout(()=>setToast(''),2800);return true;
+   if(savingRef.current)return false;
+   savingRef.current=true;setSaving(true);setToast('Guardando cambios…');
+   try{
+     const r=await fetch('/api/me/provider',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+     const j=await r.json();
+     if(!r.ok){setToast(j.error||'No se pudieron guardar los cambios.');return false}
+     setModal(null);setToast(j.message||'Cambios guardados correctamente.');await load();setTimeout(()=>setToast(''),2800);return true;
+   }catch{
+     setToast('No se pudo conectar con TUCITA. Intenta nuevamente.');return false;
+   }finally{
+     savingRef.current=false;setSaving(false);
+   }
  }
  async function profileImageChange(file?:File){
    if(!file)return;
@@ -178,12 +188,12 @@ export default function Medico(){
   </div>
 
   {nextAppointment&&<section className="panel" style={{marginTop:18,background:'linear-gradient(145deg,#ffffff,#eef9f6)'}}>
-    <div className="row space" style={{gap:16,alignItems:'flex-start',flexWrap:'wrap'}}><div><span className="eyebrow"><Clock3 size={15}/> SIGUIENTE CITA</span><h2 style={{fontSize:24,margin:'10px 0 4px'}}>{nextAppointment.clientName}</h2><div className="muted">{nextAppointment.serviceName}</div><div style={{marginTop:9}}><strong>{new Date(nextAppointment.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit',timeZone:'America/Caracas'})}</strong></div><div className="row muted" style={{fontSize:12,marginTop:7}}><MapPin size={14}/>{[nextAppointment.location?.name,nextAppointment.location?.address].filter(Boolean).join(' · ')||'Ubicación por confirmar'}</div></div><div className="button-row"><Link className="btn btn-secondary" href="/medico/finanzas">Ver finanzas</Link>{nextAppointment.status==='CONFIRMED'&&<button className="btn btn-primary" onClick={()=>patch({action:'appointment_status',id:nextAppointment.id,status:'ARRIVED'})}>Registrar llegada</button>}</div></div>
+    <div className="row space" style={{gap:16,alignItems:'flex-start',flexWrap:'wrap'}}><div><span className="eyebrow"><Clock3 size={15}/> SIGUIENTE CITA</span><h2 style={{fontSize:24,margin:'10px 0 4px'}}>{nextAppointment.clientName}</h2><div className="muted">{nextAppointment.serviceName}</div><div style={{marginTop:9}}><strong>{new Date(nextAppointment.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit',timeZone:'America/Caracas'})}</strong></div><div className="row muted" style={{fontSize:12,marginTop:7}}><MapPin size={14}/>{[nextAppointment.location?.name,nextAppointment.location?.address].filter(Boolean).join(' · ')||'Ubicación por confirmar'}</div></div><div className="button-row"><Link className="btn btn-secondary" href="/medico/finanzas">Ver finanzas</Link>{nextAppointment.status==='CONFIRMED'&&<button className="btn btn-primary" onClick={()=>patch({action:'appointment_status',id:nextAppointment.id,status:'ARRIVED'})} disabled={saving}>{saving?'Procesando…':'Registrar llegada'}</button>}</div></div>
   </section>}
 
   <section className="panel" id="ubicaciones" style={{marginTop:18}}>
    <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>Lugares de atención</h2><div className="muted" style={{fontSize:13}}>Agrega todos los lugares donde trabajas. Luego asigna cada horario a uno de ellos.</div></div><button className="btn btn-primary" onClick={newLocation}><Plus size={16}/> Agregar ubicación</button></div>
-   {!data.locations?.length?<div className="notice" style={{marginTop:14}}>Agrega al menos una ubicación para publicar horarios.</div>:<div className="grid-3" style={{marginTop:14}}>{data.locations.map((l:any)=><div className="card" key={l.id}><MapPin size={18}/><h3>{l.name}</h3><p>{[l.address,l.city,l.state,l.country].filter(Boolean).join(' · ')||'Dirección por completar'}{l.room?<><br/><strong>{l.room}</strong></>:null}</p>{mapQuery(l)&&<a className="btn btn-secondary" style={{marginBottom:10}} href={'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(l))} target="_blank" rel="noreferrer"><Navigation size={15}/> Ver mapa</a>}<div className="row" style={{gap:8,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editLocation(l)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'delete_location',id:l.id})}><Trash2 size={15}/> Eliminar</button></div></div>)}</div>}
+   {!data.locations?.length?<div className="notice" style={{marginTop:14}}>Agrega al menos una ubicación para publicar horarios.</div>:<div className="grid-3" style={{marginTop:14}}>{data.locations.map((l:any)=><div className="card" key={l.id}><MapPin size={18}/><h3>{l.name}</h3><p>{[l.address,l.city,l.state,l.country].filter(Boolean).join(' · ')||'Dirección por completar'}{l.room?<><br/><strong>{l.room}</strong></>:null}</p>{mapQuery(l)&&<a className="btn btn-secondary" style={{marginBottom:10}} href={'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(l))} target="_blank" rel="noreferrer"><Navigation size={15}/> Ver mapa</a>}<div className="row" style={{gap:8,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editLocation(l)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'delete_location',id:l.id})} disabled={saving}><Trash2 size={15}/> {saving?'Procesando…':'Eliminar'}</button></div></div>)}</div>}
   </section>
 
   <section className="panel" id="agenda" style={{marginTop:18}}>
@@ -196,7 +206,7 @@ export default function Medico(){
       <CalendarPlus size={18}/><h3>{new Date(a.startsAt).toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long',timeZone:'America/Caracas'})}</h3>
       <p><strong>{new Date(a.startsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'})}</strong> a <strong>{new Date(a.endsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'})}</strong></p>
       <div className="notice" style={{margin:'10px 0'}}><MapPin size={15}/> <strong>Atención en {a.location?.name||'ubicación por confirmar'}</strong><br/><span className="muted">{[a.location?.address,a.location?.city,a.location?.state,a.location?.country].filter(Boolean).join(' · ')}{a.location?.room?' · '+a.location.room:''}</span></div><div className="muted" style={{fontSize:12}}>Inicios cada {a.slotMinutes} min. TUCITA adapta el espacio a la duración real del servicio.</div>
-      <button className="btn btn-secondary" style={{marginTop:12}} onClick={()=>patch({action:'delete_availability',id:a.id})}><Trash2 size={15}/> Eliminar horario</button>
+      <button className="btn btn-secondary" style={{marginTop:12}} onClick={()=>patch({action:'delete_availability',id:a.id})} disabled={saving}><Trash2 size={15}/> {saving?'Procesando…':'Eliminar horario'}</button>
     </div>)}</div>}
     <div className="notice" style={{marginTop:14}}><strong>Ejemplo:</strong> si publicas 9:00–13:00 y un corte dura 30 minutos, TUCITA ofrece horas que permitan completar esos 30 minutos. Si “Corte + barba” dura 45 minutos, recalcula automáticamente las horas disponibles.</div>
   </section>
@@ -204,7 +214,7 @@ export default function Medico(){
   <section className="panel" id="servicios" style={{marginTop:18}}>
     <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>Servicios, duración y precio</h2><div className="muted" style={{fontSize:13}}>{serviceHint}</div></div><button className="btn btn-primary" onClick={newService}><Plus size={16}/> Nuevo servicio</button></div>
     {data.services.length===0?<div className="notice" style={{marginTop:14}}>Agrega al menos un servicio para que tus clientes puedan reservar.</div>:
-    <div className="grid-3" style={{marginTop:14}}>{data.services.map((s:any)=><div className="card" key={s.id}><BriefcaseBusiness size={18}/><h3>{s.name}</h3><p>{s.description||'Sin descripción'}</p><div className="row space"><strong>{s.currency} {s.price}</strong><span className="pill">{s.durationMinutes} min</span></div><div className="row" style={{gap:8,marginTop:12,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editService(s)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'update_service',id:s.id,active:!s.active})}>{s.active?'Pausar':'Activar'}</button></div></div>)}</div>}
+    <div className="grid-3" style={{marginTop:14}}>{data.services.map((s:any)=><div className="card" key={s.id}><BriefcaseBusiness size={18}/><h3>{s.name}</h3><p>{s.description||'Sin descripción'}</p><div className="row space"><strong>{s.currency} {s.price}</strong><span className="pill">{s.durationMinutes} min</span></div><div className="row" style={{gap:8,marginTop:12,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editService(s)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'update_service',id:s.id,active:!s.active})} disabled={saving}>{saving?'Procesando…':s.active?'Pausar':'Activar'}</button></div></div>)}</div>}
   </section>
 
   <div className="panel-grid" style={{marginTop:18}}>
@@ -218,12 +228,12 @@ export default function Medico(){
       <td>{a.paymentMethod||'—'}{a.paymentReference&&<div><strong>Ref: {a.paymentReference}</strong></div>}{a.paymentProofUrl&&<a className="btn btn-secondary" style={{marginTop:6,padding:'6px 9px'}} target="_blank" rel="noreferrer" href={a.paymentProofUrl}><Eye size={14}/> Ver</a>}</td>
       <td><StatusPill tone={a.status==='PAYMENT_REVIEW'?'warn':a.status==='PAYMENT_REJECTED'?'bad':['CONFIRMED','COMPLETED','ARRIVED','IN_CONSULTATION'].includes(a.status)?'ok':''}>{labels[a.status]||a.status}</StatusPill></td>
       <td><div className="row" style={{gap:6,flexWrap:'wrap'}}>
-       {a.status==='PAYMENT_REVIEW'&&<><button className="btn btn-primary" onClick={()=>patch({action:'approve_payment',id:a.id})}>Aprobar</button><button className="btn btn-secondary" onClick={()=>patch({action:'reject_payment',id:a.id})}>Rechazar</button></>}
-       {a.status==='CONFIRMED'&&<button className="btn btn-secondary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'ARRIVED'})}>Llegó</button>}
-       {a.status==='ARRIVED'&&<button className="btn btn-secondary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'IN_CONSULTATION'})}>Atender</button>}
-       {a.status==='IN_CONSULTATION'&&<button className="btn btn-primary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'COMPLETED'})}>Completar</button>}
+       {a.status==='PAYMENT_REVIEW'&&<><button className="btn btn-primary" onClick={()=>patch({action:'approve_payment',id:a.id})} disabled={saving}>{saving?'Procesando…':'Aprobar'}</button><button className="btn btn-secondary" onClick={()=>patch({action:'reject_payment',id:a.id})} disabled={saving}>{saving?'Procesando…':'Rechazar'}</button></>}
+       {a.status==='CONFIRMED'&&<button className="btn btn-secondary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'ARRIVED'})} disabled={saving}>{saving?'Procesando…':'Llegó'}</button>}
+       {a.status==='ARRIVED'&&<button className="btn btn-secondary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'IN_CONSULTATION'})} disabled={saving}>{saving?'Procesando…':'Atender'}</button>}
+       {a.status==='IN_CONSULTATION'&&<button className="btn btn-primary" onClick={()=>patch({action:'appointment_status',id:a.id,status:'COMPLETED'})} disabled={saving}>{saving?'Procesando…':'Completar'}</button>}
        {a.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)&&<a className="btn btn-secondary" href={'/api/appointments/'+a.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={14}/> Recibo</a>}
-       {a.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)&&a.clientEmail&&<button className="btn btn-secondary" onClick={()=>patch({action:'resend_receipt_email',id:a.id})}>Reenviar al correo</button>}
+       {a.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(a.status)&&a.clientEmail&&<button className="btn btn-secondary" onClick={()=>patch({action:'resend_receipt_email',id:a.id})} disabled={saving}>{saving?'Enviando…':'Reenviar al correo'}</button>}
       </div></td>
     </tr>)}</tbody></table></div>}
    </section>
@@ -255,14 +265,14 @@ export default function Medico(){
    <div className="field"><label>Nombre de ubicación</label><input value={profile.locationName||''} onChange={e=>setProfile({...profile,locationName:e.target.value})}/></div>
    <div className="field"><label>Dirección</label><input value={profile.address||''} onChange={e=>setProfile({...profile,address:e.target.value})}/></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>Ciudad</label><input value={profile.city||''} onChange={e=>setProfile({...profile,city:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>Estado / Provincia</label><input value={profile.state||''} onChange={e=>setProfile({...profile,state:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>País</label><input list="profile-countries" value={profile.country||''} onChange={e=>setProfile({...profile,country:e.target.value})}/><datalist id="profile-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div></div>
- </div></div><div className="button-row profile-modal-actions"><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile})}>Guardar perfil</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div></div><div className="button-row profile-modal-actions"><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile})} disabled={saving}>{saving?'Guardando…':'Guardar perfil'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='service'&&<div className="modal-backdrop"><div className="modal"><h2>{service.id?'Editar servicio':'Nuevo servicio'}</h2><div className="form">
    <div className="notice">{serviceHint}</div>
    <div className="field"><label>Nombre del servicio</label><input value={service.name} onChange={e=>setService({...service,name:e.target.value})} placeholder={activity.includes('barber')?'Ej. Corte + barba':activity.includes('manicur')?'Ej. Acrílicas':'Ej. Consulta / Servicio premium'}/></div>
    <div className="field"><label>Descripción</label><textarea rows={3} value={service.description} onChange={e=>setService({...service,description:e.target.value})}/></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Duración real</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>120 min</option><option value={180}>180 min</option></select></div><div className="field" style={{flex:1,minWidth:150}}><label>Precio</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(service.price||0),service.currency||'USD')}
- </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService}>{service.id?'Guardar cambios':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService} disabled={saving}>{saving?'Guardando…':service.id?'Guardar cambios':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='location'&&<div className="modal-backdrop"><div className="modal"><h2>{locationForm.id?'Editar ubicación':'Nueva ubicación'}</h2><div className="form">
    <div className="field"><label>Nombre visible</label><input value={locationForm.name} onChange={e=>setLocationForm({...locationForm,name:e.target.value})} placeholder="Ej. Clínica X / Sede Centro / Consultorio privado"/></div>
@@ -270,7 +280,7 @@ export default function Medico(){
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:170}}><label>Ciudad</label><input value={locationForm.city} onChange={e=>setLocationForm({...locationForm,city:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:170}}><label>Estado / Provincia</label><input value={locationForm.state} onChange={e=>setLocationForm({...locationForm,state:e.target.value})}/></div></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:170}}><label>País</label><input list="location-countries" value={locationForm.country} onChange={e=>setLocationForm({...locationForm,country:e.target.value})}/><datalist id="location-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div><div className="field" style={{flex:1,minWidth:170}}><label>Consultorio / local / referencia</label><input value={locationForm.room} onChange={e=>setLocationForm({...locationForm,room:e.target.value})} placeholder="Ej. Piso 2 · Consultorio 204"/></div></div>
    {mapQuery(locationForm)&&<div className="field"><label>Vista previa del mapa</label><div style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden'}}><iframe title="Vista previa de ubicación" src={'https://www.google.com/maps?q='+encodeURIComponent(mapQuery(locationForm))+'&output=embed'} width="100%" height="220" style={{border:0,display:'block'}} loading="lazy" referrerPolicy="no-referrer-when-downgrade"/></div><div className="row" style={{marginTop:8,gap:8,flexWrap:'wrap'}}><a className="btn btn-secondary" href={'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(locationForm))} target="_blank" rel="noreferrer"><Navigation size={15}/> Comprobar en Google Maps</a><span className="muted" style={{fontSize:12}}>Verifica que el pin corresponda al lugar real antes de guardar.</span></div></div>}
- </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveLocation}>Guardar ubicación</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveLocation} disabled={saving}>{saving?'Guardando…':'Guardar ubicación'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='availability'&&<div className="modal-backdrop"><div className="modal"><h2>Agregar disponibilidad</h2><div className="form">
    <div className="field"><label>¿Dónde atenderás en este horario?</label><select value={av.locationId} onChange={e=>setAv({...av,locationId:e.target.value})}><option value="">Selecciona una ubicación</option>{(data.locations||[]).map((l:any)=><option key={l.id} value={l.id}>{l.name}{l.room?' · '+l.room:''}</option>)}</select></div>
@@ -278,20 +288,20 @@ export default function Medico(){
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Disponible desde</label><input type="time" value={av.start} onChange={e=>setAv({...av,start:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:150}}><label>Disponible hasta</label><input type="time" value={av.end} onChange={e=>setAv({...av,end:e.target.value})}/></div></div>
    <div className="field"><label>Cada cuánto puede comenzar una reserva</label><select value={av.slotMinutes} onChange={e=>setAv({...av,slotMinutes:Number(e.target.value)})}><option value={10}>Cada 10 min</option><option value={15}>Cada 15 min</option><option value={20}>Cada 20 min</option><option value={30}>Cada 30 min</option><option value={45}>Cada 45 min</option><option value={60}>Cada 60 min</option></select></div>
    <div className="notice">La duración no se fija aquí. La duración viene de cada servicio. Por ejemplo: corte 30 min, corte + barba 45 min, acrílicas 90 min.</div>
- </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'add_availability',...av})}><Clock3 size={16}/> Publicar horario</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'add_availability',...av})} disabled={saving}><Clock3 size={16}/> {saving?'Publicando…':'Publicar horario'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='settings'&&<div className="modal-backdrop"><div className="modal"><h2>Configuración de reservas</h2><div className="form">
    <div className="row" style={{gap:12,alignItems:'stretch'}}><div className="field" style={{flex:1}}><label>Precio base</label><input type="number" value={settings.price??0} onChange={e=>setSettings({...settings,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1}}><label>Moneda</label><select value={settings.currency||'USD'} onChange={e=>setSettings({...settings,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(settings.price||0),settings.currency||'USD')}
    <div className="field"><label>Duración predeterminada</label><input type="number" value={settings.defaultMinutes||30} onChange={e=>setSettings({...settings,defaultMinutes:Number(e.target.value)})}/></div>
    <div className="field"><label>Instrucciones de pago</label><textarea rows={4} value={settings.paymentInstructions||''} onChange={e=>setSettings({...settings,paymentInstructions:e.target.value})}/></div>
    <label className="notice row"><input type="checkbox" checked={settings.acceptsOnlineBooking!==false} onChange={e=>setSettings({...settings,acceptsOnlineBooking:e.target.checked})}/><span>Aceptar reservas en línea</span></label>
- </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'settings',...settings})}>Guardar</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'settings',...settings})} disabled={saving}>{saving?'Guardando…':'Guardar'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='status'&&<div className="modal-backdrop"><div className="modal"><h2>Estado de atención</h2><div className="form">
    <div className="field"><label>Estado</label><select value={dayStatus.status} onChange={e=>setDayStatus({...dayStatus,status:e.target.value})}><option value="NORMAL">Normal</option><option value="DELAYED">Retrasado</option><option value="SUSPENDED">Suspendido</option></select></div>
    {dayStatus.status==='DELAYED'&&<div className="field"><label>Minutos de retraso</label><input type="number" value={dayStatus.delayMinutes} onChange={e=>setDayStatus({...dayStatus,delayMinutes:Number(e.target.value)})}/></div>}
    <div className="field"><label>Nota opcional</label><input value={dayStatus.note} onChange={e=>setDayStatus({...dayStatus,note:e.target.value})}/></div>
- </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'day_status',...dayStatus})}>Guardar estado</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'day_status',...dayStatus})} disabled={saving}>{saving?'Guardando…':'Guardar estado'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {toast&&<div className="toast">{toast}</div>}
  </div>
