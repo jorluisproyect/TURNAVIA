@@ -38,11 +38,11 @@ export function DeleteProfileButton({accountKind,subscriptionActive=false}:{acco
 
   return <div className="danger-zone">
     <div>
-      <strong>Eliminar mi perfil</strong>
+      <strong>Eliminar perfil</strong>
       <p>Esta acción oculta y desactiva tu cuenta. Tus datos se conservan únicamente para que el Master pueda restablecerla.</p>
       {subscriptionActive&&<div className="notice danger" style={{marginTop:10}}>Tienes una suscripción activa. Si eliminas tu perfil, <strong>perderás esa suscripción</strong>.</div>}
     </div>
-    <button type="button" className="btn btn-danger" onClick={remove} disabled={busy}><Trash2 size={16}/>{busy?' Eliminando…':' Eliminar mi perfil'}</button>
+    <button type="button" className="btn btn-danger" onClick={remove} disabled={busy}><Trash2 size={16}/>{busy?' Eliminando…':' Eliminar'}</button>
     {msg&&<div className="notice" role="status" aria-live="polite" style={{marginTop:10}}>{msg}</div>}
   </div>;
 }
