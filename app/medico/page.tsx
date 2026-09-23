@@ -101,6 +101,10 @@ export default function Medico(){
    setModal('location');
  }
  async function saveLocation(){
+   if(!locationForm.name.trim()){setToast('Escribe el nombre de la ubicación.');return}
+   if(!locationForm.address.trim()||locationForm.address.trim().length<6){setToast('Escribe la dirección exacta donde será atendido el cliente.');return}
+   if(!locationForm.city.trim()){setToast('Indica la ciudad.');return}
+   if(!locationForm.country.trim()){setToast('Indica el país.');return}
    const action=locationForm.id?'update_location':'add_location';
    const ok=await patch({action,...locationForm});
    if(ok)setLocationForm({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
@@ -234,9 +238,10 @@ export default function Medico(){
 
  {modal==='location'&&<div className="modal-backdrop"><div className="modal"><h2>{locationForm.id?'Editar ubicación':'Nueva ubicación'}</h2><div className="form">
    <div className="field"><label>Nombre visible</label><input value={locationForm.name} onChange={e=>setLocationForm({...locationForm,name:e.target.value})} placeholder="Ej. Clínica X / Sede Centro / Consultorio privado"/></div>
-   <div className="field"><label>Dirección</label><input value={locationForm.address} onChange={e=>setLocationForm({...locationForm,address:e.target.value})}/></div>
+   <div className="field"><label>Dirección exacta</label><input value={locationForm.address} onChange={e=>setLocationForm({...locationForm,address:e.target.value})} placeholder="Ej. Av. Principal, Edif. Centro Médico, Torre B, local 204"/><small className="muted">Escribe calle/avenida, edificio o centro comercial y número/local. Esta dirección será usada para mostrarle al cliente cómo llegar.</small></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:170}}><label>Ciudad</label><input value={locationForm.city} onChange={e=>setLocationForm({...locationForm,city:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:170}}><label>Estado / Provincia</label><input value={locationForm.state} onChange={e=>setLocationForm({...locationForm,state:e.target.value})}/></div></div>
-   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:170}}><label>País</label><input list="location-countries" value={locationForm.country} onChange={e=>setLocationForm({...locationForm,country:e.target.value})}/><datalist id="location-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div><div className="field" style={{flex:1,minWidth:170}}><label>Consultorio / local / referencia</label><input value={locationForm.room} onChange={e=>setLocationForm({...locationForm,room:e.target.value})} placeholder="Ej. Consultorio 204"/></div></div>
+   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:170}}><label>País</label><input list="location-countries" value={locationForm.country} onChange={e=>setLocationForm({...locationForm,country:e.target.value})}/><datalist id="location-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div><div className="field" style={{flex:1,minWidth:170}}><label>Consultorio / local / referencia</label><input value={locationForm.room} onChange={e=>setLocationForm({...locationForm,room:e.target.value})} placeholder="Ej. Piso 2 · Consultorio 204"/></div></div>
+   {mapQuery(locationForm)&&<div className="field"><label>Vista previa del mapa</label><div style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden'}}><iframe title="Vista previa de ubicación" src={'https://www.google.com/maps?q='+encodeURIComponent(mapQuery(locationForm))+'&output=embed'} width="100%" height="220" style={{border:0,display:'block'}} loading="lazy" referrerPolicy="no-referrer-when-downgrade"/></div><div className="row" style={{marginTop:8,gap:8,flexWrap:'wrap'}}><a className="btn btn-secondary" href={'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(locationForm))} target="_blank" rel="noreferrer"><Navigation size={15}/> Comprobar en Google Maps</a><span className="muted" style={{fontSize:12}}>Verifica que el pin corresponda al lugar real antes de guardar.</span></div></div>}
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveLocation}>Guardar ubicación</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='availability'&&<div className="modal-backdrop"><div className="modal"><h2>Agregar disponibilidad</h2><div className="form">
