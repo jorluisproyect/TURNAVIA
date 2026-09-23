@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { planFromType } from '@/lib/plans';
 import { sql } from '@/lib/db';
 import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
-import { isMasterSession, commercialClientAccess } from '@/lib/access';
+import { isMasterSession, isOwnerMasterSession, commercialClientAccess } from '@/lib/access';
 
 function mapClient(r:any){
   return {
@@ -48,6 +48,27 @@ export async function PATCH(req:Request){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   if(!(await isMasterSession())) return NextResponse.json({error:'No autorizado'},{status:403});
   const body=await req.json();
+  if(body.extendTrialDays!==undefined){
+    if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo el Master propietario puede extender una prueba.'},{status:403});
+    if(body.extendTrialDays!==15 || typeof body.id!=='string')return NextResponse.json({error:'Duración de prueba no válida.'},{status:400});
+    const current=await sql`SELECT id,status,trial_ends_at,auth_user_id FROM commercial_clients WHERE id=${body.id}::uuid LIMIT 1`;
+    const currentClient=current[0] as any;
+    if(!currentClient)return NextResponse.json({error:'Cliente no encontrado'},{status:404});
+    if(!['TRIAL','PAGO_PENDIENTE'].includes(String(currentClient.status)))return NextResponse.json({error:'Solo puedes extender pruebas o cuentas con pago pendiente.'},{status:409});
+    const updated=await sql`UPDATE commercial_clients
+      SET status='TRIAL',
+          trial_ends_at=GREATEST(COALESCE(trial_ends_at,now()),now())+interval '15 days'
+      WHERE id=${body.id}::uuid RETURNING *`;
+    const client=mapClient(updated[0]);
+    await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+      VALUES('TRIAL_EXTENDED','COMMERCIAL_CLIENT',${String(client.id)},
+        jsonb_build_object('days',15,'previousEndsAt',${currentClient.trial_ends_at?new Date(currentClient.trial_ends_at).toISOString():null},'newEndsAt',${client.trialEndsAt||null}))`;
+    if(currentClient.auth_user_id){
+      await sql`INSERT INTO app_notifications(auth_user_id,type,title,message,link)
+        VALUES(${String(currentClient.auth_user_id)},'INFO','Prueba TUCITA ampliada','Tu prueba gratuita fue ampliada 15 días por el administrador.','/panel')`;
+    }
+    return NextResponse.json({ok:true,client});
+  }
   const before=await sql`SELECT * FROM commercial_clients WHERE id=${body.id}::uuid LIMIT 1`;
   if(!before.length) return NextResponse.json({error:'Cliente no encontrado'},{status:404});
   const prev=before[0] as any;
