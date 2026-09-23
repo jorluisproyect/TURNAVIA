@@ -9,6 +9,8 @@ type Availability={days:number[],start:string,end:string};
 type Business={id:string,name:string,category:string,activity:string,type:string,status:'TRIAL'|'ACTIVO'|'SUSPENDIDO',trialEnds:string,location:string,staff:number,availability:Availability[],services:Service[]};
 type Appointment={id:string,businessId:string,client:string,email:string,service:string,date:string,time:string,amount:number,payment:string,reference:string,proof:string,status:'PAYMENT_REVIEW'|'CONFIRMED'|'REJECTED'|'COMPLETED'};
 
+const demoTrialEnd=()=>new Date(Date.now()+115*86400000).toISOString().slice(0,10);
+
 const seedBusinesses:Business[]=[
  {id:'med-1',name:'Dra. Sofía Mendoza',category:'Salud',activity:'Cardiología',type:'Profesional independiente',status:'ACTIVO',trialEnds:'',location:'Caracas · Chacao',staff:1,availability:[{days:[1,2,3,4,5],start:'08:00',end:'13:00'}],services:[
   {name:'Consulta cardiológica inicial',price:30,duration:40},{name:'Control cardiológico',price:22,duration:25},{name:'Evaluación preoperatoria',price:35,duration:45},{name:'Lectura de resultados',price:18,duration:20}]},
@@ -18,7 +20,7 @@ const seedBusinesses:Business[]=[
   {name:'Primera consulta',price:25,duration:60},{name:'Sesión individual',price:22,duration:50},{name:'Sesión de pareja',price:35,duration:75},{name:'Orientación breve',price:18,duration:30}]},
  {id:'fisio-1',name:'FisioMove',category:'Salud',activity:'Fisioterapia',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · El Rosal',staff:3,availability:[{days:[1,2,3,4,5,6],start:'07:00',end:'19:00'}],services:[
   {name:'Evaluación funcional',price:20,duration:45},{name:'Sesión de fisioterapia',price:25,duration:60},{name:'Descarga muscular',price:22,duration:45},{name:'Rehabilitación deportiva',price:30,duration:60}]},
- {id:'nutri-1',name:'Vital Nutrición',category:'Salud',activity:'Nutrición',type:'Profesional independiente',status:'TRIAL',trialEnds:'2026-09-24',location:'Caracas / Online',staff:1,availability:[{days:[2,3,4,5,6],start:'09:00',end:'17:00'}],services:[
+ {id:'nutri-1',name:'Vital Nutrición',category:'Salud',activity:'Nutrición',type:'Profesional independiente',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Caracas / Online',staff:1,availability:[{days:[2,3,4,5,6],start:'09:00',end:'17:00'}],services:[
   {name:'Consulta nutricional inicial',price:25,duration:60},{name:'Control nutricional',price:18,duration:30},{name:'Plan deportivo',price:30,duration:60},{name:'Asesoría online',price:20,duration:45}]},
 
  {id:'bar-1',name:'Barber Studio 21',category:'Belleza',activity:'Barbería',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · Sabana Grande',staff:5,availability:[{days:[1,2,3,4,5,6],start:'09:00',end:'20:00'},{days:[0],start:'10:00',end:'17:00'}],services:[
@@ -27,7 +29,7 @@ const seedBusinesses:Business[]=[
   {name:'Manicura tradicional',price:8,duration:35},{name:'Semipermanente',price:15,duration:60},{name:'Acrílicas completas',price:25,duration:120},{name:'Jelly tips',price:22,duration:90},{name:'Gel builder',price:20,duration:90},{name:'Nail art básico',price:6,duration:20},{name:'Nail art premium',price:12,duration:40},{name:'Retiro de sistema',price:7,duration:30},{name:'Mantenimiento',price:16,duration:75},{name:'Pedicura',price:14,duration:60},{name:'Pedicura + semi',price:20,duration:80}]},
  {id:'hair-1',name:'Studio Hair Lab',category:'Belleza',activity:'Peluquería',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · Altamira',staff:6,availability:[{days:[1,2,3,4,5,6],start:'08:30',end:'19:30'}],services:[
   {name:'Corte dama',price:18,duration:45},{name:'Corte caballero',price:12,duration:30},{name:'Secado corto',price:12,duration:35},{name:'Secado largo',price:18,duration:50},{name:'Color raíz',price:35,duration:120},{name:'Color completo',price:55,duration:150},{name:'Mechas / balayage',price:75,duration:210},{name:'Keratina',price:65,duration:180},{name:'Hidratación profunda',price:25,duration:60}]},
- {id:'brow-1',name:'Brow & Lash Lab',category:'Belleza',activity:'Cejas y pestañas',type:'Profesional independiente',status:'TRIAL',trialEnds:'2026-09-24',location:'Caracas · La Castellana',staff:1,availability:[{days:[2,3,4,5,6],start:'10:00',end:'19:00'}],services:[
+ {id:'brow-1',name:'Brow & Lash Lab',category:'Belleza',activity:'Cejas y pestañas',type:'Profesional independiente',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Caracas · La Castellana',staff:1,availability:[{days:[2,3,4,5,6],start:'10:00',end:'19:00'}],services:[
   {name:'Diseño de cejas',price:8,duration:25},{name:'Laminado de cejas',price:18,duration:50},{name:'Lifting de pestañas',price:20,duration:60},{name:'Extensiones clásicas',price:28,duration:120},{name:'Volumen híbrido',price:35,duration:150},{name:'Retoque pestañas',price:20,duration:75}]},
  {id:'make-1',name:'Glow Makeup',category:'Belleza',activity:'Maquillaje',type:'Profesional independiente',status:'ACTIVO',trialEnds:'',location:'Caracas / A domicilio',staff:1,availability:[{days:[1,2,3,4,5,6,0],start:'07:00',end:'19:00'}],services:[
   {name:'Maquillaje social',price:30,duration:60},{name:'Maquillaje de noche',price:35,duration:75},{name:'Maquillaje novia prueba',price:40,duration:90},{name:'Maquillaje novia evento',price:55,duration:120},{name:'Maquillaje + peinado',price:55,duration:120}]},
@@ -36,21 +38,21 @@ const seedBusinesses:Business[]=[
   {name:'Masaje relajante',price:35,duration:60},{name:'Masaje descontracturante',price:40,duration:60},{name:'Piedras calientes',price:45,duration:75},{name:'Masaje deportivo',price:42,duration:60},{name:'Facial hidratante',price:30,duration:60},{name:'Limpieza facial profunda',price:38,duration:75},{name:'Exfoliación corporal',price:35,duration:60},{name:'Ritual spa pareja',price:80,duration:120}]},
  {id:'yoga-1',name:'Origen Yoga',category:'Bienestar',activity:'Yoga / Pilates',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · Los Dos Caminos',staff:3,availability:[{days:[1,2,3,4,5],start:'06:00',end:'20:00'},{days:[6],start:'08:00',end:'13:00'}],services:[
   {name:'Yoga individual',price:18,duration:60},{name:'Pilates individual',price:22,duration:60},{name:'Clase grupal yoga',price:8,duration:60},{name:'Clase grupal pilates',price:10,duration:60},{name:'Evaluación postural',price:15,duration:30}]},
- {id:'coach-1',name:'Balance Coach',category:'Bienestar',activity:'Coaching',type:'Profesional independiente',status:'TRIAL',trialEnds:'2026-09-24',location:'Online',staff:1,availability:[{days:[1,2,3,4,5],start:'09:00',end:'18:00'}],services:[
+ {id:'coach-1',name:'Balance Coach',category:'Bienestar',activity:'Coaching',type:'Profesional independiente',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Online',staff:1,availability:[{days:[1,2,3,4,5],start:'09:00',end:'18:00'}],services:[
   {name:'Sesión inicial',price:25,duration:60},{name:'Coaching 1 a 1',price:22,duration:50},{name:'Plan de objetivos',price:30,duration:75},{name:'Seguimiento express',price:15,duration:30}]},
 
  {id:'pro-1',name:'G&M Consultores',category:'Servicios profesionales',activity:'Contabilidad',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas / Online',staff:4,availability:[{days:[1,2,3,4,5],start:'08:00',end:'17:00'}],services:[
   {name:'Consulta contable',price:25,duration:45},{name:'Asesoría tributaria',price:30,duration:60},{name:'Revisión de deberes formales',price:35,duration:60},{name:'Constitución / orientación empresarial',price:40,duration:60},{name:'Cierre contable - reunión',price:35,duration:60}]},
  {id:'legal-1',name:'Lex Punto Legal',category:'Servicios profesionales',activity:'Abogado',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · Chacao / Online',staff:3,availability:[{days:[1,2,3,4,5],start:'09:00',end:'17:00'}],services:[
   {name:'Consulta legal general',price:30,duration:45},{name:'Consulta mercantil',price:40,duration:60},{name:'Revisión de contrato',price:45,duration:60},{name:'Orientación migratoria',price:35,duration:45},{name:'Consulta laboral',price:35,duration:45}]},
- {id:'arch-1',name:'Nodo Arquitectura',category:'Servicios profesionales',activity:'Arquitectura',type:'Negocio / local',status:'TRIAL',trialEnds:'2026-09-24',location:'Caracas / Visita técnica',staff:4,availability:[{days:[1,2,3,4,5,6],start:'08:00',end:'17:00'}],services:[
+ {id:'arch-1',name:'Nodo Arquitectura',category:'Servicios profesionales',activity:'Arquitectura',type:'Negocio / local',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Caracas / Visita técnica',staff:4,availability:[{days:[1,2,3,4,5,6],start:'08:00',end:'17:00'}],services:[
   {name:'Consulta de diseño',price:30,duration:60},{name:'Visita técnica',price:45,duration:90},{name:'Revisión de planos',price:40,duration:75},{name:'Asesoría de remodelación',price:35,duration:60}]},
  {id:'real-1',name:'Clave Inmobiliaria',category:'Servicios profesionales',activity:'Bienes raíces',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas',staff:5,availability:[{days:[1,2,3,4,5,6],start:'09:00',end:'18:00'}],services:[
   {name:'Visita a propiedad',price:0,duration:45},{name:'Valoración inicial',price:20,duration:60},{name:'Reunión propietario',price:0,duration:45},{name:'Asesoría de compra',price:25,duration:60}]},
 
  {id:'edu-1',name:'English Now',category:'Educación',activity:'Idiomas',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Online / Caracas',staff:6,availability:[{days:[1,2,3,4,5,6],start:'07:00',end:'21:00'}],services:[
   {name:'Prueba de nivel',price:0,duration:30},{name:'Clase individual',price:12,duration:60},{name:'Conversación 1 a 1',price:10,duration:45},{name:'Preparación entrevista',price:15,duration:60},{name:'Clase ejecutiva',price:18,duration:60}]},
- {id:'music-1',name:'Nota Viva',category:'Educación',activity:'Música',type:'Negocio / local',status:'TRIAL',trialEnds:'2026-09-24',location:'Caracas · Bello Monte',staff:4,availability:[{days:[1,2,3,4,5,6],start:'09:00',end:'19:00'}],services:[
+ {id:'music-1',name:'Nota Viva',category:'Educación',activity:'Música',type:'Negocio / local',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Caracas · Bello Monte',staff:4,availability:[{days:[1,2,3,4,5,6],start:'09:00',end:'19:00'}],services:[
   {name:'Clase de guitarra',price:12,duration:60},{name:'Clase de piano',price:15,duration:60},{name:'Clase de canto',price:15,duration:60},{name:'Evaluación musical',price:8,duration:30},{name:'Ensayo guiado',price:18,duration:90}]},
  {id:'drive-1',name:'Autoescuela Vía Segura',category:'Educación',activity:'Escuela de manejo',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas',staff:5,availability:[{days:[1,2,3,4,5,6],start:'07:00',end:'18:00'}],services:[
   {name:'Clase práctica 60 min',price:20,duration:60},{name:'Clase práctica 90 min',price:28,duration:90},{name:'Evaluación de manejo',price:15,duration:45},{name:'Clase de estacionamiento',price:20,duration:60}]},
@@ -64,7 +66,7 @@ const seedBusinesses:Business[]=[
   {name:'Diagnóstico a domicilio',price:15,duration:60},{name:'Mantenimiento split',price:25,duration:90},{name:'Limpieza profunda',price:35,duration:120},{name:'Visita para instalación',price:15,duration:60}]},
  {id:'tech-1',name:'TecnoFix',category:'Hogar y técnicos',activity:'Computación y celulares',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · Centro',staff:3,availability:[{days:[1,2,3,4,5,6],start:'09:00',end:'18:00'}],services:[
   {name:'Diagnóstico laptop',price:10,duration:30},{name:'Soporte remoto',price:12,duration:45},{name:'Optimización PC',price:20,duration:90},{name:'Diagnóstico celular',price:8,duration:20},{name:'Configuración / respaldo',price:15,duration:60}]},
- {id:'clean-1',name:'CleanHome',category:'Hogar y técnicos',activity:'Limpieza',type:'Negocio / local',status:'TRIAL',trialEnds:'2026-09-24',location:'Servicio a domicilio',staff:8,availability:[{days:[1,2,3,4,5,6],start:'07:00',end:'18:00'}],services:[
+ {id:'clean-1',name:'CleanHome',category:'Hogar y técnicos',activity:'Limpieza',type:'Negocio / local',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Servicio a domicilio',staff:8,availability:[{days:[1,2,3,4,5,6],start:'07:00',end:'18:00'}],services:[
   {name:'Limpieza apartamento pequeño',price:30,duration:180},{name:'Limpieza apartamento mediano',price:45,duration:240},{name:'Limpieza profunda',price:70,duration:360},{name:'Limpieza oficina',price:55,duration:240},{name:'Limpieza Airbnb',price:35,duration:150}]},
 
  {id:'pet-1',name:'Huellas Grooming',category:'Mascotas',activity:'Grooming',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · Prados del Este',staff:3,availability:[{days:[1,2,3,4,5,6],start:'08:00',end:'18:00'}],services:[
@@ -79,7 +81,7 @@ const seedBusinesses:Business[]=[
 
  {id:'cow-1',name:'WorkHub',category:'Espacios y alquiler',activity:'Coworking',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · Chacao',staff:3,availability:[{days:[1,2,3,4,5,6],start:'07:00',end:'21:00'}],services:[
   {name:'Sala reunión 1 hora',price:15,duration:60},{name:'Sala reunión 2 horas',price:28,duration:120},{name:'Oficina privada 2 horas',price:35,duration:120},{name:'Oficina privada 4 horas',price:60,duration:240},{name:'Escritorio día',price:12,duration:480}]},
- {id:'studio-1',name:'Wave Studio',category:'Espacios y alquiler',activity:'Estudio de grabación',type:'Negocio / local',status:'TRIAL',trialEnds:'2026-09-24',location:'Caracas · Los Chaguaramos',staff:3,availability:[{days:[1,2,3,4,5,6,0],start:'09:00',end:'23:00'}],services:[
+ {id:'studio-1',name:'Wave Studio',category:'Espacios y alquiler',activity:'Estudio de grabación',type:'Negocio / local',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Caracas · Los Chaguaramos',staff:3,availability:[{days:[1,2,3,4,5,6,0],start:'09:00',end:'23:00'}],services:[
   {name:'Estudio 1 hora',price:25,duration:60},{name:'Estudio 2 horas',price:45,duration:120},{name:'Grabación + ingeniero',price:60,duration:120},{name:'Podcast 1 hora',price:30,duration:60},{name:'Sesión mezcla revisión',price:20,duration:45}]},
 
  {id:'photo-1',name:'Luz Foto Studio',category:'Eventos',activity:'Fotografía',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas / Locación',staff:4,availability:[{days:[1,2,3,4,5,6,0],start:'08:00',end:'19:00'}],services:[
@@ -89,10 +91,10 @@ const seedBusinesses:Business[]=[
 
  {id:'tattoo-1',name:'Arte Ink',category:'Otro',activity:'Tattoo & piercing',type:'Negocio / local',status:'ACTIVO',trialEnds:'',location:'Caracas · Chacao',staff:4,availability:[{days:[2,3,4,5,6],start:'11:00',end:'20:00'}],services:[
   {name:'Consulta de diseño',price:0,duration:30},{name:'Tatuaje pequeño',price:35,duration:60},{name:'Tatuaje mediano',price:70,duration:120},{name:'Sesión 3 horas',price:150,duration:180},{name:'Piercing básico',price:20,duration:30},{name:'Control de cicatrización',price:0,duration:15}]},
- {id:'tailor-1',name:'Atelier Punto Fino',category:'Otro',activity:'Sastrería y arreglos',type:'Negocio / local',status:'TRIAL',trialEnds:'2026-09-24',location:'Caracas · El Paraíso',staff:3,availability:[{days:[1,2,3,4,5,6],start:'09:00',end:'18:00'}],services:[
+ {id:'tailor-1',name:'Atelier Punto Fino',category:'Otro',activity:'Sastrería y arreglos',type:'Negocio / local',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Caracas · El Paraíso',staff:3,availability:[{days:[1,2,3,4,5,6],start:'09:00',end:'18:00'}],services:[
   {name:'Toma de medidas',price:5,duration:30},{name:'Prueba de traje',price:0,duration:30},{name:'Ajuste vestido',price:12,duration:45},{name:'Consulta confección',price:10,duration:45}]},
 
- {id:'adult-1',name:'Reserva Privada',category:'Servicios 18+',activity:'Servicio privado con reserva',type:'Profesional independiente',status:'TRIAL',trialEnds:'2026-09-24',location:'Ubicación privada',staff:1,availability:[{days:[1,2,3,4,5,6,0],start:'12:00',end:'22:00'}],services:[
+ {id:'adult-1',name:'Reserva Privada',category:'Servicios 18+',activity:'Servicio privado con reserva',type:'Profesional independiente',status:'TRIAL',trialEnds:demoTrialEnd(),location:'Ubicación privada',staff:1,availability:[{days:[1,2,3,4,5,6,0],start:'12:00',end:'22:00'}],services:[
   {name:'Reserva privada 60 min',price:40,duration:60},{name:'Reserva privada 90 min',price:55,duration:90},{name:'Reserva privada 120 min',price:70,duration:120}]}
 ];
 
@@ -188,11 +190,11 @@ export default function Demo(){
  function createBusiness(){
   if(!newBiz.name.trim()){setMsg('Escribe el nombre del negocio o profesional.');return}
   const id='biz-'+Date.now();
-  const end=new Date(Date.now()+5*86400000).toISOString().slice(0,10);
+  const end=new Date(Date.now()+15*86400000).toISOString().slice(0,10);
   const b:Business={id,name:newBiz.name.trim(),category:newBiz.category,activity:newBiz.activity||'Otro',type:newBiz.type,status:'TRIAL',trialEnds:end,location:'Por configurar',staff:newBiz.type.startsWith('Negocio')?3:1,availability:[{days:[1,2,3,4,5],start:'09:00',end:'17:00'}],services:[{name:'Servicio inicial',price:20,duration:30}]};
-  setBusinesses(v=>[b,...v]);setSelectedBusiness(id);setShowCreate(false);setMsg('Nueva prueba creada con 5 días gratis.');
+  setBusinesses(v=>[b,...v]);setSelectedBusiness(id);setShowCreate(false);setMsg('Nueva prueba creada con 15 días gratis.');
  }
- const statusLabel=(s:string)=>({TRIAL:'Prueba 5 días',ACTIVO:'Activo',SUSPENDIDO:'Suspendido',PAYMENT_REVIEW:'Pago en revisión',CONFIRMED:'Confirmada',REJECTED:'Pago rechazado',COMPLETED:'Completada'} as any)[s]||s;
+ const statusLabel=(s:string)=>({TRIAL:'Prueba 15 días',ACTIVO:'Activo',SUSPENDIDO:'Suspendido',PAYMENT_REVIEW:'Pago en revisión',CONFIRMED:'Confirmada',REJECTED:'Pago rechazado',COMPLETED:'Completada'} as any)[s]||s;
  const tone=(s:string)=>['ACTIVO','CONFIRMED','COMPLETED'].includes(s)?'ok':['SUSPENDIDO','REJECTED'].includes(s)?'bad':'warn';
 
  const tourBiz=businesses.find(b=>b.id===tourBusinessId)||businesses.find(b=>b.id==='bar-1')||businesses[0];
@@ -319,7 +321,7 @@ export default function Demo(){
         <div className="field" style={{flex:1,minWidth:220}}><label>Actividad</label><input value={newBiz.activity} onChange={e=>setNewBiz({...newBiz,activity:e.target.value})} placeholder="Barbería / Spa / Contabilidad"/></div>
         <div className="field" style={{flex:1,minWidth:220}}><label>Tipo</label><select value={newBiz.type} onChange={e=>setNewBiz({...newBiz,type:e.target.value})}><option>Profesional independiente</option><option>Negocio / local</option></select></div>
        </div>
-       <button className="btn btn-primary" onClick={createBusiness}>Crear 5 días gratis</button>
+       <button className="btn btn-primary" onClick={createBusiness}>Crear 15 días gratis</button>
       </div>
     </section>}
     <div className="stat-grid">
@@ -439,8 +441,8 @@ export default function Demo(){
 
     <section className="panel" style={{marginTop:18}}>
       <div className="row space" style={{gap:14,flexWrap:'wrap'}}>
-        <div><span className="eyebrow">PLANES TUCITA</span><h2 style={{marginTop:8}}>Empieza con 5 días de prueba</h2><p className="muted">Sin tarjeta para probar el flujo antes de activar el servicio.</p></div>
-        <span className="pill">5 días gratis</span>
+        <div><span className="eyebrow">PLANES TUCITA</span><h2 style={{marginTop:8}}>Empieza con 15 días de prueba</h2><p className="muted">Sin tarjeta para probar el flujo antes de activar el servicio.</p></div>
+        <span className="pill">15 días gratis</span>
       </div>
       <div className="panel-grid" style={{marginTop:16}}>
         <div className="card">
