@@ -78,7 +78,7 @@ export async function PATCH(req:Request){
     payment_reference=COALESCE(${body.paymentReference||null},payment_reference),
     payment_comment=COALESCE(${body.paymentComment||null},payment_comment),
     paypal_order_id=COALESCE(${body.paypalOrderId||null},paypal_order_id),
-    payment_reviewed_at=CASE WHEN ${body.status||null} IN ('ACTIVO','PAGO_PENDIENTE') THEN now() ELSE payment_reviewed_at END,
+    payment_reviewed_at=CASE WHEN ${body.status||null}='ACTIVO' THEN now() ELSE payment_reviewed_at END,
     payment_rejection_reason=CASE WHEN ${body.status||null}='PAGO_PENDIENTE' THEN ${body.rejectionReason||'Pago rechazado. Verifica los datos e intenta nuevamente.'} ELSE payment_rejection_reason END
     WHERE id=${body.id}::uuid RETURNING *`;
   const client=mapClient(rows[0]);
@@ -111,8 +111,18 @@ export async function PATCH(req:Request){
         ORDER BY created_at DESC LIMIT 1`;
       const monthsRaw=Number((paymentEvents[0] as any)?.metadata?.billingMonths||1);
       const billingMonths=[1,3,12].includes(monthsRaw)?monthsRaw:1;
-      const paidUntil=new Date();
-      paidUntil.setMonth(paidUntil.getMonth()+billingMonths);
+      const previousPeriods=await sql`SELECT metadata->>'paidUntil' AS paid_until FROM audit_events
+        WHERE entity_type='COMMERCIAL_CLIENT' AND entity_id=${String(client.id)} AND action='PAYMENT_APPROVED'
+        ORDER BY id DESC LIMIT 1`;
+      const prior=String((previousPeriods[0] as any)?.paid_until||'');
+      const priorDate=prior?new Date(prior):null;
+      const base=priorDate&&Number.isFinite(priorDate.getTime())&&priorDate.getTime()>Date.now()?priorDate:new Date();
+      const paidUntil=new Date(base);
+      const day=paidUntil.getUTCDate();
+      paidUntil.setUTCDate(1);
+      paidUntil.setUTCMonth(paidUntil.getUTCMonth()+billingMonths);
+      const lastDay=new Date(Date.UTC(paidUntil.getUTCFullYear(),paidUntil.getUTCMonth()+1,0)).getUTCDate();
+      paidUntil.setUTCDate(Math.min(day,lastDay));
       approvalMeta={billingMonths,paidUntil:paidUntil.toISOString()};
     }
     const action=body.status==='ACTIVO'
