@@ -573,3 +573,11 @@ button:disabled{
   .explore-provider-card{padding:15px;border-radius:18px}
   .explore-empty{margin-top:20px;padding:34px 18px;border-radius:20px}
 }
+
+
+/* Recoverable account deletion */
+.danger-zone{border:1px solid #f0b6b2;background:#fff8f7;border-radius:18px;padding:18px;display:grid;gap:14px}
+.danger-zone strong{font-size:16px}
+.danger-zone p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.48}
+.danger-zone .btn-danger{justify-self:start}
+@media(max-width:560px){.danger-zone .btn-danger{width:100%;justify-content:center}}
