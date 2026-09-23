@@ -68,7 +68,7 @@ export default function EquipoPage(){
   }
   async function addMemberPhoto(file?:File){
     if(!file)return;
-    try{setMember(x=>({...x,profileImage:await resizeAvatar(file)}))}catch(e:any){setMsg(e?.message||'No se pudo procesar la foto.')}
+    try{const img=await resizeAvatar(file);setMember(x=>({...x,profileImage:img}))}catch(e:any){setMsg(e?.message||'No se pudo procesar la foto.')}
   }
   function openEditMember(m:Member){
     const ph=splitPhone(m.phone);
