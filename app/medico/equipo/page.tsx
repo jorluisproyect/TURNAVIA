@@ -42,6 +42,7 @@ export default function EquipoPage(){
   const [editMember,setEditMember]=useState<any>(null);
   const [service,setService]=useState({name:'',description:'',durationMinutes:30,price:0,currency:'USD'});
   const [av,setAv]=useState({date:'',start:'09:00',end:'17:00',slotMinutes:15});
+  const [fx,setFx]=useState<any>(null);
 
   async function load(){
     try{
@@ -52,7 +53,7 @@ export default function EquipoPage(){
       if(j.team?.length&&!selected)setSelected(j.team[0].id);
     }catch{setError('No se pudo conectar con TUCITA.')}
   }
-  useEffect(()=>{load()},[]);
+  useEffect(()=>{load();fetch('/api/fx').then(r=>r.json()).then(setFx).catch(()=>{})},[]);
   const current:Member|undefined=useMemo(()=>data?.team?.find((m:Member)=>m.id===selected)||data?.team?.[0],[data,selected]);
 
   async function action(body:any){
@@ -94,6 +95,13 @@ export default function EquipoPage(){
   }
   async function copy(text:string){
     await navigator.clipboard.writeText(text);setMsg('Enlace copiado');setTimeout(()=>setMsg(''),1500);
+  }
+  function convert(amount:number,from:string,to:string){
+    const rates=fx?.rates||{};const f=Number(rates[from]),t=Number(rates[to]);if(!(f>0)||!(t>0))return null;return Number(amount||0)/f*t;
+  }
+  function pricePreview(){
+    if(!fx?.available||!service.price)return null;
+    return <div className="fx-strip">{['USD','EUR','USDT','VES'].map(cur=>{const v=convert(service.price,service.currency,cur);return <div className="fx-chip" key={cur}><small>{cur}</small><strong>{v===null?'—':new Intl.NumberFormat('es-VE',{maximumFractionDigits:2}).format(v)+' '+cur}</strong></div>})}</div>;
   }
 
   if(error&&!data)return <div className="dashboard"><Sidebar role="medico"/><main className="main"><section className="panel"><h1>Equipo</h1><div className="notice danger">{error}</div></section></main></div>;
@@ -150,7 +158,7 @@ export default function EquipoPage(){
           <div className="form">
             <h3>Nuevo servicio</h3>
             <div className="field"><label>Nombre</label><input value={service.name} onChange={e=>setService({...service,name:e.target.value})} placeholder="Ej. Corte + barba"/></div>
-            <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:120}}><label>Duración</label><input type="number" min={5} value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Precio</label><input type="number" min={0} step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:100}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>
+            <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:120}}><label>Duración</label><input type="number" min={5} value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Precio</label><input type="number" min={0} step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:100}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{pricePreview()}
             <button className="btn btn-primary" onClick={addService}><BriefcaseBusiness size={16}/> Agregar servicio</button>
           </div>
         </section>
