@@ -61,7 +61,7 @@ export default async function SuscripcionesMaster({searchParams}:{searchParams:P
       <td>{r.status==='TRIAL'&&r.trial_ends_at?<>Hasta {new Date(r.trial_ends_at).toLocaleDateString('es-VE')}</>:r.status==='ACTIVO'&&(r.latest_approval?.paidUntil||r.payment_reviewed_at)?<>Vence {new Date(r.latest_approval?.paidUntil||new Date(new Date(r.payment_reviewed_at).getTime()+31*86400000)).toLocaleDateString('es-VE')}</>:'—'}</td>
       <td>{r.payment_method||'—'}{r.payment_submitted_at&&<div className="muted" style={{fontSize:11}}>Enviado {new Date(r.payment_submitted_at).toLocaleString('es-VE')}</div>}{r.has_proof&&<div style={{marginTop:6}}><a className="btn btn-secondary" href={'/api/payments/proof?id='+r.id} target="_blank" rel="noreferrer"><Eye size={14}/> Comprobante</a></div>}</td>
       <td>{r.payment_reference||'—'}</td>
-      <td><MasterActions id={String(r.id)} status={r.status}/></td>
+      <td><MasterActions id={String(r.id)} status={r.status} showDeleteSubscription name={String(r.name||r.email||'esta cuenta')}/></td>
     </tr>})}</tbody></table></div>}
   </section>
  </main></div>;
