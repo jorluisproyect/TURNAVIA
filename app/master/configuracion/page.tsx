@@ -50,7 +50,7 @@ export default async function ConfiguracionMaster(){
 
   <section className="panel" style={{marginTop:18}}>
     <h2>Modelo comercial</h2>
-    <p className="muted">Profesional independiente: USD 25 activación + USD 15 primer mes. Negocio hasta 5 profesionales: USD 100 activación + USD 49 primer mes. Prueba gratuita: 5 días. La renovación mensual se controla desde Suscripciones.</p>
+    <p className="muted">Profesional independiente: USD 25 activación + USD 15 primer mes. Negocio hasta 5 profesionales: USD 100 activación + USD 49 primer mes. Prueba gratuita: 15 días. La renovación mensual se controla desde Suscripciones.</p>
   </section>
  </main></div>;
 }
