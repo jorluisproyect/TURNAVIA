@@ -122,9 +122,15 @@ export async function PATCH(req:Request){
 
   if(action==='add_location'){
     const name=String(body.name||'').trim();
+    const address=String(body.address||'').trim();
+    const city=String(body.city||'').trim();
+    const country=String(body.country||'').trim();
     if(!name)return NextResponse.json({error:'Escribe el nombre de la ubicación'},{status:400});
+    if(address.length<6)return NextResponse.json({error:'Escribe la dirección exacta donde atenderás.'},{status:400});
+    if(!city)return NextResponse.json({error:'Indica la ciudad.'},{status:400});
+    if(!country)return NextResponse.json({error:'Indica el país.'},{status:400});
     const rows=await sql`INSERT INTO locations(organization_id,name,address,city,state,country,active)
-      VALUES(${provider.organization_id||null},${name},${String(body.address||'')},${String(body.city||'')||null},${String(body.state||'')||null},${String(body.country||'Venezuela')},true)
+      VALUES(${provider.organization_id||null},${name},${address},${city},${String(body.state||'')||null},${country},true)
       RETURNING id`;
     const locationId=(rows[0] as any)?.id;
     await sql`INSERT INTO doctor_locations(doctor_id,location_id,room) VALUES(${provider.doctor_id},${locationId},${String(body.room||'')||null}) ON CONFLICT DO NOTHING`;
@@ -133,9 +139,15 @@ export async function PATCH(req:Request){
 
   if(action==='update_location'){
     const id=String(body.id||'');
+    const address=String(body.address||'').trim();
+    const city=String(body.city||'').trim();
+    const country=String(body.country||'').trim();
+    if(address.length<6)return NextResponse.json({error:'Escribe la dirección exacta donde atenderás.'},{status:400});
+    if(!city)return NextResponse.json({error:'Indica la ciudad.'},{status:400});
+    if(!country)return NextResponse.json({error:'Indica el país.'},{status:400});
     const owned=await sql`SELECT 1 FROM doctor_locations WHERE doctor_id=${provider.doctor_id} AND location_id=${id}::uuid LIMIT 1`;
     if(!owned.length)return NextResponse.json({error:'Ubicación no encontrada'},{status:404});
-    await sql`UPDATE locations SET name=${String(body.name||'').trim()},address=${String(body.address||'')},city=${String(body.city||'')||null},state=${String(body.state||'')||null},country=${String(body.country||'Venezuela')} WHERE id=${id}::uuid`;
+    await sql`UPDATE locations SET name=${String(body.name||'').trim()},address=${address},city=${city},state=${String(body.state||'')||null},country=${country} WHERE id=${id}::uuid`;
     await sql`UPDATE doctor_locations SET room=${String(body.room||'')||null} WHERE doctor_id=${provider.doctor_id} AND location_id=${id}::uuid`;
     return NextResponse.json({ok:true});
   }
