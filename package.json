@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:cpanel": "CPANEL_BUILD=1 NODE_OPTIONS='--max-old-space-size=384 --max-semi-space-size=16' next build"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
