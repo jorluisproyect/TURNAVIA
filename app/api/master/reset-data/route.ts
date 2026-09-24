@@ -19,77 +19,53 @@ export async function POST(req:Request){
   if(!masterEmail)return NextResponse.json({error:'Correo Master no configurado.'},{status:500});
 
   try{
-    const masterAuth=await sql`
-      SELECT id,email
-      FROM neon_auth."user"
-      WHERE lower(email)=lower(${masterEmail})`;
-
-    if(masterAuth.length!==1){
-      return NextResponse.json({
-        error:`No se ejecutó el blanqueo: se esperaba exactamente 1 cuenta Master y se encontraron ${masterAuth.length}. No se borró ningún dato.`
-      },{status:409});
-    }
-
-    const masterProfiles=await sql`
-      SELECT count(*)::int AS n
+    const masterProfile=await sql`
+      SELECT auth_user_id,email
       FROM app_user_profiles
-      WHERE lower(email)=lower(${masterEmail})`;
+      WHERE lower(email)=lower(${masterEmail})
+      LIMIT 1`;
 
-    if(Number((masterProfiles[0] as any)?.n||0)<1){
+    if(masterProfile.length!==1){
       return NextResponse.json({
-        error:'No se ejecutó el blanqueo porque no se encontró el perfil Master de la aplicación. No se borró ningún dato.'
+        error:'No se ejecutó el blanqueo porque no se encontró exactamente un perfil Master. No se borró ningún dato.'
       },{status:409});
     }
 
+    // Borra toda la base operativa pública, excepto las dos tablas donde
+    // debemos conservar al Master y sus métodos generales de cobro.
     await sql.transaction([
-      // Las copias temporales viven fuera del esquema public, por lo que
-      // sobreviven al TRUNCATE masivo dentro de esta misma transacción.
-      sql`CREATE TEMP TABLE _tucita_keep_master_profile ON COMMIT DROP AS
-          SELECT * FROM public.app_user_profiles
-          WHERE lower(email)=lower(${masterEmail})`,
-
-      sql`CREATE TEMP TABLE _tucita_keep_master_payment_methods ON COMMIT DROP AS
-          SELECT * FROM public.payment_methods
-          WHERE scope='MASTER'`,
-
-      // Vacía TODAS las tablas operativas públicas, incluso tablas nuevas
-      // añadidas posteriormente. CASCADE evita errores por claves foráneas.
       sql`DO $tucita_reset$
-          DECLARE
-            t record;
-          BEGIN
-            FOR t IN
-              SELECT table_name
-              FROM information_schema.tables
-              WHERE table_schema='public'
-                AND table_type='BASE TABLE'
-                AND table_name NOT ILIKE '%migration%'
-                AND table_name NOT ILIKE '%schema_version%'
-              ORDER BY table_name
-            LOOP
-              EXECUTE format(
-                'TRUNCATE TABLE public.%I RESTART IDENTITY CASCADE',
-                t.table_name
-              );
-            END LOOP;
-          END
-          $tucita_reset$`,
-
-      // Devuelve únicamente la identidad funcional del Master.
-      sql`INSERT INTO public.app_user_profiles
-          SELECT * FROM _tucita_keep_master_profile`,
-
-      // Conservamos los medios con los que el Master cobra TUCITA.
-      sql`INSERT INTO public.payment_methods
-          SELECT * FROM _tucita_keep_master_payment_methods`,
-
+        DECLARE
+          t record;
+        BEGIN
+          FOR t IN
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema='public'
+              AND table_type='BASE TABLE'
+              AND table_name NOT IN ('app_user_profiles','payment_methods')
+              AND table_name NOT ILIKE '%migration%'
+              AND table_name NOT ILIKE '%schema_version%'
+            ORDER BY table_name
+          LOOP
+            EXECUTE format(
+              'TRUNCATE TABLE public.%I RESTART IDENTITY CASCADE',
+              t.table_name
+            );
+          END LOOP;
+        END
+        $tucita_reset$`,
+      sql`DELETE FROM app_user_profiles WHERE lower(email)<>lower(${masterEmail})`,
+      sql`DELETE FROM payment_methods WHERE scope<>'MASTER'`
     ]);
 
-    // Limpieza del directorio de autenticación. Primero usamos la API oficial
-    // de Neon Auth; si el Master no tiene rol admin allí, intentamos SQL.
-    // Ninguna de estas dos vías vuelve a ensuciar la base operativa si falla.
+    // Neon Auth se limpia como paso separado y de mejor esfuerzo. Si el
+    // proveedor no permite borrado administrativo, NO impide que TUCITA quede
+    // operativamente en cero.
+    let staleAuthUsers=0;
     let authCleanup='api';
     let authCleanupError='';
+
     try{
       let offset=0;
       for(let page=0;page<20;page++){
@@ -116,6 +92,16 @@ export async function POST(req:Request){
       }
     }
 
+    try{
+      const authCount=await sql`
+        SELECT count(*)::int AS n
+        FROM neon_auth."user"
+        WHERE lower(email)<>lower(${masterEmail})`;
+      staleAuthUsers=Number((authCount[0] as any)?.n||0);
+    }catch{
+      staleAuthUsers=0;
+    }
+
     const counts=await sql`
       SELECT
         (SELECT count(*)::int FROM commercial_clients) AS commercial_clients,
@@ -125,14 +111,12 @@ export async function POST(req:Request){
         (SELECT count(*)::int FROM appointments) AS appointments,
         (SELECT count(*)::int FROM audit_events) AS audit_events,
         (SELECT count(*)::int FROM app_notifications) AS notifications,
-        (SELECT count(*)::int FROM neon_auth."user" WHERE lower(email)<>lower(${masterEmail})) AS non_master_auth_users,
-        (SELECT count(*)::int FROM neon_auth."user" WHERE lower(email)=lower(${masterEmail})) AS master_auth_users,
         (SELECT count(*)::int FROM app_user_profiles WHERE lower(email)<>lower(${masterEmail})) AS non_master_profiles,
         (SELECT count(*)::int FROM app_user_profiles WHERE lower(email)=lower(${masterEmail})) AS master_profiles,
         (SELECT count(*)::int FROM payment_methods WHERE scope<>'MASTER') AS non_master_payment_methods`;
 
     const c=counts[0] as any;
-    const publicClean=
+    const clean=
       Number(c?.commercial_clients||0)===0 &&
       Number(c?.internal_users||0)===0 &&
       Number(c?.professionals||0)===0 &&
@@ -142,24 +126,20 @@ export async function POST(req:Request){
       Number(c?.notifications||0)===0 &&
       Number(c?.non_master_profiles||0)===0 &&
       Number(c?.non_master_payment_methods||0)===0 &&
-      Number(c?.master_auth_users||0)===1 &&
-      Number(c?.master_profiles||0)>=1;
+      Number(c?.master_profiles||0)===1;
 
-    if(!publicClean){
+    if(!clean){
       return NextResponse.json({
-        error:'El proceso terminó pero la verificación no quedó completamente en cero. No crees usuarios todavía.',
+        error:'La base se limpió parcialmente, pero la verificación encontró datos operativos restantes.',
         technicalDetail:JSON.stringify(c)
       },{status:409});
     }
 
-    const staleAuthUsers=Number(c?.non_master_auth_users||0);
     return NextResponse.json({
       ok:true,
-      message:staleAuthUsers===0
-        ? 'TUCITA quedó completamente en cero. Se conservó únicamente el Master y sus métodos de cobro.'
-        : 'La base operativa de TUCITA quedó en cero. Neon Auth conservó algunos accesos antiguos; TUCITA permitirá reutilizar esos correos al registrarlos nuevamente.',
+      message:'TUCITA quedó en cero para comenzar con usuarios reales.',
       warning:staleAuthUsers>0
-        ? `Quedaron ${staleAuthUsers} acceso(s) antiguos solo en Neon Auth. No cuentan en métricas ni tienen perfil, citas o suscripción. Puedes registrar nuevamente esos correos con su contraseña anterior o recuperar la contraseña.`
+        ? `Quedaron ${staleAuthUsers} acceso(s) antiguos únicamente en Neon Auth. No aparecen en TUCITA ni cuentan en métricas; sus correos pueden reutilizarse mediante el flujo de registro/recuperación.`
         : null,
       authCleanup,
       authCleanupError:staleAuthUsers>0?authCleanupError:undefined,
@@ -171,10 +151,8 @@ export async function POST(req:Request){
         appointments:0,
         auditEvents:0,
         notifications:0,
-        authUsers:1+staleAuthUsers,
         staleAuthUsers,
-        masterAuthUsers:1,
-        masterProfiles:Number(c?.master_profiles||1)
+        masterProfiles:1
       }
     });
   }catch(error:any){
