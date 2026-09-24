@@ -7,6 +7,7 @@ import { passwordIssues } from '@/lib/password-policy';
 import { validPendingInvitation } from '@/lib/master-team';
 import { existingAccountKind, existingAccountMessage } from '@/lib/account-availability';
 import { validatePhone } from '@/lib/phone';
+import { COMPLIANCE_VERSION, adultComplianceRequired, prohibitedMarketplaceReason } from '@/lib/compliance';
 
 function slugify(input:string){
   return input.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,42)||'profesional';
@@ -25,6 +26,8 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const category=String(formData.get('category')||'Salud').trim();
   const activity=String(formData.get('activity')||'Médico').trim();
   const country=String(formData.get('country')||'Venezuela').trim()||'Venezuela';
+  const providerComplianceAccepted=String(formData.get('providerComplianceAccepted')||'')==='1';
+  const adultComplianceAccepted=String(formData.get('adultComplianceAccepted')||'')==='1';
   const requestedRole=rawRole==='DOCTOR'?'DOCTOR':'PATIENT';
   const role=requestedRole;
   const providerType=accountType==='BUSINESS'?'Negocio / local':'Profesional independiente';
@@ -39,6 +42,10 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   if(!name||!email||!phoneLocal) return {error:'Completa nombre, correo y teléfono.'};
   if(!/^\S+@\S+\.\S+$/.test(email)||email.length>254)return {error:'Escribe un correo válido.'};
   if(phoneValidation.error)return {error:phoneValidation.error};
+  if(requestedRole==='DOCTOR'&&!providerComplianceAccepted)return {error:'Debes aceptar los Términos y la declaración legal del proveedor.'};
+  if(requestedRole==='DOCTOR'&&adultComplianceRequired(category)&&!adultComplianceAccepted)return {error:'Para servicios +18 debes aceptar la declaración adicional de mayoría de edad y actividad no sexual.'};
+  const prohibited=prohibitedMarketplaceReason(category,activity,name);
+  if(requestedRole==='DOCTOR'&&prohibited)return {error:prohibited};
   if(!sql)return {error:'No se pudo conectar con la base de datos. Intenta de nuevo en unos minutos.'};
   const teamInvite=teamToken?await validPendingInvitation(email,teamToken):null;
   if(teamToken&&!teamInvite)return {error:'La invitación de equipo caducó, ya fue usada o no corresponde a este correo.'};
@@ -179,6 +186,13 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   }
 
   if(sql&&authUserId&&!teamInvite){
+    if(role==='DOCTOR'){
+      try{
+        await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+          VALUES('PROVIDER_COMPLIANCE_ACCEPTED','ACCOUNT_PROFILE',${String(authUserId)},
+            jsonb_build_object('email',${email},'version',${COMPLIANCE_VERSION},'country',${country},'category',${category},'activity',${activity},'adultCategory',${adultComplianceRequired(category)},'adultDeclaration',${adultComplianceAccepted}))`;
+      }catch(error){console.error('TUCITA compliance audit error',error)}
+    }
     try{
       await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
         SELECT
