@@ -218,8 +218,11 @@ export async function PATCH(req:Request){
     const startsAt=new Date(`${date}T${start}:00-04:00`);
     const endsAt=new Date(`${date}T${end}:00-04:00`);
     if(Number.isNaN(startsAt.getTime())||Number.isNaN(endsAt.getTime())||endsAt<=startsAt) return NextResponse.json({error:'La hora final debe ser posterior a la hora inicial.'},{status:400});
+    // slot_minutes se conserva solo por compatibilidad con la tabla existente.
+    // La agenda pública ya NO usa un intervalo manual: calcula cada inicio
+    // automáticamente con la duración del servicio y el final de la cita previa.
     await sql`INSERT INTO availability_blocks(doctor_id,location_id,starts_at,ends_at,slot_minutes,published)
-      VALUES(${provider.doctor_id},${locationId}::uuid,${startsAt.toISOString()}::timestamptz,${endsAt.toISOString()}::timestamptz,${Math.max(5,Number(body.slotMinutes||15))},true)`;
+      VALUES(${provider.doctor_id},${locationId}::uuid,${startsAt.toISOString()}::timestamptz,${endsAt.toISOString()}::timestamptz,5,true)`;
     return NextResponse.json({ok:true});
   }
 
