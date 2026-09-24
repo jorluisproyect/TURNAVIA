@@ -68,7 +68,8 @@ async function providerBySlug(slug:string){
     JOIN neon_auth."user" au ON lower(au.email)=lower(u.email)
     LEFT JOIN organizations o ON o.id=u.organization_id
     LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
-    LEFT JOIN locations l ON l.id=dl.location_id
+      AND EXISTS (SELECT 1 FROM locations lx WHERE lx.id=dl.location_id AND lx.active=true)
+    LEFT JOIN locations l ON l.id=dl.location_id AND l.active=true
     WHERE d.public_slug=${slug} AND u.active=true LIMIT 1`;
   return rows[0] as any || null;
 }

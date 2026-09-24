@@ -210,7 +210,6 @@ export default function Medico(){
      if(!String(service.summary||'').trim()){setToast('Escribe una descripción corta para la tarjeta del viaje.');return}
      if(!String(service.travelDate||'').trim()){setToast('Selecciona la fecha de salida del viaje.');return}
      if(!String(service.departureTime||'').trim()){setToast('Indica la hora de salida del viaje.');return}
-     if(!String(service.locationId||'').trim()){setToast('Selecciona el punto de salida del viaje.');return}
      if(Number(service.capacity||0)<1){setToast('Indica al menos 1 cupo disponible.');return}
      if(service.returnTime){
        const [sh,sm]=String(service.departureTime).split(':').map(Number);
@@ -266,10 +265,13 @@ export default function Medico(){
     <div className="row space" style={{gap:16,alignItems:'flex-start',flexWrap:'wrap'}}><div><span className="eyebrow"><Clock3 size={15}/> SIGUIENTE CITA</span><h2 style={{fontSize:24,margin:'10px 0 4px'}}>{nextAppointment.clientName}</h2><div className="muted">{nextAppointment.serviceName}</div><div style={{marginTop:9}}><strong>{new Date(nextAppointment.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit',timeZone:'America/Caracas'})}</strong></div><div className="row muted" style={{fontSize:12,marginTop:7}}><MapPin size={14}/>{[nextAppointment.location?.name,nextAppointment.location?.address].filter(Boolean).join(' · ')||'Ubicación por confirmar'}</div></div><div className="button-row"><Link className="btn btn-secondary" href="/medico/finanzas">Ver finanzas</Link>{nextAppointment.status==='CONFIRMED'&&<button className="btn btn-primary" onClick={()=>patch({action:'appointment_status',id:nextAppointment.id,status:'ARRIVED'})} disabled={saving}>{saving?'Procesando…':'Registrar llegada'}</button>}</div></div>
   </section>}
 
+  {!travelMode&&<>
   <section className="panel" id="ubicaciones" style={{marginTop:18}}>
    <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>{travelMode?'Puntos de salida / encuentro':'Lugares de atención'}</h2><div className="muted" style={{fontSize:13}}>{travelMode?'Agrega los puntos desde donde parten tus viajes. Luego selecciona uno al crear cada viaje.':'Agrega todos los lugares donde trabajas. Luego asigna cada horario a uno de ellos.'}</div></div><button className="btn btn-primary" onClick={newLocation}><Plus size={16}/> {travelMode?'Agregar punto':'Agregar ubicación'}</button></div>
    {!data.locations?.length?<div className="notice" style={{marginTop:14}}>{travelMode?'Agrega al menos un punto de salida para publicar viajes.':'Agrega al menos una ubicación para publicar horarios.'}</div>:<div className="grid-3" style={{marginTop:14}}>{data.locations.map((l:any)=><div className="card" key={l.id}><MapPin size={18}/><h3>{l.name}</h3><p>{[l.address,l.city,l.state,l.country].filter(Boolean).join(' · ')||'Dirección por completar'}{l.room?<><br/><strong>{l.room}</strong></>:null}</p>{mapQuery(l)&&<a className="btn btn-secondary" style={{marginBottom:10}} href={'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(l))} target="_blank" rel="noreferrer"><Navigation size={15}/> Ver mapa</a>}<div className="row" style={{gap:8,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editLocation(l)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'delete_location',id:l.id})} disabled={saving}><Trash2 size={15}/> {saving?'Procesando…':'Eliminar'}</button></div></div>)}</div>}
   </section>
+
+  </>}
 
   {!travelMode&&<>
   <section className="panel" id="agenda" style={{marginTop:18}}>
@@ -297,7 +299,7 @@ export default function Medico(){
       {!travelMode&&<BriefcaseBusiness size={18}/>}
       <h3>{s.name}</h3>
       {travelMode&&s.travelDate&&<div className="pill" style={{width:'fit-content',marginBottom:8}}>{new Date(s.travelDate+'T12:00:00').toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long'})}{s.departureTime?' · '+s.departureTime:''}{s.returnTime?'–'+s.returnTime:''}</div>}
-      {travelMode&&<div className="muted" style={{fontSize:12,marginBottom:8}}><MapPin size={12}/> {(data.locations||[]).find((l:any)=>l.id===s.locationId)?.name||'Punto de salida por definir'} · {s.capacity||1} cupo{Number(s.capacity||1)===1?'':'s'}</div>}
+      {travelMode&&<div className="muted" style={{fontSize:12,marginBottom:8}}>{s.capacity||1} cupo{Number(s.capacity||1)===1?'':'s'}</div>}
       <p>{(travelMode?s.summary:s.description)||'Sin descripción'}</p>
       <div className="row" style={{gap:8,flexWrap:'wrap',alignItems:'center'}}><span className="pill">{s.durationMinutes} min</span><span className="pill">{s.currency}</span><strong>{s.price}</strong></div>
       <div className="row" style={{gap:8,marginTop:12,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editService(s)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'update_service',id:s.id,active:!s.active})} disabled={saving}>{saving?'Procesando…':s.active?'Pausar':'Activar'}</button></div>
@@ -371,11 +373,8 @@ export default function Medico(){
        <div className="field" style={{flex:1,minWidth:150}}><label>Hora de salida</label><input type="time" value={service.departureTime||''} onChange={e=>setService({...service,departureTime:e.target.value})}/></div>
        <div className="field" style={{flex:1,minWidth:150}}><label>Hora estimada de regreso</label><input type="time" value={service.returnTime||''} onChange={e=>setService({...service,returnTime:e.target.value})}/></div>
      </div>
-     <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}>
-       <div className="field" style={{flex:2,minWidth:220}}><label>Punto de salida / encuentro</label><select value={service.locationId||''} onChange={e=>setService({...service,locationId:e.target.value})}><option value="">Selecciona un punto</option>{(data.locations||[]).map((l:any)=><option key={l.id} value={l.id}>{l.name}{l.address?' · '+l.address:''}</option>)}</select>{!data.locations?.length&&<small className="muted">Primero agrega un punto de salida en la sección superior.</small>}</div>
-       <div className="field" style={{flex:1,minWidth:140}}><label>Cupos</label><input type="number" min="1" max="500" value={service.capacity||1} onChange={e=>setService({...service,capacity:Math.max(1,Number(e.target.value||1))})}/></div>
-     </div>
-     <div className="notice"><strong>Calendario automático para Viajes.</strong><br/>Al guardar, TUCITA crea internamente esta salida con su fecha, hora, duración y punto de encuentro. No necesitas publicar un calendario aparte.</div>
+     <div className="field" style={{maxWidth:220}}><label>Cupos disponibles</label><input type="number" min="1" max="500" value={service.capacity||1} onChange={e=>setService({...service,capacity:Math.max(1,Number(e.target.value||1))})}/></div>
+     <div className="notice"><strong>Calendario automático para Viajes.</strong><br/>Al guardar, TUCITA programa internamente esta salida con su fecha, hora, duración y cupos. No necesitas crear ubicaciones ni publicar un calendario aparte.</div>
    </>:<div className="field"><label>Descripción</label><textarea rows={3} value={service.description} onChange={e=>setService({...service,description:e.target.value})}/></div>}
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}>
      <div className="field" style={{flex:1,minWidth:150}}><label>{travelMode?'Duración del viaje':'Duración real'}</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>2 h</option><option value={180}>3 h</option>{travelMode&&<><option value={240}>4 h</option><option value={360}>6 h</option><option value={480}>8 h</option><option value={600}>10 h</option><option value={720}>12 h</option><option value={1440}>24 h</option></>}</select></div>

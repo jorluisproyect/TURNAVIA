@@ -18,11 +18,36 @@ function travelWindow(date:string,time:string,durationMinutes:number){
   return {startsAt,endsAt};
 }
 
+async function ensureTravelInternalLocation(provider:any){
+  if(!sql)throw new Error('Base de datos no disponible.');
+  const existing=await sql`
+    SELECT l.id
+    FROM doctor_locations dl
+    JOIN locations l ON l.id=dl.location_id
+    WHERE dl.doctor_id=${provider.doctor_id}
+      AND l.active=false
+      AND l.name='Viaje / Tour'
+    ORDER BY l.created_at
+    LIMIT 1`;
+  if(existing.length)return String((existing[0] as any).id);
+
+  const created=await sql`
+    INSERT INTO locations(organization_id,name,address,city,state,country,active)
+    VALUES(${provider.organization_id||null},'Viaje / Tour',NULL,NULL,NULL,NULL,false)
+    RETURNING id`;
+  const id=String((created[0] as any).id);
+  await sql`INSERT INTO doctor_locations(doctor_id,location_id,room)
+    VALUES(${provider.doctor_id},${id}::uuid,NULL)
+    ON CONFLICT DO NOTHING`;
+  return id;
+}
+
 async function syncTravelAvailability(doctorId:string,previous:any,next:any,durationMinutes:number){
   if(!sql)return;
   const locationId=String(next.locationId||'');
+  if(!locationId)throw new Error('No se pudo preparar internamente la salida del viaje.');
   const owned=await sql`SELECT 1 FROM doctor_locations WHERE doctor_id=${doctorId} AND location_id=${locationId}::uuid LIMIT 1`;
-  if(!owned.length)throw new Error('Selecciona un punto de salida válido.');
+  if(!owned.length)throw new Error('No se pudo preparar internamente la salida del viaje.');
 
   if(previous?.travelDate&&previous?.departureTime&&previous?.locationId){
     const old=travelWindow(previous.travelDate,previous.departureTime,Number(previous.durationMinutes||durationMinutes));
@@ -70,7 +95,8 @@ async function currentProvider(){
     JOIN doctors d ON d.user_id=u.id
     LEFT JOIN organizations o ON o.id=u.organization_id
     LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
-    LEFT JOIN locations l ON l.id=dl.location_id
+      AND EXISTS (SELECT 1 FROM locations lx WHERE lx.id=dl.location_id AND lx.active=true)
+    LEFT JOIN locations l ON l.id=dl.location_id AND l.active=true
     LEFT JOIN commercial_clients c ON lower(c.email)=lower(u.email)
     WHERE lower(u.email)=lower(${email})
     ORDER BY c.created_at DESC NULLS LAST
@@ -239,17 +265,18 @@ export async function PATCH(req:Request){
     const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
     let description=String(body.description||'');
     if(travelMode){
-      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||''),locationId:String(body.locationId||''),capacity:Math.max(1,Number(body.capacity||1))};
+      const internalLocationId=await ensureTravelInternalLocation(provider);
+      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||''),locationId:internalLocationId,capacity:Math.max(1,Number(body.capacity||1))};
       const issue=validateTravelServiceMeta(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
-      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime||!meta.locationId)return NextResponse.json({error:'En Viajes completa descripción corta, fecha, hora y punto de salida.'},{status:400});
+      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
       description=serializeTravelServiceDescription(meta);
     }
     const rows=await sql`INSERT INTO provider_services(doctor_id,name,description,duration_minutes,price,currency,active)
       VALUES(${provider.doctor_id},${name},${description||null},${Math.max(5,Number(body.durationMinutes||30))},${Math.max(0,Number(body.price||0))},${String(body.currency||'USD')},true)
       RETURNING id`;
     if(travelMode){
-      try{await syncTravelAvailability(String(provider.doctor_id),null,{...travelServiceFields(description),locationId:String(body.locationId||''),capacity:Math.max(1,Number(body.capacity||1))},Math.max(5,Number(body.durationMinutes||30)));}
+      try{await syncTravelAvailability(String(provider.doctor_id),null,travelServiceFields(description),Math.max(5,Number(body.durationMinutes||30)));}
       catch(error:any){await sql`DELETE FROM provider_services WHERE id=${(rows[0] as any)?.id}::uuid AND doctor_id=${provider.doctor_id}`;return NextResponse.json({error:String(error?.message||'No se pudo crear la salida del viaje.')},{status:400});}
     }
     return NextResponse.json({ok:true,id:String((rows[0] as any)?.id)});
@@ -269,12 +296,12 @@ export async function PATCH(req:Request){
         travelDate:Object.prototype.hasOwnProperty.call(body,'travelDate')?String(body.travelDate||''):previous.travelDate,
         departureTime:Object.prototype.hasOwnProperty.call(body,'departureTime')?String(body.departureTime||''):previous.departureTime,
         returnTime:Object.prototype.hasOwnProperty.call(body,'returnTime')?String(body.returnTime||''):previous.returnTime,
-        locationId:Object.prototype.hasOwnProperty.call(body,'locationId')?String(body.locationId||''):previous.locationId,
+        locationId:previous.locationId||await ensureTravelInternalLocation(provider),
         capacity:Object.prototype.hasOwnProperty.call(body,'capacity')?Math.max(1,Number(body.capacity||1)):previous.capacity
       };
       const issue=validateTravelServiceMeta(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
-      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime||!meta.locationId)return NextResponse.json({error:'En Viajes completa descripción corta, fecha, hora y punto de salida.'},{status:400});
+      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
       descriptionValue=serializeTravelServiceDescription(meta);
     }
     let previousTravel:any=null;
