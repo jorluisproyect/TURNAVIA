@@ -218,6 +218,36 @@ export async function PATCH(req:Request){
     const startsAt=new Date(`${date}T${start}:00-04:00`);
     const endsAt=new Date(`${date}T${end}:00-04:00`);
     if(Number.isNaN(startsAt.getTime())||Number.isNaN(endsAt.getTime())||endsAt<=startsAt) return NextResponse.json({error:'La hora final debe ser posterior a la hora inicial.'},{status:400});
+
+    const exactDuplicate=await sql`SELECT id FROM availability_blocks
+      WHERE doctor_id=${provider.doctor_id}
+        AND location_id=${locationId}::uuid
+        AND starts_at=${startsAt.toISOString()}::timestamptz
+        AND ends_at=${endsAt.toISOString()}::timestamptz
+        AND published=true
+      LIMIT 1`;
+    if(exactDuplicate.length){
+      return NextResponse.json({error:'Este bloque de disponibilidad ya está publicado. No puedes agregar el mismo horario dos veces.'},{status:409});
+    }
+
+    const overlap=await sql`SELECT ab.id,l.name AS location_name,ab.starts_at,ab.ends_at
+      FROM availability_blocks ab
+      JOIN locations l ON l.id=ab.location_id
+      WHERE ab.doctor_id=${provider.doctor_id}
+        AND ab.published=true
+        AND ab.starts_at<${endsAt.toISOString()}::timestamptz
+        AND ab.ends_at>${startsAt.toISOString()}::timestamptz
+      ORDER BY ab.starts_at
+      LIMIT 1`;
+    if(overlap.length){
+      const existing=overlap[0] as any;
+      const from=new Date(existing.starts_at).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'});
+      const to=new Date(existing.ends_at).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'});
+      return NextResponse.json({
+        error:`Ese horario se cruza con un bloque ya publicado (${from}–${to}${existing.location_name?' · '+existing.location_name:''}). El profesional no puede tener dos bloques al mismo tiempo.`
+      },{status:409});
+    }
+
     // slot_minutes se conserva solo por compatibilidad con la tabla existente.
     // La agenda pública ya NO usa un intervalo manual: calcula cada inicio
     // automáticamente con la duración del servicio y el final de la cita previa.
