@@ -13,25 +13,46 @@ function slotList(block:any,appointments:any[],durationMinutes:number){
   const out:any[]=[];
   const blockStart=new Date(block.starts_at).getTime();
   const blockEnd=new Date(block.ends_at).getTime();
-  const step=Math.max(5,Number(block.slot_minutes||15))*60000;
   const duration=Math.max(5,durationMinutes)*60000;
   const now=Date.now();
 
-  for(let t=blockStart;t+duration<=blockEnd;t+=step){
-    const slotEnd=t+duration;
-    const busy=appointments.some(a=>{
-      if(['CANCELLED','PAYMENT_REJECTED'].includes(String(a.status))) return false;
-      const aStart=new Date(a.starts_at).getTime();
-      const aEnd=new Date(a.ends_at).getTime();
-      return aStart<slotEnd && aEnd>t;
-    });
-    out.push({
-      startsAt:new Date(t).toISOString(),
-      endsAt:new Date(slotEnd).toISOString(),
-      time:new Date(t).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'}),
-      available:t>=now&&!busy
-    });
+  const busyIntervals=appointments
+    .filter(a=>!['CANCELLED','PAYMENT_REJECTED'].includes(String(a.status)))
+    .map(a=>({start:new Date(a.starts_at).getTime(),end:new Date(a.ends_at).getTime()}))
+    .filter(a=>Number.isFinite(a.start)&&Number.isFinite(a.end)&&a.end>blockStart&&a.start<blockEnd)
+    .sort((a,b)=>a.start-b.start);
+
+  let cursor=blockStart;
+  let guard=0;
+
+  while(cursor+duration<=blockEnd && guard<500){
+    guard++;
+    const candidateEnd=cursor+duration;
+    const overlapping=busyIntervals.filter(a=>a.start<candidateEnd&&a.end>cursor);
+
+    if(overlapping.length){
+      // La próxima opción comienza exactamente cuando termina la cita que ocupa
+      // este tramo. Así un servicio de 45 min a las 9:00 habilita 9:45.
+      const next=Math.max(...overlapping.map(a=>a.end));
+      if(next<=cursor)break;
+      cursor=next;
+      continue;
+    }
+
+    if(cursor>=now){
+      out.push({
+        startsAt:new Date(cursor).toISOString(),
+        endsAt:new Date(candidateEnd).toISOString(),
+        time:new Date(cursor).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'}),
+        available:true
+      });
+    }
+
+    // Si está libre, la siguiente opción avanza exactamente la duración
+    // del servicio seleccionado, nunca un intervalo manual.
+    cursor=candidateEnd;
   }
+
   return out;
 }
 
@@ -65,7 +86,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
   const chosen=(services as any[]).find(s=>String(s.id)===requestedServiceId)||(services as any[])[0];
   const durationMinutes=Math.max(5,Number(chosen?.duration_minutes||p.default_appointment_minutes||30));
 
-  const blocks=await sql`SELECT ab.id,ab.starts_at,ab.ends_at,ab.slot_minutes,
+  const blocks=await sql`SELECT ab.id,ab.starts_at,ab.ends_at,
       l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
     FROM availability_blocks ab
     JOIN locations l ON l.id=ab.location_id
@@ -158,6 +179,33 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(Number.isNaN(requestedStart.getTime())) return NextResponse.json({error:'Horario inválido'},{status:400});
   const requestedEnd=new Date(requestedStart.getTime()+duration*60000);
 
+  // La hora debe haber sido generada por el motor automático de disponibilidad.
+  // El cliente no puede inventar una hora intermedia distinta a la secuencia
+  // calculada por la duración real de los servicios y las reservas existentes.
+  const requestedLocationId=String(body.locationId||'');
+  if(!requestedLocationId) return NextResponse.json({error:'Selecciona la ubicación de tu cita.'},{status:400});
+
+  const matchingBlocks=await sql`SELECT id,starts_at,ends_at
+    FROM availability_blocks
+    WHERE doctor_id=${p.id}
+      AND location_id=${requestedLocationId}::uuid
+      AND published=true
+      AND starts_at<=${requestedStart.toISOString()}::timestamptz
+      AND ends_at>=${requestedEnd.toISOString()}::timestamptz`;
+
+  if(!matchingBlocks.length) return NextResponse.json({error:'Ese horario no pertenece a una disponibilidad publicada.'},{status:409});
+
+  const currentAppointments=await sql`SELECT starts_at,ends_at,status
+    FROM appointments
+    WHERE doctor_id=${p.id}
+      AND ends_at>=${new Date(Math.min(...(matchingBlocks as any[]).map(b=>new Date(b.starts_at).getTime()))).toISOString()}::timestamptz
+      AND starts_at<=${new Date(Math.max(...(matchingBlocks as any[]).map(b=>new Date(b.ends_at).getTime()))).toISOString()}::timestamptz`;
+
+  const validStart=(matchingBlocks as any[]).some(block=>
+    slotList(block,currentAppointments as any[],duration).some((slot:any)=>slot.startsAt===requestedStart.toISOString())
+  );
+  if(!validStart) return NextResponse.json({error:'Ese inicio ya no corresponde a la secuencia disponible. Actualiza los horarios y elige la nueva hora.'},{status:409});
+
   let patientRows=await sql`SELECT id FROM patients WHERE lower(email)=lower(${email}) OR phone=${phone} ORDER BY created_at DESC LIMIT 1`;
   let patientId=(patientRows[0] as any)?.id;
   if(patientId){
@@ -166,9 +214,6 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
     const rows=await sql`INSERT INTO patients(full_name,national_id,phone,email) VALUES(${clientName},${String(body.nationalId||'')||null},${phone},${email}) RETURNING id`;
     patientId=(rows[0] as any)?.id;
   }
-
-  const requestedLocationId=String(body.locationId||'');
-  if(!requestedLocationId) return NextResponse.json({error:'Selecciona la ubicación de tu cita.'},{status:400});
 
   // One SQL statement + advisory lock serializes bookings for the same provider.
   // This prevents two clients from taking overlapping slots at the same instant.
