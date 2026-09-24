@@ -6,8 +6,10 @@ import { MASTER_EMAIL } from '@/lib/access';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
-function loginRedirect(req:NextRequest,error:string){
-  const url=new URL('/ingresar',req.url);
+const PUBLIC_APP_URL=(process.env.APP_URL||'https://tucita.com.ve').replace(/\/$/,'');
+function publicUrl(path:string){return new URL(path,PUBLIC_APP_URL);}
+function loginRedirect(_req:NextRequest,error:string){
+  const url=publicUrl('/ingresar');
   url.searchParams.set('error',error);
   return NextResponse.redirect(url,303);
 }
@@ -53,7 +55,7 @@ export async function POST(req:NextRequest){
       ? requestedNext
       : '/panel';
 
-    return NextResponse.redirect(new URL(next,req.url),303);
+    return NextResponse.redirect(publicUrl(next),303);
   }catch(error){
     console.error('TUCITA /api/login error',error);
     return loginRedirect(req,'server');
