@@ -89,24 +89,45 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
   const travelMode=isTravelProvider(p.provider_category,p.provider_activity);
   const durationMinutes=Math.max(5,Number(chosen?.duration_minutes||p.default_appointment_minutes||30));
 
-  const blocks=await sql`SELECT ab.id,ab.starts_at,ab.ends_at,
+  const blocks=await sql`SELECT ab.id,ab.starts_at,ab.ends_at,ab.max_patients,
       l.id AS location_id,l.name AS location_name,l.address,l.city,l.state,l.country,dl.room
     FROM availability_blocks ab
     JOIN locations l ON l.id=ab.location_id
     LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id
     WHERE ab.doctor_id=${p.id} AND ab.published=true AND ab.ends_at>=now()
     ORDER BY ab.starts_at LIMIT 120`;
-  const aps=await sql`SELECT starts_at,ends_at,status FROM appointments WHERE doctor_id=${p.id} AND ends_at>=now()-interval '1 day'`;
+  const aps=await sql`SELECT service_id,starts_at,ends_at,status FROM appointments WHERE doctor_id=${p.id} AND ends_at>=now()-interval '1 day'`;
   const statusRows=await sql`SELECT status,delay_minutes FROM doctor_status_updates WHERE doctor_id=${p.id} ORDER BY updated_at DESC LIMIT 1`;
 
-  const availability=blocks.map((b:any)=>({
-    id:String(b.id),
-    date:new Date(b.starts_at).toLocaleDateString('en-CA',{timeZone:'America/Caracas'}),
-    startsAt:new Date(b.starts_at).toISOString(),
-    endsAt:new Date(b.ends_at).toISOString(),
-    location:{id:String(b.location_id),name:b.location_name||'',address:b.address||'',city:b.city||'',state:b.state||'',country:b.country||'',room:b.room||''},
-    slots:slotList(b,aps as any[],durationMinutes)
-  })).filter((b:any)=>!travelMode||!chosenTravel.travelDate||b.date===chosenTravel.travelDate);
+  const availability=blocks.map((b:any)=>{
+    const date=new Date(b.starts_at).toLocaleDateString('en-CA',{timeZone:'America/Caracas'});
+    const localTime=new Date(b.starts_at).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'});
+    const travelMatch=!travelMode||(
+      (!chosenTravel.travelDate||date===chosenTravel.travelDate)&&
+      (!chosenTravel.departureTime||localTime===chosenTravel.departureTime)&&
+      (!chosenTravel.locationId||String(b.location_id)===chosenTravel.locationId)
+    );
+    if(!travelMatch)return null;
+    let slots:any[];
+    if(travelMode&&chosen){
+      const capacity=Math.max(1,Number(chosenTravel.capacity||b.max_patients||1));
+      const used=(aps as any[]).filter(a=>String(a.service_id||'')===String(chosen.id)&&!['CANCELLED','PAYMENT_REJECTED'].includes(String(a.status))&&new Date(a.starts_at).getTime()===new Date(b.starts_at).getTime()).length;
+      slots=[{
+        startsAt:new Date(b.starts_at).toISOString(),
+        endsAt:new Date(b.ends_at).toISOString(),
+        time:localTime,
+        available:new Date(b.starts_at).getTime()>=Date.now()&&used<capacity,
+        remaining:Math.max(0,capacity-used)
+      }];
+    }else{
+      slots=slotList(b,aps as any[],durationMinutes);
+    }
+    return {
+      id:String(b.id),date,startsAt:new Date(b.starts_at).toISOString(),endsAt:new Date(b.ends_at).toISOString(),
+      location:{id:String(b.location_id),name:b.location_name||'',address:b.address||'',city:b.city||'',state:b.state||'',country:b.country||'',room:b.room||''},
+      slots
+    };
+  }).filter(Boolean);
   const initials=String(p.full_name||'T').replace(/^(Dr\.?|Dra\.?)\s*/i,'').split(/\s+/).slice(0,2).map((x:string)=>x[0]||'').join('').toUpperCase();
   const media=parseProviderMedia(p.bio);
 
@@ -120,7 +141,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     },
     services:services.map((s:any)=>{
       const travel=travelServiceFields(s.description);
-      return {id:String(s.id),name:s.name,description:travel.details,summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'};
+      return {id:String(s.id),name:s.name,description:travel.details,summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'};
     }),
     availability,
     selectedServiceDuration:durationMinutes,
@@ -191,6 +212,7 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
       const localTime=requestedStart.toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'});
       if(localTime!==serviceTravel.departureTime)return NextResponse.json({error:'Selecciona la hora de salida indicada para este viaje.'},{status:409});
     }
+    if(serviceTravel.locationId&&String(body.locationId||'')!==serviceTravel.locationId)return NextResponse.json({error:'Selecciona el punto de salida indicado para este viaje.'},{status:409});
   }
   const requestedEnd=new Date(requestedStart.getTime()+duration*60000);
 
@@ -230,41 +252,80 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
     patientId=(rows[0] as any)?.id;
   }
 
-  // One SQL statement + advisory lock serializes bookings for the same provider.
-  // This prevents two clients from taking overlapping slots at the same instant.
-  const rows=await sql`
-    WITH provider_lock AS (
-      SELECT pg_advisory_xact_lock(hashtext(${String(p.id)})::bigint)
-    ),
-    valid_block AS (
-      SELECT ab.id,ab.location_id,l.name,l.address,l.city,l.state,l.country,dl.room
-      FROM availability_blocks ab
-      JOIN locations l ON l.id=ab.location_id
-      LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id,
-      provider_lock
-      WHERE ab.doctor_id=${p.id}
-        AND ab.location_id=${requestedLocationId}::uuid
-        AND ab.published=true
-        AND ab.starts_at<=${requestedStart.toISOString()}::timestamptz
-        AND ab.ends_at>=${requestedEnd.toISOString()}::timestamptz
-      LIMIT 1
-    ),
-    inserted AS (
-      INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot)
-      SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room
-      FROM valid_block vb
-      WHERE NOT EXISTS (
-        SELECT 1 FROM appointments a
-        WHERE a.doctor_id=${p.id}
-          AND a.status NOT IN ('CANCELLED','PAYMENT_REJECTED')
-          AND a.starts_at<${requestedEnd.toISOString()}::timestamptz
-          AND a.ends_at>${requestedStart.toISOString()}::timestamptz
+  // Las citas normales bloquean solapamientos. Viajes permite varios clientes
+  // en la misma salida hasta completar los cupos configurados.
+  let rows:any[]=[];
+  if(isTravelProvider(p.provider_category,p.provider_activity)){
+    const capacity=Math.max(1,Number(serviceTravel.capacity||1));
+    rows=await sql`
+      WITH trip_lock AS (
+        SELECT pg_advisory_xact_lock(hashtext(${String(service.id)})::bigint)
+      ),
+      valid_block AS (
+        SELECT ab.id,ab.location_id,l.name,l.address,l.city,l.state,l.country,dl.room
+        FROM availability_blocks ab
+        JOIN locations l ON l.id=ab.location_id
+        LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id,
+        trip_lock
+        WHERE ab.doctor_id=${p.id}
+          AND ab.location_id=${requestedLocationId}::uuid
+          AND ab.published=true
+          AND ab.starts_at=${requestedStart.toISOString()}::timestamptz
+          AND ab.ends_at>=${requestedEnd.toISOString()}::timestamptz
+        LIMIT 1
+      ),
+      capacity_ok AS (
+        SELECT vb.*
+        FROM valid_block vb
+        WHERE (
+          SELECT count(*) FROM appointments a
+          WHERE a.service_id=${service.id}
+            AND a.starts_at=${requestedStart.toISOString()}::timestamptz
+            AND a.status NOT IN ('CANCELLED','PAYMENT_REJECTED')
+        ) < ${capacity}
+      ),
+      inserted AS (
+        INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot)
+        SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room
+        FROM capacity_ok vb
+        RETURNING id,checkin_token
       )
-      RETURNING id,checkin_token
-    )
-    SELECT id,checkin_token FROM inserted`;
+      SELECT id,checkin_token FROM inserted`;
+  }else{
+    rows=await sql`
+      WITH provider_lock AS (
+        SELECT pg_advisory_xact_lock(hashtext(${String(p.id)})::bigint)
+      ),
+      valid_block AS (
+        SELECT ab.id,ab.location_id,l.name,l.address,l.city,l.state,l.country,dl.room
+        FROM availability_blocks ab
+        JOIN locations l ON l.id=ab.location_id
+        LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id,
+        provider_lock
+        WHERE ab.doctor_id=${p.id}
+          AND ab.location_id=${requestedLocationId}::uuid
+          AND ab.published=true
+          AND ab.starts_at<=${requestedStart.toISOString()}::timestamptz
+          AND ab.ends_at>=${requestedEnd.toISOString()}::timestamptz
+        LIMIT 1
+      ),
+      inserted AS (
+        INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot)
+        SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room
+        FROM valid_block vb
+        WHERE NOT EXISTS (
+          SELECT 1 FROM appointments a
+          WHERE a.doctor_id=${p.id}
+            AND a.status NOT IN ('CANCELLED','PAYMENT_REJECTED')
+            AND a.starts_at<${requestedEnd.toISOString()}::timestamptz
+            AND a.ends_at>${requestedStart.toISOString()}::timestamptz
+        )
+        RETURNING id,checkin_token
+      )
+      SELECT id,checkin_token FROM inserted`;
+  }
 
-  if(!rows.length) return NextResponse.json({error:'Ese horario ya no está disponible o acaba de ser reservado. Elige otro.'},{status:409});
+  if(!rows.length) return NextResponse.json({error:isTravelProvider(p.provider_category,p.provider_activity)?'Este viaje ya completó sus cupos o la salida cambió. Actualiza la página.':'Ese horario ya no está disponible o acaba de ser reservado. Elige otro.'},{status:409});
   const appointmentId=String((rows[0] as any)?.id);
   const receiptToken=String((rows[0] as any)?.checkin_token||'');
   const when=requestedStart.toLocaleString('es-VE',{dateStyle:'full',timeStyle:'short',timeZone:'America/Caracas'});

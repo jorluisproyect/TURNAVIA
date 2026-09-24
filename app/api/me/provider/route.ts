@@ -12,6 +12,49 @@ import { isTravelProvider, serializeTravelServiceDescription, travelServiceField
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
 
+function travelWindow(date:string,time:string,durationMinutes:number){
+  const startsAt=new Date(`${date}T${time}:00-04:00`);
+  const endsAt=new Date(startsAt.getTime()+Math.max(5,durationMinutes)*60000);
+  return {startsAt,endsAt};
+}
+
+async function syncTravelAvailability(doctorId:string,previous:any,next:any,durationMinutes:number){
+  if(!sql)return;
+  const locationId=String(next.locationId||'');
+  const owned=await sql`SELECT 1 FROM doctor_locations WHERE doctor_id=${doctorId} AND location_id=${locationId}::uuid LIMIT 1`;
+  if(!owned.length)throw new Error('Selecciona un punto de salida válido.');
+
+  if(previous?.travelDate&&previous?.departureTime&&previous?.locationId){
+    const old=travelWindow(previous.travelDate,previous.departureTime,Number(previous.durationMinutes||durationMinutes));
+    await sql`DELETE FROM availability_blocks
+      WHERE doctor_id=${doctorId}
+        AND location_id=${String(previous.locationId)}::uuid
+        AND starts_at=${old.startsAt.toISOString()}::timestamptz
+        AND NOT EXISTS (
+          SELECT 1 FROM appointments a
+          WHERE a.doctor_id=${doctorId}
+            AND a.starts_at=availability_blocks.starts_at
+            AND a.status NOT IN ('CANCELLED','PAYMENT_REJECTED')
+        )`;
+  }
+
+  const win=travelWindow(next.travelDate,next.departureTime,durationMinutes);
+  await sql`INSERT INTO availability_blocks(doctor_id,location_id,starts_at,ends_at,slot_minutes,max_patients,published)
+    SELECT ${doctorId},${locationId}::uuid,${win.startsAt.toISOString()}::timestamptz,${win.endsAt.toISOString()}::timestamptz,5,${Math.max(1,Number(next.capacity||1))},true
+    WHERE NOT EXISTS (
+      SELECT 1 FROM availability_blocks
+      WHERE doctor_id=${doctorId}
+        AND location_id=${locationId}::uuid
+        AND starts_at=${win.startsAt.toISOString()}::timestamptz
+        AND ends_at=${win.endsAt.toISOString()}::timestamptz
+    )`;
+  await sql`UPDATE availability_blocks SET max_patients=${Math.max(1,Number(next.capacity||1))},published=true
+    WHERE doctor_id=${doctorId}
+      AND location_id=${locationId}::uuid
+      AND starts_at=${win.startsAt.toISOString()}::timestamptz
+      AND ends_at=${win.endsAt.toISOString()}::timestamptz`;
+}
+
 async function currentProvider(){
   if(!sql) return null;
   const {data:session}=await auth.getSession();
@@ -95,7 +138,7 @@ export async function GET(){
     },
     services:services.map((s:any)=>{
       const travel=travelServiceFields(s.description);
-      return {id:String(s.id),name:s.name,description:travel.details,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active),summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime};
+      return {id:String(s.id),name:s.name,description:travel.details,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active),summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity};
     }),
     locations:locations.map((l:any)=>({id:String(l.id),name:l.name,address:l.address||'',city:l.city||'',state:l.state||'',country:l.country||'',room:l.room||''})),
     availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published),location:{id:String(a.location_id),name:a.location_name||'',address:a.address||'',city:a.city||'',state:a.state||'',country:a.country||'',room:a.room||''}})),
@@ -196,15 +239,19 @@ export async function PATCH(req:Request){
     const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
     let description=String(body.description||'');
     if(travelMode){
-      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||'')};
+      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||''),locationId:String(body.locationId||''),capacity:Math.max(1,Number(body.capacity||1))};
       const issue=validateTravelServiceMeta(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
-      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
+      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime||!meta.locationId)return NextResponse.json({error:'En Viajes completa descripción corta, fecha, hora y punto de salida.'},{status:400});
       description=serializeTravelServiceDescription(meta);
     }
     const rows=await sql`INSERT INTO provider_services(doctor_id,name,description,duration_minutes,price,currency,active)
       VALUES(${provider.doctor_id},${name},${description||null},${Math.max(5,Number(body.durationMinutes||30))},${Math.max(0,Number(body.price||0))},${String(body.currency||'USD')},true)
       RETURNING id`;
+    if(travelMode){
+      try{await syncTravelAvailability(String(provider.doctor_id),null,{...travelServiceFields(description),locationId:String(body.locationId||''),capacity:Math.max(1,Number(body.capacity||1))},Math.max(5,Number(body.durationMinutes||30)));}
+      catch(error:any){await sql`DELETE FROM provider_services WHERE id=${(rows[0] as any)?.id}::uuid AND doctor_id=${provider.doctor_id}`;return NextResponse.json({error:String(error?.message||'No se pudo crear la salida del viaje.')},{status:400});}
+    }
     return NextResponse.json({ok:true,id:String((rows[0] as any)?.id)});
   }
 
@@ -221,12 +268,26 @@ export async function PATCH(req:Request){
         image:Object.prototype.hasOwnProperty.call(body,'travelImage')?String(body.travelImage||''):previous.image,
         travelDate:Object.prototype.hasOwnProperty.call(body,'travelDate')?String(body.travelDate||''):previous.travelDate,
         departureTime:Object.prototype.hasOwnProperty.call(body,'departureTime')?String(body.departureTime||''):previous.departureTime,
-        returnTime:Object.prototype.hasOwnProperty.call(body,'returnTime')?String(body.returnTime||''):previous.returnTime
+        returnTime:Object.prototype.hasOwnProperty.call(body,'returnTime')?String(body.returnTime||''):previous.returnTime,
+        locationId:Object.prototype.hasOwnProperty.call(body,'locationId')?String(body.locationId||''):previous.locationId,
+        capacity:Object.prototype.hasOwnProperty.call(body,'capacity')?Math.max(1,Number(body.capacity||1)):previous.capacity
       };
       const issue=validateTravelServiceMeta(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
-      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
+      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime||!meta.locationId)return NextResponse.json({error:'En Viajes completa descripción corta, fecha, hora y punto de salida.'},{status:400});
       descriptionValue=serializeTravelServiceDescription(meta);
+    }
+    let previousTravel:any=null;
+    let scheduleChanged=false;
+    if(travelMode){
+      const current=await sql`SELECT description,duration_minutes FROM provider_services WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id} LIMIT 1`;
+      previousTravel={...travelServiceFields((current[0] as any)?.description||''),durationMinutes:Number((current[0] as any)?.duration_minutes||30)};
+      const nextTravel=travelServiceFields(String(descriptionValue||''));
+      scheduleChanged=previousTravel.travelDate!==nextTravel.travelDate||previousTravel.departureTime!==nextTravel.departureTime||previousTravel.locationId!==nextTravel.locationId||previousTravel.durationMinutes!==Number(body.durationMinutes||previousTravel.durationMinutes);
+      if(scheduleChanged){
+        const booked=await sql`SELECT count(*)::int AS n FROM appointments WHERE service_id=${body.id}::uuid AND status NOT IN ('CANCELLED','PAYMENT_REJECTED')`;
+        if(Number((booked[0] as any)?.n||0)>0)return NextResponse.json({error:'Este viaje ya tiene reservas. Para proteger a los clientes no puedes cambiar fecha, hora, duración o punto de salida. Puedes editar foto, texto, precio o cupos.'},{status:409});
+      }
     }
     await sql`UPDATE provider_services SET
       name=COALESCE(${body.name||null},name),
@@ -237,6 +298,11 @@ export async function PATCH(req:Request){
       active=COALESCE(${typeof body.active==='boolean'?body.active:null},active),
       updated_at=now()
       WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id}`;
+    if(travelMode&&descriptionValue){
+      const nextTravel=travelServiceFields(String(descriptionValue));
+      try{await syncTravelAvailability(String(provider.doctor_id),scheduleChanged?previousTravel:null,{...nextTravel,capacity:nextTravel.capacity},Number(body.durationMinutes||previousTravel?.durationMinutes||30));}
+      catch(error:any){return NextResponse.json({error:String(error?.message||'No se pudo actualizar la salida del viaje.')},{status:400});}
+    }
     return NextResponse.json({ok:true});
   }
 
