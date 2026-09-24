@@ -37,7 +37,7 @@ export function PermanentDeleteProfileButton({email,name}:{email:string;name:str
       });
       const j=await r.json();
       if(!r.ok){setMsg(j.error||'No se pudo eliminar por completo.');return}
-      setMsg('Perfil eliminado por completo.');
+      setMsg('Perfil eliminado por completo. El correo quedó libre para registrarse nuevamente.');
       router.refresh();
     }catch{
       setMsg('No se pudo conectar con TUCITA. Intenta nuevamente.');
