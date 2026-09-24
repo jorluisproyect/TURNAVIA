@@ -23,13 +23,13 @@ export default async function SuscripcionesMaster({searchParams}:{searchParams:P
    (SELECT e.metadata FROM audit_events e WHERE e.entity_type='COMMERCIAL_CLIENT' AND e.entity_id=c.id::text AND e.action='PAYMENT_SUBMITTED' ORDER BY e.id DESC LIMIT 1) AS latest_payment,
    (SELECT e.metadata FROM audit_events e WHERE e.entity_type='COMMERCIAL_CLIENT' AND e.entity_id=c.id::text AND e.action='PAYMENT_APPROVED' ORDER BY e.id DESC LIMIT 1) AS latest_approval
    FROM commercial_clients c ORDER BY c.created_at DESC`:[];
- const subscriptionRows=(rows as any[]).filter(r=>Boolean(r.latest_payment)||Boolean(r.latest_approval)||['REVISION_BINANCE','ACTIVO','SUSPENDIDO'].includes(String(r.status)));\n const filtered=subscriptionRows.filter(r=>{
+ const subscriptionRows=(rows as any[]).filter(r=>Boolean(r.latest_payment)||Boolean(r.latest_approval)||['REVISION_BINANCE','ACTIVO','SUSPENDIDO'].includes(String(r.status)));
+ const filtered=subscriptionRows.filter(r=>{
    const hay=[r.name,r.email,r.type,r.payment_method,r.payment_reference].filter(Boolean).join(' ').toLowerCase();
    return (!q||hay.includes(q))&&(status==='TODOS'||String(r.status)===status);
  });
  const real=subscriptionRows.filter(r=>!String(r.email||'').toLowerCase().includes('demo'));
  const active=real.filter((r:any)=>r.status==='ACTIVO').length;
- const trial=real.filter((r:any)=>r.status==='TRIAL').length;
  const review=real.filter((r:any)=>r.status==='REVISION_BINANCE').length;
  const pending=real.filter((r:any)=>r.status==='PAGO_PENDIENTE').length;
  const mrr=real.filter((r:any)=>r.status==='ACTIVO').reduce((n:number,r:any)=>n+(String(r.type).startsWith('Negocio')?49:(Number(r.latest_approval?.billingMonths)===12?125/12:15)),0);
