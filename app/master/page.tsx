@@ -27,8 +27,25 @@ export default async function Master(){
     return <TeamMasterDashboard member={member}/>;
   }
   await refreshAllCommercialStatuses();
-  const professionalRows=sql?await sql`SELECT ap.email,ap.full_name
+  const professionalRows=sql?await sql`SELECT
+      ap.email,
+      ap.full_name,
+      ap.phone,
+      d.public_slug,
+      d.provider_category,
+      d.provider_activity,
+      d.provider_type,
+      COALESCE(cc.status,'SIN_SUSCRIPCION') AS commercial_status
     FROM app_user_profiles ap
+    LEFT JOIN users u ON lower(u.email)=lower(ap.email)
+    LEFT JOIN doctors d ON d.user_id=u.id
+    LEFT JOIN LATERAL (
+      SELECT status
+      FROM commercial_clients c
+      WHERE lower(c.email)=lower(ap.email)
+      ORDER BY c.created_at DESC
+      LIMIT 1
+    ) cc ON true
     WHERE ap.role::text='DOCTOR'
       AND COALESCE((
         SELECT ae.action
@@ -38,8 +55,10 @@ export default async function Master(){
           AND lower(ae.metadata->>'email')=lower(ap.email)
         ORDER BY ae.created_at DESC,ae.id DESC
         LIMIT 1
-      ),'')<>'PROFILE_DELETED'`:[];
-  const totalProfessionals=(professionalRows as any[]).filter(r=>!isDemo(String(r.email||''))).length;
+      ),'')<>'PROFILE_DELETED'
+    ORDER BY ap.full_name,ap.email`:[];
+  const registeredProfessionals=(professionalRows as any[]).filter(r=>!isDemo(String(r.email||'')));
+  const totalProfessionals=registeredProfessionals.length;
 
   const rows=sql ? await sql`SELECT c.*,
     (SELECT e.metadata FROM audit_events e WHERE e.action='PAYMENT_SUBMITTED' AND e.entity_type='COMMERCIAL_CLIENT' AND e.entity_id=c.id::text ORDER BY e.id DESC LIMIT 1) AS pending_payment,
@@ -116,6 +135,26 @@ export default async function Master(){
             <td><MasterActions id={c.id} status={c.status}/></td>
           </tr>
         })}</tbody></table></div>}
+      </section>
+
+      <section className="panel" style={{marginTop:18}}>
+        <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
+          <div><h2>Profesionales registrados</h2><div className="muted" style={{fontSize:13}}>Todos los profesionales creados aparecen aquí, aunque estén en prueba, pendientes de pago o todavía no estén activos.</div></div>
+          <Link href="/master/profesionales" className="btn btn-secondary">Ver todos</Link>
+        </div>
+        {registeredProfessionals.length===0
+          ?<div className="notice" style={{marginTop:16}}>Todavía no hay profesionales registrados.</div>
+          :<div style={{overflowX:'auto',marginTop:12}}>
+            <table className="table">
+              <thead><tr><th>Profesional</th><th>Rubro</th><th>Estado</th><th>Acción</th></tr></thead>
+              <tbody>{registeredProfessionals.slice(0,8).map((p:any)=><tr key={p.email}>
+                <td><strong>{p.full_name||'Sin nombre'}</strong><div className="muted" style={{fontSize:12}}>{p.email}{p.phone?' · '+p.phone:''}</div></td>
+                <td>{p.provider_category||'Pendiente'}<div className="muted" style={{fontSize:12}}>{p.provider_activity||p.provider_type||'Perfil en creación'}</div></td>
+                <td><span className="pill">{labels[p.commercial_status as ClientStatus]||p.commercial_status}</span></td>
+                <td>{p.public_slug?<a href={'/reservar/'+p.public_slug} target="_blank" rel="noreferrer" className="btn btn-secondary">Ver página</a>:<Link href="/master/profesionales" className="btn btn-secondary">Revisar</Link>}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
       </section>
 
       <section className="panel" style={{marginTop:18}}>
