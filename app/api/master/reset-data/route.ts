@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { isOwnerMasterSession, MASTER_EMAIL } from '@/lib/access';
-import { sql } from '@/lib/db';
+import { databaseUrl, sql } from '@/lib/db';
+import { Pool } from '@neondatabase/serverless';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
 
 export async function POST(req:Request){
-  if(!sql)return NextResponse.json({error:'Base de datos no disponible.'},{status:503});
+  if(!sql||!databaseUrl)return NextResponse.json({error:'Base de datos no disponible.'},{status:503});
   if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo el Master propietario puede reiniciar TUCITA.'},{status:403});
 
   const body=await req.json().catch(()=>({}));
@@ -64,8 +65,13 @@ BEGIN
 END
 $reset$;`;
 
+  const pool=new Pool({connectionString:databaseUrl});
+  let client:any=null;
   try{
-    await sql.query(resetSql);
+    client=await pool.connect();
+    await client.query('BEGIN');
+    await client.query(resetSql);
+    await client.query('COMMIT');
 
     const counts=await sql`
       SELECT
@@ -96,10 +102,14 @@ $reset$;`;
       }
     });
   }catch(error:any){
+    if(client){try{await client.query('ROLLBACK')}catch{}}
     console.error('TUCITA master reset error',error);
     return NextResponse.json({
       error:'No se pudo completar el blanqueo. La operación se revirtió para evitar dejar datos a medias.',
       detail:process.env.NODE_ENV==='development'?String(error?.message||error):undefined
     },{status:500});
+  }finally{
+    if(client){try{client.release()}catch{}}
+    try{await pool.end()}catch{}
   }
 }
