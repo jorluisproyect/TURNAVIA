@@ -6,8 +6,8 @@ import { registerUser } from './actions';
 import { Brand } from '@/components/Brand';
 import { ArrowRight, Building2, Eye, EyeOff, Stethoscope, UserRound } from 'lucide-react';
 import { PASSWORD_HELP } from '@/lib/password-policy';
-import { PROVIDER_CATEGORIES, COUNTRY_PHONE_CODES, COUNTRY_SUGGESTIONS } from '@/lib/provider-catalog';
-import { countryDialCode, digitsOnly, phoneMaxLength } from '@/lib/phone';
+import { PROVIDER_CATEGORIES, COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
+import { countryDialCode, countryPhoneInfo, digitsOnly, phoneAllowedLengths, phoneLengthHelp, phoneMaxLength, phoneMinLength } from '@/lib/phone';
 
 const categories=PROVIDER_CATEGORIES;
 type Availability={state:'checking'|'available'|'taken'|'error';message:string}|null;
@@ -30,7 +30,11 @@ export default function RegistroClient(){
   const [state,action,pending]=useActionState(registerUser,null);
   const [showPassword,setShowPassword]=useState(false);
   const phoneCode=countryDialCode(phoneCountry);
-  const phoneMax=phoneMaxLength(phoneCode);
+  const phoneInfo=countryPhoneInfo(phoneCountry);
+  const phoneAllowed=phoneAllowedLengths(phoneCountry);
+  const phoneMin=phoneMinLength(phoneCountry);
+  const phoneMax=phoneMaxLength(phoneCountry);
+  const phonePattern=phoneAllowed.length===1?`[0-9]{${phoneAllowed[0]}}`:`(?:${phoneAllowed.map(n=>`[0-9]{${n}}`).join('|')})`;
 
   async function checkEmail(){
     const requested=email.trim().toLowerCase();
@@ -101,25 +105,46 @@ export default function RegistroClient(){
           <div className="field" style={{flex:1,minWidth:190}}><label>Actividad</label><select name="activity" value={activity} onChange={e=>setActivity(e.target.value)}>{categories[category].map(a=><option key={a}>{a}</option>)}</select></div>
         </div>}
         {category==='Servicios 18+'&&provider&&<div className="notice">Categoría reservada a mayores de edad y actividades permitidas por la legislación aplicable.</div>}
-        {provider&&<div className="field"><label>País donde prestas el servicio</label><input name="country" list="tucita-countries" value={country} onChange={e=>{const next=e.target.value;setCountry(next);if(COUNTRY_PHONE_CODES.some(x=>x.country===next)) {setPhoneCountry(next);setPhoneLocal('')}}} required placeholder="Ej. Venezuela"/><datalist id="tucita-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div>}
+        {provider&&<div className="field">
+          <label>País donde presta el servicio</label>
+          <select name="country" value={country} onChange={e=>{const next=e.target.value;setCountry(next);setPhoneCountry(next);setPhoneLocal('')}} required>
+            {COUNTRY_PHONE_CODES.map(x=><option key={x.country} value={x.country}>{x.flag} {x.country}</option>)}
+          </select>
+          <small className="muted">Selecciona el país donde atenderás a tus clientes.</small>
+        </div>}
         <div className="field"><label>{provider?'Nombre profesional o del establecimiento':'Nombre completo'}</label><input name="name" required maxLength={120} placeholder={provider?'Ej. Ana Pérez / Barbería Central':'Nombre y apellido'}/></div>
         <div className="field">
           <label>Correo de acceso</label>
           <input name="email" type="email" required maxLength={254} autoComplete="email" value={email} readOnly={team} onChange={e=>{++checkSeq.current;setEmail(e.target.value);setAvailability(null)}} onBlur={checkEmail} placeholder="correo@ejemplo.com"/>
+          <small className="muted"><strong>Este correo será tu usuario para ingresar a TUCITA.</strong> Escríbelo correctamente porque lo usarás cada vez que inicies sesión.</small>
           {availability&&<div className={'notice '+(availability.state==='taken'?'danger':'')} role="status" aria-live="polite" style={{marginTop:8,fontSize:13}}>{availability.message}</div>}
         </div>
         <div className="field">
           <label>Teléfono / WhatsApp</label>
           <div className="register-phone-row">
             <select name="phoneCountry" aria-label="País del teléfono" value={phoneCountry} onChange={e=>{setPhoneCountry(e.target.value);setPhoneLocal('')}}>
-              {COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.country}>{x.country} ({x.code})</option>)}
+              {COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.country}>{x.flag} {x.country} ({x.code})</option>)}
             </select>
             <div className="register-phone-number">
               <span aria-label="Código internacional">{phoneCode}</span>
-              <input name="phoneLocal" type="tel" inputMode="numeric" pattern="[0-9]*" autoComplete="tel-national" minLength={phoneCode==='+58'?10:6} maxLength={phoneMax} value={phoneLocal} onChange={e=>setPhoneLocal(digitsOnly(e.target.value,phoneMax))} placeholder={phoneCode==='+58'?'04121234567':'Número nacional'} required/>
+              <input
+                name="phoneLocal"
+                type="tel"
+                inputMode="numeric"
+                pattern={phonePattern}
+                autoComplete="tel-national"
+                minLength={phoneMin}
+                maxLength={phoneMax}
+                value={phoneLocal}
+                onChange={e=>setPhoneLocal(digitsOnly(e.target.value,phoneMax))}
+                placeholder={phoneInfo.placeholder}
+                required
+              />
             </div>
           </div>
-          <small className="muted">{phoneCode==='+58'?'Solo números · máximo 11 dígitos (incluido el 0 inicial). El +58 se agrega automáticamente.':'Solo números · máximo '+phoneMax+' dígitos. El código se agrega automáticamente.'}</small>
+          <small className="muted">
+            {phoneInfo.flag} {phoneInfo.country}: {phoneLengthHelp(phoneCountry)} · código {phoneCode} automático · llevas {phoneLocal.length} dígito{phoneLocal.length===1?'':'s'}.
+          </small>
         </div>
         <div className="field"><label>Contraseña</label><div style={{position:'relative'}}>
           <input name="password" type={showPassword?'text':'password'} minLength={8} required autoComplete="new-password" placeholder="Crea una contraseña segura" style={{paddingRight:46}}/>
