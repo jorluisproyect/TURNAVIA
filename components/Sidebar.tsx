@@ -44,6 +44,7 @@ const config = {
     ["/master/usuarios", "Usuarios finales", UserRound],
     ["/master/clientes", "Cuentas comerciales", Building2],
     ["/master/suscripciones", "Suscripciones", BarChart3],
+    ["/master/finanzas", "Finanzas", WalletCards],
     ["/master/equipo", "Equipo de trabajo", Users],
     ["/master/eliminados", "Perfiles eliminados", RotateCcw],
     ["/master/configuracion", "Configuración", Settings],
@@ -122,6 +123,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
     role==='masterTeam'?[]:
     role==='master'?[
       ['/master/clientes','Cuentas comerciales',Building2],
+      ['/master/finanzas','Finanzas',WalletCards],
       ['/master/equipo','Equipo de trabajo',Users],
       ['/master/eliminados','Perfiles eliminados',RotateCcw],
       ['/master/configuracion','Configuración',Settings],

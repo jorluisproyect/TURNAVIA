@@ -79,7 +79,6 @@ export default async function Master(){
   const professionals=active.filter(c=>c.type.startsWith('Profesional')).length;
   const businesses=active.filter(c=>c.type.startsWith('Negocio')).length;
   const trials=real.filter(c=>c.status==='TRIAL').length;
-  const mrr=active.reduce((n,c)=>n+(c.type.startsWith('Negocio')?49:(Number(c.latestApproval?.billingMonths)===12?125/12:15)),0);
   const reviews=real.filter(c=>c.status==='REVISION_BINANCE');
   const now=Date.now();
   const expiring=real.filter(c=>c.status==='TRIAL'&&c.trialEndsAt&&new Date(c.trialEndsAt).getTime()>=now&&new Date(c.trialEndsAt).getTime()<=now+86400000);
@@ -204,7 +203,7 @@ export default async function Master(){
     <main className="main">
       <div className="topbar">
         <div><div className="muted" style={{fontSize:13}}>TUCITA · Administración comercial</div><h1>Panel Master</h1></div>
-        <div className="row" style={{gap:8,flexWrap:'wrap'}}><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Nueva prueba</Link><Link href="/master/suscripciones?status=REVISION_BINANCE" className="btn btn-secondary"><DollarSign size={16}/> Pagos</Link><Link href="/master/usuarios" className="btn btn-secondary"><UserRound size={16}/> Usuarios</Link></div>
+        <div className="row" style={{gap:8,flexWrap:'wrap'}}><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Nueva prueba</Link><Link href="/master/suscripciones?status=REVISION_BINANCE" className="btn btn-secondary"><DollarSign size={16}/> Pagos</Link><Link href="/master/finanzas" className="btn btn-secondary">Finanzas</Link><Link href="/master/usuarios" className="btn btn-secondary"><UserRound size={16}/> Usuarios</Link></div>
       </div>
 
       {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TUCITA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
@@ -293,29 +292,8 @@ export default async function Master(){
         <Link href="/master/profesionales" className="stat" style={{textDecoration:'none',color:'inherit'}}><HeartPulse size={18}/><small style={{display:'block',marginTop:8}}>Profesionales registrados</small><div className="n">{totalProfessionals}</div><small>{professionals} activos</small></Link>
         <div className="stat"><Building2 size={18}/><small style={{display:'block',marginTop:8}}>Negocios activos</small><div className="n">{businesses}</div></div>
         <div className="stat"><Clock3 size={18}/><small style={{display:'block',marginTop:8}}>Pruebas reales</small><div className="n">{trials}</div></div>
-        <div className="stat"><DollarSign size={18}/><small style={{display:'block',marginTop:8}}>MRR equivalente</small><div className="n">${mrr.toFixed(2)}</div><small>No incluye demos</small></div>
+        <Link href="/master/usuarios" className="stat" style={{textDecoration:'none',color:'inherit'}}><UserRound size={18}/><small style={{display:'block',marginTop:8}}>Usuarios finales</small><div className="n">{finalUsers}</div><small>Personas registradas</small></Link>
       </div>
-
-      <section className="panel">
-        <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
-          <div><h2>Pagos por revisar</h2><div className="muted" style={{fontSize:13}}>Bandeja prioritaria: verifica referencia y comprobante antes de activar.</div></div>
-          <Link href="/master/suscripciones?status=REVISION_BINANCE" className="btn btn-secondary">Ver suscripciones</Link>
-        </div>
-        {reviews.length===0?<div className="notice" style={{marginTop:16}}><CheckCircle2 size={17}/> No tienes pagos pendientes de revisión.</div>:
-        <div style={{overflowX:'auto',marginTop:12}}><table className="table"><thead><tr><th>Cliente</th><th>Plan / monto</th><th>Método</th><th>Comprobante</th><th>Acción</th></tr></thead><tbody>{reviews.map(c=>{
-          const renewal=Boolean(c.paymentReviewedAt);
-          const audited=Number(c.pendingPayment?.amount||0);
-          const amount=audited>0?audited:c.type.startsWith('Negocio')?(renewal?49:149):(renewal?15:40);
-          const cycle=Number(c.pendingPayment?.billingMonths||1);
-          return <tr key={c.id}>
-            <td><Link href={'/master/clientes/'+c.id}><strong>{c.name}</strong></Link><div className="muted" style={{fontSize:12}}>{c.email} · {c.phone}</div></td>
-            <td>{c.type}<div><strong>USD {amount}</strong> · {cycle===12?'1 año':cycle===3?'3 meses':'1 mes'}</div></td>
-            <td>{c.paymentMethod||'—'}{c.paymentReference&&<div><strong>Ref: {c.paymentReference}</strong></div>}{c.paymentSubmittedAt&&<div className="muted" style={{fontSize:12}}>{new Date(c.paymentSubmittedAt).toLocaleString('es-VE')}</div>}</td>
-            <td>{c.hasProof?<a className="btn btn-secondary" href={`/api/payments/proof?id=${c.id}`} target="_blank" rel="noreferrer"><Eye size={15}/> Ver comprobante</a>:<span className="muted">Sin archivo</span>}</td>
-            <td><MasterActions id={c.id} status={c.status}/></td>
-          </tr>
-        })}</tbody></table></div>}
-      </section>
 
       <section className="panel" style={{marginTop:18}}>
         <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
