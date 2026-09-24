@@ -43,13 +43,15 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
         cc.status,
         CASE WHEN lower(COALESCE(ap.email,'')) LIKE '%demo%' THEN 'DEMO' ELSE 'SIN_SUSCRIPCION' END
       ) AS commercial_status,
-      cc.id AS commercial_client_id
+      cc.id AS commercial_client_id,
+      cc.trial_ends_at,
+      cc.created_at AS commercial_created_at
     FROM app_user_profiles ap
     LEFT JOIN users u ON lower(u.email)=lower(ap.email)
     LEFT JOIN doctors d ON d.user_id=u.id
     LEFT JOIN provider_services ps ON ps.doctor_id=d.id
     LEFT JOIN LATERAL (
-      SELECT id,status
+      SELECT id,status,trial_ends_at,created_at
       FROM commercial_clients c
       WHERE lower(c.email)=lower(ap.email)
       ORDER BY c.created_at DESC
@@ -69,7 +71,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       ap.auth_user_id,ap.full_name,ap.email,ap.phone,
       d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.accepts_online_booking,
       u.full_name,u.email,u.phone,u.active,
-      cc.status,cc.id
+      cc.status,cc.id,cc.trial_ends_at,cc.created_at
     ORDER BY ap.full_name,ap.email` : [];
 
   const normalized=(rows as any[]).map(r=>({
@@ -77,7 +79,9 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
     display_name:r.full_name||r.registered_name||'Sin nombre',
     display_email:r.email||r.registered_email||'—',
     display_phone:r.phone||r.registered_phone||'—',
-    profile_complete:Boolean(r.public_slug)
+    profile_complete:Boolean(r.public_slug),
+    trial_end:r.trial_ends_at?new Date(r.trial_ends_at):null,
+    trial_days_remaining:r.trial_ends_at?Math.max(0,Math.ceil((new Date(r.trial_ends_at).getTime()-Date.now())/86400000)):0
   }));
 
   const filtered=normalized.filter(r=>{
@@ -132,7 +136,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
         {incompleteCount>0&&<span className="pill">{incompleteCount} pendiente{incompleteCount===1?'':'s'} de completar</span>}
       </div>
       <div className="muted" style={{fontSize:12,marginTop:8}}>
-        Aquí aparecen todos los usuarios registrados como Profesional, estén activos, en prueba, pendientes de pago o con el perfil todavía incompleto.
+        Todo profesional nuevo aparece aquí desde su registro con 15 días de prueba. Solo pasa a Suscripciones cuando envía o tiene un pago.
       </div>
     </section>
 
@@ -160,8 +164,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                 <td>{r.provider_type||'Profesional'}</td>
                 <td>{r.services||0}</td>
                 <td>
-                  <span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>
-                  {r.commercial_client_id&&<div style={{marginTop:6}}>
+                  {String(r.commercial_status)==='TRIAL'&&r.trial_end?<>\n                    <span className="pill">Prueba gratis · {r.trial_days_remaining} día{r.trial_days_remaining===1?'':'s'} restante{r.trial_days_remaining===1?'':'s'}</span>\n                    <div className="muted" style={{fontSize:11,marginTop:5}}>15 días de prueba · hasta {r.trial_end.toLocaleDateString('es-VE')}</div>\n                  </>:<span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>}\n                  {r.commercial_client_id&&<div style={{marginTop:6}}>
                     <Link href={'/master/clientes/'+r.commercial_client_id} className="muted" style={{fontSize:12}}>Abrir ficha comercial</Link>
                   </div>}
                 </td>
