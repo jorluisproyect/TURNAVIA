@@ -6,6 +6,7 @@ import { hasDatabase, sql, databaseEnvName } from '@/lib/db';
 import { CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { neonAuthConfigured } from '@/lib/auth/config';
 import EmailTestButton from './EmailTestButton';
+import ResetTucitaDataButton from './ResetTucitaDataButton';
 
 export const dynamic='force-dynamic';
 
@@ -54,6 +55,12 @@ export default async function ConfiguracionMaster(){
   <section className="panel" style={{marginTop:18}}>
     <h2>Modelo comercial</h2>
     <p className="muted">Profesional independiente: USD 25 activación + USD 15 primer mes. Negocio hasta 5 profesionales: USD 100 activación + USD 49 primer mes. Prueba gratuita: 15 días. La renovación mensual se controla desde Suscripciones.</p>
+  </section>
+
+  <section className="panel" style={{marginTop:18}}>
+    <h2>Zona de reinicio</h2>
+    <p className="muted">Herramienta exclusiva del Master para volver a comenzar las pruebas con la base operativa en cero.</p>
+    <ResetTucitaDataButton/>
   </section>
  </main></div>;
 }
