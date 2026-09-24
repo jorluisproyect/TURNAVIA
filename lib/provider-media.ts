@@ -57,6 +57,7 @@ export function categoryUsesWorkReferences(category?:string,activity?:string){
     'hogar','electric','plomer','aire acondicionado','limpieza',
     'evento','fotograf','catering','vestido',
     'arquitect','diseñ','espacios','estudio de grabación',
-    'grooming','mascota'
+    'grooming','mascota',
+    'otro','tatuaj','piercing','micropigment','viaje','turismo','tour'
   ].some(x=>text.includes(x));
 }
