@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cpanel:build": "next build",
+    "cpanel:start": "node server.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
@@ -25,5 +27,8 @@
     "@types/react-dom": "^19.0.2",
     "nodemailer": "^6.9.16"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20 <21"
+  }
 }
