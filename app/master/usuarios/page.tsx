@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { sql } from '@/lib/db';
 import Link from 'next/link';
 import { CalendarDays, Search, UserRound } from 'lucide-react';
+import RepairFinalUserButton from './RepairFinalUserButton';
 
 export const dynamic='force-dynamic';
 
@@ -23,6 +24,7 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
       p.email AS patient_email,
       p.phone AS patient_phone,
       p.created_at,
+      u.id AS internal_user_id,
       COALESCE(u.active,true) AS active,
       COALESCE(stats.bookings,0)::int AS bookings,
       stats.last_booking
@@ -110,7 +112,7 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
       {filtered.length===0?<div className="notice">Todavía no hay usuarios finales registrados con esos filtros.</div>:
       <div style={{overflowX:'auto'}}>
         <table className="table">
-          <thead><tr><th>Usuario</th><th>Estado</th><th>Reservas</th><th>Última reserva</th><th>Cuenta</th></tr></thead>
+          <thead><tr><th>Usuario</th><th>Estado</th><th>Reservas</th><th>Última reserva</th><th>Cuenta</th><th>Acción</th></tr></thead>
           <tbody>{filtered.map((r:any)=><tr key={String(r.auth_user_id||r.email)}>
             <td>
               <div className="row" style={{gap:9}}>
@@ -122,6 +124,9 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
             <td><strong>{Number(r.bookings||0)}</strong></td>
             <td>{r.last_booking?<><CalendarDays size={14} style={{verticalAlign:'middle',marginRight:5}}/>{new Date(r.last_booking).toLocaleString('es-VE')}</>:'Sin reservas'}</td>
             <td><span className="muted" style={{fontSize:12}}>El usuario puede eliminar su perfil. El Master controla restauración o borrado definitivo desde Perfiles eliminados.</span></td>
+            <td>{(!r.patient_id||!r.internal_user_id)
+              ?<RepairFinalUserButton authUserId={String(r.auth_user_id)} email={String(r.profile_email||r.email)} name={String(r.profile_name||r.name)}/>
+              :<span className="status ok">Sincronizado</span>}</td>
           </tr>)}</tbody>
         </table>
       </div>}
