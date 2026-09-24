@@ -10,6 +10,8 @@ export const PROVIDER_CATEGORIES:Record<string,string[]>={
   'Deporte':['Entrenador personal','Cancha','Academia deportiva','Otro'],
   'Espacios y alquiler':['Coworking','Sala de reuniones','Consultorio por hora','Estudio de grabación','Otro'],
   'Eventos':['Fotografía','Wedding planner','Salón de fiesta','Catering','Alquiler de vestidos','Otro'],
+  'Viajes':['Agencia de viajes','Asesor de viajes','Guía turístico','Tours y excursiones','Planificación de viajes','Otro'],
+  'Tatuador':['Tatuajes','Piercing','Micropigmentación','Diseño personalizado','Otro'],
   'Servicios 18+':['Servicio privado con reserva','Otro'],
   'Otro':['Otro servicio con citas']
 };
