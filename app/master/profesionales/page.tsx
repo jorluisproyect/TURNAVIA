@@ -1,10 +1,11 @@
-import { isOwnerMasterSession } from '@/lib/access';
+import { isOwnerMasterSession, MASTER_EMAIL } from '@/lib/access';
 import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { sql } from '@/lib/db';
 import Link from 'next/link';
 import { Search, AlertTriangle } from 'lucide-react';
 import ProfessionalActions from './ProfessionalActions';
+import RecoverProfessionalButton from './RecoverProfessionalButton';
 
 export const dynamic='force-dynamic';
 const labels:any={
@@ -74,6 +75,28 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       cc.status,cc.id,cc.trial_ends_at,cc.created_at
     ORDER BY ap.full_name,ap.email` : [];
 
+  let recoverable:any[]=[];
+  if(sql){
+    try{
+      recoverable=await sql`
+        SELECT
+          au.id::text AS auth_user_id,
+          au.email,
+          COALESCE(NULLIF(to_jsonb(au)->>'name',''),split_part(au.email,'@',1)) AS full_name
+        FROM neon_auth."user" au
+        WHERE lower(au.email)<>lower(${MASTER_EMAIL})
+          AND NOT EXISTS (
+            SELECT 1
+            FROM app_user_profiles ap
+            WHERE ap.auth_user_id=au.id::text
+               OR lower(ap.email)=lower(au.email)
+          )
+        ORDER BY au.email`;
+    }catch(error){
+      console.error('TUCITA recoverable professionals lookup error',error);
+    }
+  }
+
   const normalized=(rows as any[]).map(r=>({
     ...r,
     display_name:r.full_name||r.registered_name||'Sin nombre',
@@ -140,6 +163,32 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       </div>
     </section>
 
+    {recoverable.length>0&&<section className="panel" style={{marginTop:18}}>
+      <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
+        <div>
+          <h2>Profesionales recuperables</h2>
+          <div className="muted" style={{fontSize:13}}>
+            Estas cuentas todavía existen en el acceso de TUCITA, pero perdieron su perfil profesional durante el reinicio anterior.
+            Restaura únicamente los correos que reconozcas como profesionales reales.
+          </div>
+        </div>
+        <span className="pill">{recoverable.length} cuenta{recoverable.length===1?'':'s'} recuperable{recoverable.length===1?'':'s'}</span>
+      </div>
+      <div style={{overflowX:'auto',marginTop:12}}>
+        <table className="table">
+          <thead><tr><th>Nombre</th><th>Correo / usuario</th><th>Recuperación</th></tr></thead>
+          <tbody>{recoverable.map((r:any)=><tr key={r.auth_user_id}>
+            <td><strong>{r.full_name||'Profesional'}</strong></td>
+            <td>{r.email}<div className="muted" style={{fontSize:11}}>Conserva su contraseña actual.</div></td>
+            <td><RecoverProfessionalButton authUserId={String(r.auth_user_id)} email={String(r.email)} name={String(r.full_name||'Profesional')}/></td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <div className="notice" style={{marginTop:12}}>
+        Al restaurar, TUCITA le asigna 15 días completos de prueba desde hoy. El profesional deberá volver a completar teléfono, rubro, servicios, fotos, ubicación y horarios que se perdieron con el reinicio anterior.
+      </div>
+    </section>}
+
     <section className="panel" style={{marginTop:18}}>
       {filtered.length===0
         ?<div className="notice">Todavía no hay profesionales registrados con esos filtros.</div>
@@ -164,7 +213,11 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                 <td>{r.provider_type||'Profesional'}</td>
                 <td>{r.services||0}</td>
                 <td>
-                  {String(r.commercial_status)==='TRIAL'&&r.trial_end?<>\n                    <span className="pill">Prueba gratis · {r.trial_days_remaining} día{r.trial_days_remaining===1?'':'s'} restante{r.trial_days_remaining===1?'':'s'}</span>\n                    <div className="muted" style={{fontSize:11,marginTop:5}}>15 días de prueba · hasta {r.trial_end.toLocaleDateString('es-VE')}</div>\n                  </>:<span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>}\n                  {r.commercial_client_id&&<div style={{marginTop:6}}>
+                  {String(r.commercial_status)==='TRIAL'&&r.trial_end?<>
+                    <span className="pill">Prueba gratis · {r.trial_days_remaining} día{r.trial_days_remaining===1?'':'s'} restante{r.trial_days_remaining===1?'':'s'}</span>
+                    <div className="muted" style={{fontSize:11,marginTop:5}}>15 días de prueba · hasta {r.trial_end.toLocaleDateString('es-VE')}</div>
+                  </>:<span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>}
+                  {r.commercial_client_id&&<div style={{marginTop:6}}>
                     <Link href={'/master/clientes/'+r.commercial_client_id} className="muted" style={{fontSize:12}}>Abrir ficha comercial</Link>
                   </div>}
                 </td>
