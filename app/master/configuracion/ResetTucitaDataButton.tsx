@@ -39,7 +39,8 @@ export default function ResetTucitaDataButton(){
         return;
       }
       const c=j.counts||{};
-      setMsg(`Listo. Clientes: ${c.clients??0} · Profesionales: ${c.professionals??0} · Clientes finales: ${c.patients??0} · Citas: ${c.appointments??0}. Cuenta Master conservada.`);
+      const base=`Listo. Clientes: ${c.clients??0} · Profesionales: ${c.professionals??0} · Clientes finales: ${c.patients??0} · Citas: ${c.appointments??0}. Cuenta Master conservada.`;
+      setMsg(j.warning?base+' '+j.warning:base);
       router.refresh();
     }catch{
       setMsg('No se pudo conectar con TUCITA. Intenta nuevamente.');
