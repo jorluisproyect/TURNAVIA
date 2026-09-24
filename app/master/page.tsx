@@ -6,12 +6,11 @@ import { sql, hasDatabase } from '@/lib/db';
 import { neonAuthConfigured } from '@/lib/auth/config';
 import MasterActions from './MasterActions';
 import { refreshAllCommercialStatuses } from '@/lib/subscription';
-import { currentSession, isOwnerMasterSession, MASTER_EMAIL } from '@/lib/access';
+import { currentSession, isOwnerMasterSession } from '@/lib/access';
 import { teamMemberForUser } from '@/lib/master-team';
 import TeamMasterDashboard from './TeamMasterDashboard';
 import { redirect } from 'next/navigation';
 import ResetTucitaDataButton from './configuracion/ResetTucitaDataButton';
-import { ensureRealStartReset } from '@/lib/master-reset';
 
 export const dynamic='force-dynamic';
 
@@ -27,14 +26,21 @@ export default async function Master(){
     if(!member)redirect('/panel');
     return <TeamMasterDashboard member={member}/>;
   }
-  let automaticResetError='';
-  try{
-    await ensureRealStartReset(MASTER_EMAIL);
-  }catch(error:any){
-    automaticResetError=String(error?.message||error||'No se pudo ejecutar el reinicio automático.');
-  }
-
   await refreshAllCommercialStatuses();
+  const professionalRows=sql?await sql`SELECT ap.email,ap.full_name
+    FROM app_user_profiles ap
+    WHERE ap.role::text='DOCTOR'
+      AND COALESCE((
+        SELECT ae.action
+        FROM audit_events ae
+        WHERE ae.entity_type='ACCOUNT_PROFILE'
+          AND ae.action IN ('PROFILE_DELETED','PROFILE_RESTORED')
+          AND lower(ae.metadata->>'email')=lower(ap.email)
+        ORDER BY ae.created_at DESC,ae.id DESC
+        LIMIT 1
+      ),'')<>'PROFILE_DELETED'`:[];
+  const totalProfessionals=(professionalRows as any[]).filter(r=>!isDemo(String(r.email||''))).length;
+
   const rows=sql ? await sql`SELECT c.*,
     (SELECT e.metadata FROM audit_events e WHERE e.action='PAYMENT_SUBMITTED' AND e.entity_type='COMMERCIAL_CLIENT' AND e.entity_id=c.id::text ORDER BY e.id DESC LIMIT 1) AS pending_payment,
     (SELECT e.metadata FROM audit_events e WHERE e.action='PAYMENT_APPROVED' AND e.entity_type='COMMERCIAL_CLIENT' AND e.entity_id=c.id::text ORDER BY e.id DESC LIMIT 1) AS latest_approval
@@ -71,7 +77,6 @@ export default async function Master(){
       </div>
 
       {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TUCITA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
-      {automaticResetError&&<div className="notice danger" style={{marginBottom:18}}><strong>No se pudo completar el reinicio automático inicial.</strong><br/><span className="muted">{automaticResetError}</span></div>}
 
       <section id="alertas" className="panel" style={{marginBottom:18}}>
         <div className="row space" style={{gap:14,flexWrap:'wrap'}}>
@@ -86,8 +91,8 @@ export default async function Master(){
       </section>
 
       <div className="stat-grid">
+        <Link href="/master/profesionales" className="stat" style={{textDecoration:'none',color:'inherit'}}><HeartPulse size={18}/><small style={{display:'block',marginTop:8}}>Profesionales registrados</small><div className="n">{totalProfessionals}</div><small>{professionals} activos</small></Link>
         <div className="stat"><Building2 size={18}/><small style={{display:'block',marginTop:8}}>Negocios activos</small><div className="n">{businesses}</div></div>
-        <div className="stat"><HeartPulse size={18}/><small style={{display:'block',marginTop:8}}>Profesionales activos</small><div className="n">{professionals}</div></div>
         <div className="stat"><Clock3 size={18}/><small style={{display:'block',marginTop:8}}>Pruebas reales</small><div className="n">{trials}</div></div>
         <div className="stat"><DollarSign size={18}/><small style={{display:'block',marginTop:8}}>MRR equivalente</small><div className="n">${mrr.toFixed(2)}</div><small>No incluye demos</small></div>
       </div>
