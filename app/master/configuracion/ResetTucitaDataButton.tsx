@@ -12,7 +12,7 @@ export default function ResetTucitaDataButton(){
     if(busy)return;
 
     if(!window.confirm(
-      '¿ELIMINAR TODO y dejar TUCITA en 0?\n\nSe eliminarán clientes, profesionales, equipo, negocios, citas, pagos, suscripciones, servicios, horarios, notificaciones, invitaciones e historial.\n\nSolo se conservará tu cuenta Master y los métodos generales de cobro.'
+      '¿ELIMINAR TODO y dejar TUCITA en 0?\n\nSe eliminarán clientes, profesionales, equipo, negocios, citas, pagos, suscripciones, servicios, horarios, notificaciones, invitaciones e historial.\n\nSolo se conservará tu cuenta Master. Los métodos de cobro también se reiniciarán.'
     ))return;
 
     if(!window.confirm(
@@ -57,7 +57,7 @@ export default function ResetTucitaDataButton(){
       <strong><Trash2 size={17} style={{verticalAlign:'middle',marginRight:7}}/>Eliminar TODO</strong>
       <p>Restablece TUCITA a cero para comenzar nuevamente con usuarios reales. Deja profesionales, equipo, clientes, citas, pagos, suscripciones y métricas en 0.</p>
       <div className="notice danger" style={{marginTop:10}}>
-        <ShieldAlert size={17}/><span><strong>Acción destructiva y exclusiva del Master.</strong><br/>Solo se conserva tu cuenta Master y los métodos generales de cobro.</span>
+        <ShieldAlert size={17}/><span><strong>Acción destructiva y exclusiva del Master.</strong><br/>Solo se conserva tu cuenta Master. Los métodos de cobro deberán configurarse nuevamente.</span>
       </div>
     </div>
     <button type="button" className="btn btn-danger" onClick={reset} disabled={busy}>
