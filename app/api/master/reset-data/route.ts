@@ -11,7 +11,8 @@ export async function POST(req:Request){
   if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo el Master propietario puede reiniciar TUCITA.'},{status:403});
 
   const body=await req.json().catch(()=>({}));
-  if(String(body.confirmation||'')!=='BLANQUEAR TUCITA'){
+  const confirmation=String(body.confirmation||'');
+  if(!['ELIMINAR TODO','BLANQUEAR TUCITA'].includes(confirmation)){
     return NextResponse.json({error:'Confirmación final inválida.'},{status:400});
   }
 
@@ -110,6 +111,7 @@ export async function POST(req:Request){
         (SELECT count(*)::int FROM patients) AS patients,
         (SELECT count(*)::int FROM appointments) AS appointments,
         (SELECT count(*)::int FROM audit_events) AS audit_events,
+        (SELECT count(*)::int FROM audit_events WHERE entity_type='MASTER_TEAM') AS team_events,
         (SELECT count(*)::int FROM app_notifications) AS notifications,
         (SELECT count(*)::int FROM app_user_profiles WHERE lower(email)<>lower(${masterEmail})) AS non_master_profiles,
         (SELECT count(*)::int FROM app_user_profiles WHERE lower(email)=lower(${masterEmail})) AS master_profiles,
@@ -123,6 +125,7 @@ export async function POST(req:Request){
       Number(c?.patients||0)===0 &&
       Number(c?.appointments||0)===0 &&
       Number(c?.audit_events||0)===0 &&
+      Number(c?.team_events||0)===0 &&
       Number(c?.notifications||0)===0 &&
       Number(c?.non_master_profiles||0)===0 &&
       Number(c?.non_master_payment_methods||0)===0 &&
@@ -150,6 +153,7 @@ export async function POST(req:Request){
         patients:0,
         appointments:0,
         auditEvents:0,
+        team:0,
         notifications:0,
         staleAuthUsers,
         masterProfiles:1
