@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, MapPin, ShieldCheck, UploadCloud, CreditCard, Navigation, Clock3, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
+import { ReportProviderButton } from '@/components/ReportProviderButton';
 
 type Slot={time:string;available:boolean;startsAt:string;remaining?:number};
 type LocationInfo={id:string;name:string;address:string;city:string;state:string;country:string;room:string};
@@ -148,6 +149,7 @@ export default function BookingClient({slug}:{slug:string}){
      <div className="profile-top">{provider.profileImage?<img src={provider.profileImage} alt={provider.name} style={{width:76,height:76,borderRadius:24,objectFit:'cover',flex:'0 0 auto'}}/>:<div className="profile-avatar">{provider.initials}</div>}<div><h1 style={{fontSize:25,margin:'0 0 4px'}}>{provider.name}</h1><div className="muted">{provider.activity} · {provider.category}</div>{!travelMode&&<div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{provider.location||'Ubicación por confirmar'}</div>}</div></div>
      {(provider.workImages||[]).length>0&&<div style={{marginTop:16}}><div className="muted" style={{fontSize:12,marginBottom:8}}>Referencias de trabajos</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8}}>{(provider.workImages||[]).map((img,i)=><img key={i} src={img} alt={'Referencia '+(i+1)} style={{width:'100%',height:92,borderRadius:14,objectFit:'cover'}}/>)}</div></div>}
      {provider.dayStatus==='DELAYED'&&<div className="notice" style={{marginTop:16}}>Este profesional presenta aproximadamente {provider.delayMinutes} minutos de retraso.</div>}
+     <ReportProviderButton slug={provider.slug}/>
      <hr style={{border:0,borderTop:'1px solid var(--line)',margin:'24px 0'}}/>
 
      <strong>1. {travelMode?'Elige el viaje':'Elige el servicio'}</strong>
