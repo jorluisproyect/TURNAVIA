@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Search, AlertTriangle } from 'lucide-react';
 import ProfessionalActions from './ProfessionalActions';
 import RecoverProfessionalButton from './RecoverProfessionalButton';
+import RepairProfessionalButton from './RepairProfessionalButton';
 
 export const dynamic='force-dynamic';
 const labels:any={
@@ -46,13 +47,17 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       ) AS commercial_status,
       cc.id AS commercial_client_id,
       cc.trial_ends_at,
-      cc.created_at AS commercial_created_at
+      cc.created_at AS commercial_created_at,
+      cc.category AS commercial_category,
+      cc.subcategory AS commercial_subcategory,
+      cc.type AS commercial_type,
+      cc.phone AS commercial_phone
     FROM app_user_profiles ap
     LEFT JOIN users u ON lower(u.email)=lower(ap.email)
     LEFT JOIN doctors d ON d.user_id=u.id
     LEFT JOIN provider_services ps ON ps.doctor_id=d.id
     LEFT JOIN LATERAL (
-      SELECT id,status,trial_ends_at,created_at
+      SELECT id,status,trial_ends_at,created_at,category,subcategory,type,phone
       FROM commercial_clients c
       WHERE lower(c.email)=lower(ap.email)
       ORDER BY c.created_at DESC
@@ -72,7 +77,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       ap.auth_user_id,ap.full_name,ap.email,ap.phone,
       d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.accepts_online_booking,
       u.full_name,u.email,u.phone,u.active,
-      cc.status,cc.id,cc.trial_ends_at,cc.created_at
+      cc.status,cc.id,cc.trial_ends_at,cc.created_at,cc.category,cc.subcategory,cc.type,cc.phone
     ORDER BY ap.full_name,ap.email` : [];
 
   let recoverable:any[]=[];
@@ -101,8 +106,12 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
     ...r,
     display_name:r.full_name||r.registered_name||'Sin nombre',
     display_email:r.email||r.registered_email||'—',
-    display_phone:r.phone||r.registered_phone||'—',
+    display_phone:r.phone||r.registered_phone||r.commercial_phone||'—',
+    display_category:r.provider_category||r.commercial_category||'—',
+    display_activity:r.provider_activity||r.commercial_subcategory||'Pendiente',
+    display_type:r.provider_type||r.commercial_type||'Profesional independiente',
     profile_complete:Boolean(r.public_slug),
+    needs_repair:!r.public_slug||!r.provider_category||!r.provider_activity||!r.commercial_client_id||!r.trial_ends_at,
     trial_end:r.trial_ends_at?new Date(r.trial_ends_at):null,
     trial_days_remaining:r.trial_ends_at?Math.max(0,Math.ceil((new Date(r.trial_ends_at).getTime()-Date.now())/86400000)):0
   }));
@@ -110,7 +119,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
   const filtered=normalized.filter(r=>{
     const hay=[
       r.display_name,r.display_email,r.display_phone,
-      r.provider_category,r.provider_activity,r.provider_type
+      r.display_category,r.display_activity,r.display_type
     ].filter(Boolean).join(' ').toLowerCase();
     return (!q||hay.includes(q))&&(status==='TODOS'||String(r.commercial_status)===status);
   });
@@ -206,11 +215,11 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                   {String(r.commercial_status)==='DEMO'&&<span className="pill" style={{marginLeft:8}}>Demo</span>}
                   <div className="muted" style={{fontSize:12}}>{r.display_email} · {r.display_phone}</div>
                   {!r.profile_complete&&<div className="notice" style={{marginTop:6,padding:'6px 8px',fontSize:12}}>
-                    <AlertTriangle size={13}/> Registro profesional creado, perfil técnico pendiente de completar.
+                    <AlertTriangle size={13}/> Cuenta conservada. Faltan datos técnicos del perfil profesional.
                   </div>}
                 </td>
-                <td>{r.provider_category||'—'}<div className="muted" style={{fontSize:12}}>{r.provider_activity||'Pendiente'}</div></td>
-                <td>{r.provider_type||'Profesional'}</td>
+                <td>{r.display_category}<div className="muted" style={{fontSize:12}}>{r.display_activity}</div></td>
+                <td>{r.display_type}</td>
                 <td>{r.services||0}</td>
                 <td>
                   {String(r.commercial_status)==='TRIAL'&&r.trial_end?<>
@@ -227,9 +236,12 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                     :<span className="muted">{r.profile_complete?'Pausada':'Aún no creada'}</span>}
                 </td>
                 <td>
-                  {r.profile_complete
-                    ?<ProfessionalActions slug={r.public_slug} active={Boolean(r.active)} name={r.display_name}/>
-                    :<span className="muted">Completar registro</span>}
+                  <div style={{display:'grid',gap:8}}>
+                    {r.needs_repair&&<RepairProfessionalButton authUserId={String(r.auth_user_id)} email={String(r.display_email)} name={String(r.display_name)}/>}
+                    {r.profile_complete
+                      ?<ProfessionalActions slug={r.public_slug} active={Boolean(r.active)} name={r.display_name}/>
+                      :!r.needs_repair?<span className="muted">Completar registro</span>:null}
+                  </div>
                 </td>
               </tr>)}
             </tbody>
