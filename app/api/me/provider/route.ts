@@ -8,6 +8,7 @@ import { parseProviderMedia, serializeProviderMedia, validateProviderMedia } fro
 import { validatePhone } from '@/lib/phone';
 import { normalizedBirthDate, normalizedDocument, dateForInput } from '@/lib/personal-profile';
 import { isTravelProvider, serializeTravelServiceDescription, travelServiceFields, validateTravelServiceMeta, travelPartyFromReason } from '@/lib/travel-service';
+import { prohibitedMarketplaceReason } from '@/lib/compliance';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -200,6 +201,8 @@ export async function PATCH(req:Request){
     const activity=String(body.activity||provider.provider_activity||'Servicio').trim();
     const type=String(body.type||provider.provider_type||'Profesional independiente').trim();
     const email=String(provider.email||'').toLowerCase();
+    const profileProhibited=prohibitedMarketplaceReason(category,activity,name);
+    if(profileProhibited)return NextResponse.json({error:profileProhibited},{status:400});
     await sql`UPDATE users SET full_name=${name},phone=${phone} WHERE id=${provider.user_id}`;
     await sql`UPDATE app_user_profiles SET full_name=${name},phone=${phone},updated_at=now() WHERE lower(email)=lower(${email})`;
     if(detailsReady){
@@ -262,6 +265,8 @@ export async function PATCH(req:Request){
   if(action==='add_service'){
     const name=String(body.name||'').trim();
     if(!name) return NextResponse.json({error:'Escribe el nombre del servicio'},{status:400});
+    const prohibited=prohibitedMarketplaceReason(name,String(body.description||''),String(body.summary||''));
+    if(prohibited)return NextResponse.json({error:prohibited},{status:400});
     const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
     let description=String(body.description||'');
     if(travelMode){
@@ -283,6 +288,8 @@ export async function PATCH(req:Request){
   }
 
   if(action==='update_service'){
+    const prohibited=prohibitedMarketplaceReason(String(body.name||''),String(body.description||''),String(body.summary||''));
+    if(prohibited)return NextResponse.json({error:prohibited},{status:400});
     const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
     let descriptionValue:any=body.description??null;
     const hasTravelPayload=['summary','travelImage','travelDate','departureTime','returnTime'].some(k=>Object.prototype.hasOwnProperty.call(body,k));
