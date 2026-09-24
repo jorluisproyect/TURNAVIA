@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
-import { AlertTriangle, BellRing, Building2, CheckCircle2, Clock3, DollarSign, Eye, HeartPulse, UserPlus } from 'lucide-react';
+import { AlertTriangle, BellRing, Building2, CheckCircle2, Clock3, DollarSign, Eye, HeartPulse, UserPlus, UserRound } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 import { sql, hasDatabase } from '@/lib/db';
 import { neonAuthConfigured } from '@/lib/auth/config';
