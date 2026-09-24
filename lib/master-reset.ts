@@ -1,7 +1,5 @@
 import { sql } from '@/lib/db';
 
-export const REAL_START_RESET_MARKER='SYSTEM_RESET_REAL_START_V1';
-
 export async function resetTucitaToZero(masterEmail:string){
   if(!sql)throw new Error('Base de datos no disponible.');
 
@@ -45,11 +43,6 @@ export async function resetTucitaToZero(masterEmail:string){
     sql`DELETE FROM app_user_profiles WHERE lower(email)<>lower(${normalized})`
   ]);
 
-  // Marca técnica invisible para impedir que el reinicio automático se repita.
-  await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
-    VALUES(${REAL_START_RESET_MARKER},'SYSTEM','TUCITA',
-      jsonb_build_object('masterEmail',${normalized},'automatic',false))`;
-
   const counts=await sql`
     SELECT
       (SELECT count(*)::int FROM commercial_clients) AS clients,
@@ -83,28 +76,4 @@ export async function resetTucitaToZero(masterEmail:string){
     team:0,
     masterProfiles:1
   };
-}
-
-export async function ensureRealStartReset(masterEmail:string){
-  if(!sql)return {ran:false};
-  const marker=await sql`
-    SELECT 1
-    FROM audit_events
-    WHERE action=${REAL_START_RESET_MARKER}
-      AND entity_type='SYSTEM'
-      AND entity_id='TUCITA'
-    LIMIT 1`;
-
-  if(marker.length)return {ran:false};
-
-  const counts=await resetTucitaToZero(masterEmail);
-
-  // Actualiza la marca para señalar que este fue el reinicio automático inicial.
-  await sql`UPDATE audit_events
-    SET metadata=jsonb_set(metadata,'{automatic}','true'::jsonb,true)
-    WHERE action=${REAL_START_RESET_MARKER}
-      AND entity_type='SYSTEM'
-      AND entity_id='TUCITA'`;
-
-  return {ran:true,counts};
 }
