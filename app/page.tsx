@@ -38,6 +38,6 @@ export default function Home(){
    </div></section>
    <section className="section" id="clinicas"><div className="band"><div><h2>Una demo que ya se puede enseñar.</h2><p>Explora cómo un profesional organiza sus servicios y cómo un cliente realiza su reserva con un recorrido guiado.</p></div><Link className="btn btn-primary" href="/demo">Abrir TUCITA <ArrowRight size={17}/></Link></div></section>
   </main>
-  <footer className="footer"><div className="container footer-inner"><div><strong>TUCITA</strong> · Tu servicio, a tu hora.</div><div>Demo multirrubro · Reservas inteligentes</div></div></footer>
+  <footer className="footer"><div className="container footer-inner" style={{gap:12,flexWrap:'wrap'}}><div><strong>TUCITA</strong> · Tu servicio, a tu hora.</div><div className="row" style={{gap:12,flexWrap:'wrap'}}><Link href="/legal/terminos">Términos</Link><Link href="/legal/privacidad">Privacidad</Link><Link href="/legal/servicios-prohibidos">Servicios prohibidos</Link><Link href="/legal/seguridad">Seguridad</Link></div></div></footer>
  </>
 }
