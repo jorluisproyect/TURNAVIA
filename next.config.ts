@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: cpanelBuild,
   },
   experimental: {
+    // cPanel/Apache runs Next.js behind a reverse proxy. The public Origin can
+    // differ from X-Forwarded-Host, so explicitly trust only TUCITA's domains
+    // for Server Actions (login, forms, saves, etc.).
+    serverActions: {
+      allowedOrigins: ["tucita.com.ve", "www.tucita.com.ve"],
+    },
     // Shared cPanel hosting has strict process and memory limits.
     cpus: 1,
     workerThreads: false,
