@@ -35,7 +35,7 @@ export default function ResetTucitaDataButton(){
       });
       const j=await r.json();
       if(!r.ok){
-        setMsg(j.error||'No se pudo blanquear TUCITA.');
+        setMsg((j.error||'No se pudo blanquear TUCITA.')+(j.technicalDetail?` Detalle: ${j.technicalDetail}`:''));
         return;
       }
       const c=j.counts||{};
