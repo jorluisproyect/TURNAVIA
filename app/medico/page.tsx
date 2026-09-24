@@ -9,6 +9,7 @@ import { COUNTRY_SUGGESTIONS, COUNTRY_PHONE_CODES } from '@/lib/provider-catalog
 import { categoryUsesWorkReferences } from '@/lib/provider-media';
 import { countryDialCode, digitsOnly, phoneMaxLength } from '@/lib/phone';
 import { DeleteProfileButton } from '@/components/DeleteProfileButton';
+import { isTravelProvider } from '@/lib/travel-service';
 
 const labels:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Llegó',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asistió'};
 
@@ -43,7 +44,8 @@ export default function Medico(){
  const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|'location'|null>(null);
  const [profile,setProfile]=useState<any>({});
  const [settings,setSettings]=useState<any>({});
- const [service,setService]=useState({id:'',name:'',description:'',durationMinutes:30,price:0,currency:'USD'});
+ const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:0,currency:'USD',travelImage:'',travelDate:'',departureTime:'',returnTime:''};
+ const [service,setService]=useState<any>(emptyService);
  const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',locationId:''});
  const [locationForm,setLocationForm]=useState({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
  const [dayStatus,setDayStatus]=useState({status:'NORMAL',delayMinutes:0,note:''});
@@ -173,17 +175,43 @@ export default function Medico(){
    return <div className="live-fx" aria-live="polite"><span>≈</span>{targets.map(cur=>{const v=converted(amount,currency,cur);return <span key={cur}><strong>{v===null?'—':new Intl.NumberFormat('es-VE',{maximumFractionDigits:2}).format(v)}</strong> {label(cur)}</span>})}<small>referencia automática</small></div>;
  }
  function newService(){
-   setService({id:'',name:'',description:'',durationMinutes:30,price:0,currency:'USD'});
+   setService({...emptyService});
    setModal('service');
  }
  function editService(s:any){
-   setService({id:s.id,name:s.name,description:s.description||'',durationMinutes:Number(s.durationMinutes||30),price:Number(s.price||0),currency:s.currency||'USD'});
+   setService({
+     ...emptyService,
+     id:s.id,
+     name:s.name,
+     description:s.description||'',
+     summary:s.summary||String(s.description||'').slice(0,180),
+     durationMinutes:Number(s.durationMinutes||30),
+     price:Number(s.price||0),
+     currency:s.currency||'USD',
+     travelImage:s.travelImage||'',
+     travelDate:s.travelDate||'',
+     departureTime:s.departureTime||'',
+     returnTime:s.returnTime||''
+   });
    setModal('service');
  }
+ async function travelImageChange(file?:File){
+   if(!file)return;
+   try{
+     const dataUrl=await resizeImage(file,640,400,.68);
+     setService((x:any)=>({...x,travelImage:dataUrl}));
+   }catch(e:any){setToast(e?.message||'No se pudo procesar la foto del viaje.')}
+ }
  async function saveService(){
+   const travel=isTravelProvider(data?.provider?.category,data?.provider?.activity);
+   if(travel){
+     if(!String(service.summary||'').trim()){setToast('Escribe una descripción corta para la tarjeta del viaje.');return}
+     if(!String(service.travelDate||'').trim()){setToast('Selecciona la fecha de salida del viaje.');return}
+     if(!String(service.departureTime||'').trim()){setToast('Indica la hora de salida del viaje.');return}
+   }
    const action=service.id?'update_service':'add_service';
    const ok=await patch({action,...service});
-   if(ok)setService({id:'',name:'',description:'',durationMinutes:30,price:0,currency:'USD'});
+   if(ok)setService({...emptyService});
  }
 
  if(error&&!data)return <div className="dashboard"><Sidebar role="medico"/><main className="main"><section className="panel"><h1>Tu panel profesional</h1><div className="notice danger">{error}</div></section></main></div>;
@@ -193,7 +221,8 @@ export default function Medico(){
  const publicUrl=(origin||'https://tucita.com.ve')+publicPath;
  const activity=String(p.activity||'').toLowerCase();
  const referencesEnabled=categoryUsesWorkReferences(p.category,p.activity);
- const serviceHint=activity.includes('barber')?'Ej.: Corte clásico, Fade, Corte + barba, Barba completa':activity.includes('manicur')||activity.includes('uña')?'Ej.: Manicura, Semipermanente, Acrílicas, Jelly, Nail art, Retiro, Mantenimiento':'Crea cada servicio por separado con su duración y precio.';
+ const travelMode=isTravelProvider(p.category,p.activity);
+ const serviceHint=travelMode?'Crea cada salida como un viaje independiente: foto, fecha, horario, duración y precio.':activity.includes('barber')?'Ej.: Corte clásico, Fade, Corte + barba, Barba completa':activity.includes('manicur')||activity.includes('uña')?'Ej.: Manicura, Semipermanente, Acrílicas, Jelly, Nail art, Retiro, Mantenimiento':'Crea cada servicio por separado con su duración y precio.';
 
  return <div className="dashboard"><Sidebar role="medico"/><main className="main">
   <div id="perfil" className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{p.profileImage?<img src={p.profileImage} alt="" style={{width:54,height:54,borderRadius:18,objectFit:'cover',flex:'0 0 auto'}}/>:<div className="profile-avatar" style={{width:54,height:54}}><UserRound size={24}/></div>}<div><div className="muted" style={{fontSize:13}}>{p.category} · {p.activity}</div><h1>Hola, {p.name}</h1>{p.subscriptionStatus==='TRIAL'&&p.trialEndsAt&&<div className="muted" style={{fontSize:12}}>Prueba disponible hasta {new Date(p.trialEndsAt).toLocaleDateString('es-VE')}</div>}{p.subscriptionStatus==='ACTIVO'&&p.renewalDueAt&&<div className="muted" style={{fontSize:12}}>Próxima renovación aproximada: {new Date(p.renewalDueAt).toLocaleDateString('es-VE')}</div>}</div></div><div className="row" style={{gap:8,flexWrap:'wrap'}}><span className="pill">{p.subscriptionStatus==='ACTIVO'?'Cuenta activa':p.subscriptionStatus==='SUSPENDIDO'?'Cuenta suspendida':p.subscriptionStatus==='REVISION_BINANCE'?'Pago en revisión':'Prueba gratis'}</span>{p.clientId&&p.subscriptionStatus!=='ACTIVO'&&<Link className="btn btn-primary" href={'/pago?client='+p.clientId}>Activar / pagar</Link>}{p.clientId&&p.subscriptionStatus==='ACTIVO'&&<Link className="btn btn-secondary" href={'/pago?client='+p.clientId}>Renovación</Link>}<Link className="btn btn-secondary" href="/scan"><ScanLine size={16}/> Leer QR</Link><button className="btn btn-secondary" onClick={()=>setModal('profile')}><UserRound size={16}/> Perfil</button></div></div>
@@ -248,7 +277,15 @@ export default function Medico(){
   <section className="panel" id="servicios" style={{marginTop:18}}>
     <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>Servicios, duración y precio</h2><div className="muted" style={{fontSize:13}}>{serviceHint}</div></div><button className="btn btn-primary" onClick={newService}><Plus size={16}/> Nuevo servicio</button></div>
     {data.services.length===0?<div className="notice" style={{marginTop:14}}>Agrega al menos un servicio para que tus clientes puedan reservar.</div>:
-    <div className="grid-3" style={{marginTop:14}}>{data.services.map((s:any)=><div className="card" key={s.id}><BriefcaseBusiness size={18}/><h3>{s.name}</h3><p>{s.description||'Sin descripción'}</p><div className="row space"><strong>{s.currency} {s.price}</strong><span className="pill">{s.durationMinutes} min</span></div><div className="row" style={{gap:8,marginTop:12,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editService(s)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'update_service',id:s.id,active:!s.active})} disabled={saving}>{saving?'Procesando…':s.active?'Pausar':'Activar'}</button></div></div>)}</div>}
+    <div className="grid-3" style={{marginTop:14}}>{data.services.map((s:any)=><div className="card" key={s.id} style={{overflow:'hidden'}}>
+      {travelMode&&s.travelImage&&<img src={s.travelImage} alt={s.name} style={{width:'100%',height:150,objectFit:'cover',borderRadius:14,marginBottom:12}}/>}
+      {!travelMode&&<BriefcaseBusiness size={18}/>}
+      <h3>{s.name}</h3>
+      {travelMode&&s.travelDate&&<div className="pill" style={{width:'fit-content',marginBottom:8}}>{new Date(s.travelDate+'T12:00:00').toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long'})}{s.departureTime?' · '+s.departureTime:''}{s.returnTime?'–'+s.returnTime:''}</div>}
+      <p>{(travelMode?s.summary:s.description)||'Sin descripción'}</p>
+      <div className="row" style={{gap:8,flexWrap:'wrap',alignItems:'center'}}><span className="pill">{s.durationMinutes} min</span><span className="pill">{s.currency}</span><strong>{s.price}</strong></div>
+      <div className="row" style={{gap:8,marginTop:12,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editService(s)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'update_service',id:s.id,active:!s.active})} disabled={saving}>{saving?'Procesando…':s.active?'Pausar':'Activar'}</button></div>
+    </div>)}</div>}
   </section>
 
   <div className="panel-grid" style={{marginTop:18}}>
@@ -303,12 +340,29 @@ export default function Medico(){
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>Ciudad</label><input value={profile.city||''} onChange={e=>setProfile({...profile,city:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>Estado / Provincia</label><input value={profile.state||''} onChange={e=>setProfile({...profile,state:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>País</label><input list="profile-countries" value={profile.country||''} onChange={e=>setProfile({...profile,country:e.target.value})}/><datalist id="profile-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div></div>
  </div></div><div className="button-row profile-modal-actions"><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile})} disabled={saving}>{saving?'Guardando…':'Guardar perfil'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
- {modal==='service'&&<div className="modal-backdrop"><div className="modal"><h2>{service.id?'Editar servicio':'Nuevo servicio'}</h2><div className="form">
+ {modal==='service'&&<div className="modal-backdrop"><div className="modal"><h2>{service.id?'Editar servicio':travelMode?'Nuevo viaje':'Nuevo servicio'}</h2><div className="form">
    <div className="notice">{serviceHint}<br/><strong>Importante:</strong> esta duración controla automáticamente la agenda. No necesitas configurar cada cuánto comienza una cita.</div>
-   <div className="field"><label>Nombre del servicio</label><input value={service.name} onChange={e=>setService({...service,name:e.target.value})} placeholder={activity.includes('barber')?'Ej. Corte + barba':activity.includes('manicur')?'Ej. Acrílicas':'Ej. Consulta / Servicio premium'}/></div>
-   <div className="field"><label>Descripción</label><textarea rows={3} value={service.description} onChange={e=>setService({...service,description:e.target.value})}/></div>
-   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Duración real</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>120 min</option><option value={180}>180 min</option></select></div><div className="field" style={{flex:1,minWidth:150}}><label>Precio</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(service.price||0),service.currency||'USD')}
- </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService} disabled={saving}>{saving?'Guardando…':service.id?'Guardar cambios':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+   <div className="field"><label>{travelMode?'Nombre del viaje / paquete':'Nombre del servicio'}</label><input value={service.name} onChange={e=>setService({...service,name:e.target.value})} placeholder={travelMode?'Ej. Full Day Morrocoy':activity.includes('barber')?'Ej. Corte + barba':activity.includes('manicur')?'Ej. Acrílicas':'Ej. Consulta / Servicio premium'}/></div>
+   {travelMode?<>
+     <div className="field"><label>Foto referencial del viaje</label><div className="row" style={{gap:12,alignItems:'center',flexWrap:'wrap'}}>{service.travelImage?<img src={service.travelImage} alt="Vista previa del viaje" style={{width:150,height:94,borderRadius:16,objectFit:'cover'}}/>:<div className="notice" style={{margin:0}}>La imagen se verá en la tarjeta que elegirá el cliente.</div>}<label className="btn btn-secondary" style={{cursor:'pointer'}}><ImagePlus size={16}/> {service.travelImage?'Cambiar foto':'Subir foto'}<input type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={e=>travelImageChange(e.target.files?.[0])}/></label>{service.travelImage&&<button type="button" className="btn btn-secondary" onClick={()=>setService({...service,travelImage:''})}><Trash2 size={15}/> Quitar</button>}</div></div>
+     <div className="field"><label>Descripción corta para la tarjeta</label><textarea rows={2} maxLength={220} value={service.summary||''} onChange={e=>setService({...service,summary:e.target.value})} placeholder="Ej. Full Day con traslado, desayuno, almuerzo y acceso a playa."/>
+
+       <small className="muted">{String(service.summary||'').length}/220 · Debe poder leerse rápidamente desde la tarjeta.</small>
+     </div>
+     <div className="field"><label>Detalles del viaje</label><textarea rows={4} maxLength={1800} value={service.description||''} onChange={e=>setService({...service,description:e.target.value})} placeholder="Incluye, punto de encuentro, recomendaciones, condiciones y cualquier detalle adicional."/></div>
+     <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}>
+       <div className="field" style={{flex:1,minWidth:180}}><label>Fecha de salida</label><input type="date" value={service.travelDate||''} onChange={e=>setService({...service,travelDate:e.target.value})}/></div>
+       <div className="field" style={{flex:1,minWidth:150}}><label>Hora de salida</label><input type="time" value={service.departureTime||''} onChange={e=>setService({...service,departureTime:e.target.value})}/></div>
+       <div className="field" style={{flex:1,minWidth:150}}><label>Hora estimada de regreso</label><input type="time" value={service.returnTime||''} onChange={e=>setService({...service,returnTime:e.target.value})}/></div>
+     </div>
+     <div className="notice">La fecha y hora identifican esta salida. Para que el cliente pueda reservarla, publica también esa fecha/hora en <strong>Calendario de disponibilidad</strong>.</div>
+   </>:<div className="field"><label>Descripción</label><textarea rows={3} value={service.description} onChange={e=>setService({...service,description:e.target.value})}/></div>}
+   <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}>
+     <div className="field" style={{flex:1,minWidth:150}}><label>Duración real</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>2 h</option><option value={180}>3 h</option>{travelMode&&<><option value={240}>4 h</option><option value={360}>6 h</option><option value={480}>8 h</option><option value={600}>10 h</option><option value={720}>12 h</option><option value={1440}>24 h</option></>}</select></div>
+     <div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div>
+     <div className="field" style={{flex:1,minWidth:150}}><label>Precio</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div>
+   </div>{fxPreview(Number(service.price||0),service.currency||'USD')}
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService} disabled={saving}>{saving?'Guardando…':service.id?'Guardar cambios':travelMode?'Agregar viaje':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='location'&&<div className="modal-backdrop"><div className="modal"><h2>{locationForm.id?'Editar ubicación':'Nueva ubicación'}</h2><div className="form">
    <div className="field"><label>Nombre visible</label><input value={locationForm.name} onChange={e=>setLocationForm({...locationForm,name:e.target.value})} placeholder="Ej. Clínica X / Sede Centro / Consultorio privado"/></div>

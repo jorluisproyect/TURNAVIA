@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, MapPin, ShieldCheck, UploadCloud, CreditCard, Navigation } from 'lucide-react';
+import { CheckCircle2, MapPin, ShieldCheck, UploadCloud, CreditCard, Navigation, Clock3, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 
 type Slot={time:string;available:boolean;startsAt:string};
 type LocationInfo={id:string;name:string;address:string;city:string;state:string;country:string;room:string};
 type Availability={id:string;date:string;slots:Slot[];location:LocationInfo};
-type Service={id:string;name:string;description:string;durationMinutes:number;price:number;currency:string};
+type Service={id:string;name:string;description:string;summary?:string;travelImage?:string;travelDate?:string;departureTime?:string;returnTime?:string;durationMinutes:number;price:number;currency:string};
 type PaymentMethod={id:string;name:string;type:string;account_label?:string;account_value?:string;instructions?:string;requires_proof?:boolean;active:boolean};
 type State={provider:{slug:string;name:string;initials:string;category:string;activity:string;type:string;location:string;dayStatus:string;delayMinutes:number;profileImage?:string;workImages?:string[]};services:Service[];availability:Availability[];paymentInstructions:string};
 
@@ -37,8 +37,12 @@ export default function BookingClient({slug}:{slug:string}){
    setData(j);setError('');
    const firstService=j.services?.[0];
    if(!selectedServiceId&&firstService)setServiceId(firstService.id);
-   const first=j.availability?.find((a:Availability)=>a.slots?.some((s:Slot)=>s.available))||j.availability?.[0];
-   setDate(first?.date||'');
+   const selected=j.services?.find((s:Service)=>s.id===(selectedServiceId||firstService?.id))||firstService;
+   const preferred=selected?.travelDate
+     ?j.availability?.find((a:Availability)=>a.date===selected.travelDate&&a.slots?.some((s:Slot)=>s.available))
+     :null;
+   const first=preferred||j.availability?.find((a:Availability)=>a.slots?.some((s:Slot)=>s.available))||j.availability?.[0];
+   setDate(first?.date||selected?.travelDate||'');
    setStartsAt(first?.slots?.find((s:Slot)=>s.available)?.startsAt||'');
  }
 
@@ -119,6 +123,7 @@ export default function BookingClient({slug}:{slug:string}){
  if(!data)return <div className="booking"><div className="container booking-wrap"><div className="profile-card">Cargando TUCITA…</div></div></div>;
 
  const provider=data.provider;
+ const travelMode=['viaje','turismo','tour','excurs','full day'].some(x=>(provider.category+' '+provider.activity).toLowerCase().includes(x));
  if(sent){
    const receiptUrl=appointmentId&&receiptToken?'/api/public/appointments/'+encodeURIComponent(appointmentId)+'/receipt?token='+encodeURIComponent(receiptToken):'';
    return <div className="booking"><div className="container booking-wrap"><div className="booking-header"><Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link></div><div className="profile-card" style={{textAlign:'center',padding:'44px 28px'}}><div className="iconbox" style={{margin:'0 auto',width:62,height:62,borderRadius:20}}><CheckCircle2 size={30}/></div><h1 style={{fontSize:34,marginBottom:8}}>{resultStatus==='CONFIRMED'?'Reserva confirmada':'Pago enviado para revisión'}</h1><p className="muted">{resultStatus==='CONFIRMED'?<>Tu reserva con <strong>{provider.name}</strong> quedó confirmada.</>:<>Tu horario quedó preagendado mientras <strong>{provider.name}</strong> revisa el comprobante.</>}</p><div className="notice" style={{margin:'22px auto',maxWidth:560,textAlign:'left'}}><strong>{resultStatus==='CONFIRMED'?'Tu recibo TUCITA ya está disponible.':'Pago recibido y en revisión.'}</strong><br/>{resultStatus==='CONFIRMED'?<>Puedes descargar ahora tu comprobante PDF con el <strong>código QR de la cita</strong>. {emailNotice==='sent'?'También fue enviado a tu correo.':'Si el correo tarda, puedes descargarlo aquí.'}</>:<>En cuanto el profesional o negocio apruebe el pago, esta pantalla se actualizará y habilitará tu <strong>recibo PDF + QR</strong>. También lo enviaremos a <strong>{form.email}</strong>.</>}</div><div className="button-row" style={{justifyContent:'center',flexWrap:'wrap'}}>{resultStatus==='CONFIRMED'&&receiptUrl&&<a href={receiptUrl} target="_blank" rel="noreferrer" className="btn btn-primary">Descargar recibo + QR</a>}<Link href={'/registro?role=PATIENT&email='+encodeURIComponent(form.email)} className="btn btn-secondary">Crear mi cuenta</Link><Link href="/ingresar" className="btn btn-secondary">Ya tengo cuenta</Link></div></div></div></div>;
@@ -132,15 +137,31 @@ export default function BookingClient({slug}:{slug:string}){
      {provider.dayStatus==='DELAYED'&&<div className="notice" style={{marginTop:16}}>Este profesional presenta aproximadamente {provider.delayMinutes} minutos de retraso.</div>}
      <hr style={{border:0,borderTop:'1px solid var(--line)',margin:'24px 0'}}/>
 
-     <strong>1. Elige el servicio</strong>
+     <strong>1. {travelMode?'Elige el viaje':'Elige el servicio'}</strong>
      <div className="form" style={{marginTop:10}}>
-       <div className="field"><select value={serviceId} onChange={e=>setServiceId(e.target.value)}>{data.services.map(s=><option key={s.id} value={s.id}>{s.name} · {s.currency} {s.price} · {s.durationMinutes} min</option>)}</select></div>
-       {service&&<div className="notice"><strong>{service.name}</strong> · {service.durationMinutes} min · {service.currency} {service.price}{service.description?<><br/>{service.description}</>:null}{eqText()?<><br/><span className="muted" style={{fontSize:11}}>Equivalencia aprox.: {eqText()}</span></>:null}</div>}
+       {travelMode
+         ?<div className="travel-service-grid">{data.services.map(s=><button type="button" key={s.id} className={'travel-service-card '+(serviceId===s.id?'selected':'')} onClick={()=>setServiceId(s.id)}>
+            {s.travelImage?<img src={s.travelImage} alt={s.name}/>:<div className="travel-service-placeholder">TUCITA · VIAJE</div>}
+            <div className="travel-service-content">
+              <div className="row space" style={{gap:8,alignItems:'flex-start'}}><strong>{s.name}</strong><span className="pill">{s.currency} {s.price}</span></div>
+              {s.travelDate&&<div className="travel-service-date"><CalendarDays size={14}/>{new Date(s.travelDate+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit',month:'short'})}{s.departureTime&&<><Clock3 size={14}/>{s.departureTime}{s.returnTime?'–'+s.returnTime:''}</>}</div>}
+              <p>{s.summary||s.description||'Ver detalles del viaje'}</p>
+              <div className="muted" style={{fontSize:11}}>Duración {s.durationMinutes} min · {serviceId===s.id?'Seleccionado':'Toca para elegir'}</div>
+            </div>
+          </button>)}</div>
+         :<div className="field"><select value={serviceId} onChange={e=>setServiceId(e.target.value)}>{data.services.map(s=><option key={s.id} value={s.id}>{s.name} · {s.durationMinutes} min · {s.currency} {s.price}</option>)}</select></div>}
+       {service&&<div className="notice" style={{marginTop:travelMode?4:0}}>
+         {travelMode&&service.travelImage&&<img src={service.travelImage} alt={service.name} style={{width:'100%',maxHeight:260,objectFit:'cover',borderRadius:14,marginBottom:10}}/>}
+         <strong>{service.name}</strong> · {service.durationMinutes} min · {service.currency} {service.price}
+         {travelMode&&service.travelDate?<><br/><strong>{new Date(service.travelDate+'T12:00:00').toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long'})}</strong>{service.departureTime?' · salida '+service.departureTime:''}{service.returnTime?' · regreso aprox. '+service.returnTime:''}</>:null}
+         {service.description?<><br/>{service.description}</>:null}
+         {eqText()?<><br/><span className="muted" style={{fontSize:11}}>Equivalencia aprox.: {eqText()}</span></>:null}
+       </div>}
      </div>
 
-     <div style={{marginTop:22}}><strong>2. Selecciona el día disponible</strong><div className="date-tabs">{dates.map(d=><button key={d} className={'date-tab '+(date===d?'active':'')} onClick={()=>{setDate(d);const first=data.availability.find(a=>a.date===d&&a.slots.some(s=>s.available));setStartsAt(first?.slots.find(s=>s.available)?.startsAt||'')}}><strong>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11,marginTop:3}}>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div>{!data.availability.length&&<div className="notice" style={{marginTop:10}}>Todavía no hay horarios publicados.</div>}</div>
+     <div style={{marginTop:22}}><strong>2. {travelMode?'Confirma el día de salida':'Selecciona el día disponible'}</strong><div className="date-tabs">{dates.map(d=><button key={d} className={'date-tab '+(date===d?'active':'')} onClick={()=>{setDate(d);const first=data.availability.find(a=>a.date===d&&a.slots.some(s=>s.available));setStartsAt(first?.slots.find(s=>s.available)?.startsAt||'')}}><strong>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit'})}</strong><div className="muted" style={{fontSize:11,marginTop:3}}>{new Date(d+'T12:00:00').toLocaleDateString('es-VE',{month:'short'})}</div></button>)}</div>{!data.availability.length&&<div className="notice" style={{marginTop:10}}>Todavía no hay horarios publicados.</div>}</div>
 
-     <div style={{marginTop:22}}><strong>3. Selecciona la hora y el lugar</strong><div className="muted" style={{fontSize:12,marginTop:5}}>Cada bloque indica claramente dónde estará el profesional o negocio.</div><div style={{display:'grid',gap:12,marginTop:12}}>{currentBlocks.map(block=><div className="notice" key={block.id} style={{padding:14}}><div className="row" style={{alignItems:'flex-start',gap:8}}><MapPin size={17}/><div><strong style={{fontSize:15}}>Atención en {block.location.name||'ubicación por confirmar'}</strong><div className="muted" style={{fontSize:12,marginTop:3}}>{[block.location.address,block.location.city,block.location.state,block.location.country].filter(Boolean).join(' · ')}{block.location.room?<><br/><strong>{block.location.room}</strong></>:null}</div></div></div><div className="booking-slots" style={{marginTop:10}}>{block.slots.map(s=><button disabled={!s.available} type="button" className={startsAt===s.startsAt?'selected':''} onClick={()=>setStartsAt(s.startsAt)} key={block.id+'-'+s.startsAt}>{s.time}</button>)}</div></div>)}</div></div>
+     <div style={{marginTop:22}}><strong>3. {travelMode?'Confirma hora y punto de salida':'Selecciona la hora y el lugar'}</strong><div className="muted" style={{fontSize:12,marginTop:5}}>{travelMode?'La reserva debe coincidir con la salida indicada en la tarjeta del viaje.':'Cada bloque indica claramente dónde estará el profesional o negocio.'}</div><div style={{display:'grid',gap:12,marginTop:12}}>{currentBlocks.map(block=><div className="notice" key={block.id} style={{padding:14}}><div className="row" style={{alignItems:'flex-start',gap:8}}><MapPin size={17}/><div><strong style={{fontSize:15}}>Atención en {block.location.name||'ubicación por confirmar'}</strong><div className="muted" style={{fontSize:12,marginTop:3}}>{[block.location.address,block.location.city,block.location.state,block.location.country].filter(Boolean).join(' · ')}{block.location.room?<><br/><strong>{block.location.room}</strong></>:null}</div></div></div><div className="booking-slots" style={{marginTop:10}}>{block.slots.map(s=><button disabled={!s.available} type="button" className={startsAt===s.startsAt?'selected':''} onClick={()=>setStartsAt(s.startsAt)} key={block.id+'-'+s.startsAt}>{s.time}</button>)}</div></div>)}</div></div>
      {selectedBlock&&startsAt&&<div className="notice" style={{marginTop:14,border:'2px solid #0f766e'}}><strong>Tu cita será en: {selectedBlock.location.name}</strong><br/>{[selectedBlock.location.address,selectedBlock.location.city,selectedBlock.location.state,selectedBlock.location.country].filter(Boolean).join(' · ')}{selectedBlock.location.room?<><br/><strong>{selectedBlock.location.room}</strong></>:null}{mapQuery(selectedBlock.location)&&<><div style={{marginTop:12,borderRadius:14,overflow:'hidden',border:'1px solid var(--line)'}}><iframe title={'Mapa de '+selectedBlock.location.name} src={'https://www.google.com/maps?q='+encodeURIComponent(mapQuery(selectedBlock.location))+'&output=embed'} width="100%" height="220" style={{border:0,display:'block'}} loading="lazy" referrerPolicy="no-referrer-when-downgrade"/></div><a href={'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(selectedBlock.location))} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{marginTop:10}}><Navigation size={15}/> Cómo llegar</a></>}</div>}
 
      <div style={{marginTop:26}}><strong>4. Tus datos</strong><div className="form">

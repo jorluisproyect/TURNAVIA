@@ -5,6 +5,7 @@ import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subsc
 import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
 import { randomUUID } from 'crypto';
 import { parseProviderMedia } from '@/lib/provider-media';
+import { isTravelProvider, travelServiceFields } from '@/lib/travel-service';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -84,6 +85,8 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
   const services=await sql`SELECT id,name,description,duration_minutes,price,currency FROM provider_services WHERE doctor_id=${p.id} AND active=true ORDER BY created_at`;
   const requestedServiceId=new URL(req.url).searchParams.get('serviceId');
   const chosen=(services as any[]).find(s=>String(s.id)===requestedServiceId)||(services as any[])[0];
+  const chosenTravel=travelServiceFields(chosen?.description||'');
+  const travelMode=isTravelProvider(p.provider_category,p.provider_activity);
   const durationMinutes=Math.max(5,Number(chosen?.duration_minutes||p.default_appointment_minutes||30));
 
   const blocks=await sql`SELECT ab.id,ab.starts_at,ab.ends_at,
@@ -103,7 +106,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     endsAt:new Date(b.ends_at).toISOString(),
     location:{id:String(b.location_id),name:b.location_name||'',address:b.address||'',city:b.city||'',state:b.state||'',country:b.country||'',room:b.room||''},
     slots:slotList(b,aps as any[],durationMinutes)
-  }));
+  })).filter((b:any)=>!travelMode||!chosenTravel.travelDate||b.date===chosenTravel.travelDate);
   const initials=String(p.full_name||'T').replace(/^(Dr\.?|Dra\.?)\s*/i,'').split(/\s+/).slice(0,2).map((x:string)=>x[0]||'').join('').toUpperCase();
   const media=parseProviderMedia(p.bio);
 
@@ -115,7 +118,10 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
       country:p.country||'',
       dayStatus:(statusRows[0] as any)?.status||'NORMAL',delayMinutes:Number((statusRows[0] as any)?.delay_minutes||0)
     },
-    services:services.map((s:any)=>({id:String(s.id),name:s.name,description:s.description||'',durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'})),
+    services:services.map((s:any)=>{
+      const travel=travelServiceFields(s.description);
+      return {id:String(s.id),name:s.name,description:travel.details,summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'};
+    }),
     availability,
     selectedServiceDuration:durationMinutes,
     paymentInstructions:p.payment_instructions||''
@@ -170,13 +176,22 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(Number((recent[0] as any)?.n||0)>=5) return NextResponse.json({error:'Has realizado varias solicitudes seguidas. Espera unos minutos e intenta nuevamente.'},{status:429});
   const initialStatus=requiresProof?'PAYMENT_REVIEW':'CONFIRMED';
 
-  const serviceRows=await sql`SELECT id,name,duration_minutes,price,currency FROM provider_services WHERE id=${body.serviceId}::uuid AND doctor_id=${p.id} AND active=true LIMIT 1`;
+  const serviceRows=await sql`SELECT id,name,description,duration_minutes,price,currency FROM provider_services WHERE id=${body.serviceId}::uuid AND doctor_id=${p.id} AND active=true LIMIT 1`;
   const service=serviceRows[0] as any;
   if(!service) return NextResponse.json({error:'Servicio no disponible'},{status:404});
 
   const duration=Math.max(5,Number(service.duration_minutes||30));
   const requestedStart=new Date(startsAt);
   if(Number.isNaN(requestedStart.getTime())) return NextResponse.json({error:'Horario inválido'},{status:400});
+  const serviceTravel=travelServiceFields(service.description||'');
+  if(isTravelProvider(p.provider_category,p.provider_activity)&&serviceTravel.travelDate){
+    const localDate=requestedStart.toLocaleDateString('en-CA',{timeZone:'America/Caracas'});
+    if(localDate!==serviceTravel.travelDate)return NextResponse.json({error:'Ese viaje solo puede reservarse en la fecha indicada en su tarjeta.'},{status:409});
+    if(serviceTravel.departureTime){
+      const localTime=requestedStart.toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'});
+      if(localTime!==serviceTravel.departureTime)return NextResponse.json({error:'Selecciona la hora de salida indicada para este viaje.'},{status:409});
+    }
+  }
   const requestedEnd=new Date(requestedStart.getTime()+duration*60000);
 
   // La hora debe haber sido generada por el motor automático de disponibilidad.

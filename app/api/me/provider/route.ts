@@ -7,6 +7,7 @@ import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
 import { parseProviderMedia, serializeProviderMedia, validateProviderMedia } from '@/lib/provider-media';
 import { validatePhone } from '@/lib/phone';
 import { normalizedBirthDate, normalizedDocument, dateForInput } from '@/lib/personal-profile';
+import { isTravelProvider, serializeTravelServiceDescription, travelServiceFields, validateTravelServiceMeta } from '@/lib/travel-service';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -92,7 +93,10 @@ export async function GET(){
       subscriptionStatus:provider.subscription_status||'TRIAL',clientId:provider.commercial_client_id?String(provider.commercial_client_id):'',trialEndsAt:provider.trial_ends_at?new Date(provider.trial_ends_at).toISOString():null,renewalDueAt:provider.payment_reviewed_at?new Date(new Date(provider.payment_reviewed_at).getTime()+31*86400000).toISOString():null,
       dayStatus:(statusRows[0] as any)?.status||'NORMAL',delayMinutes:Number((statusRows[0] as any)?.delay_minutes||0)
     },
-    services:services.map((s:any)=>({id:String(s.id),name:s.name,description:s.description||'',durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active)})),
+    services:services.map((s:any)=>{
+      const travel=travelServiceFields(s.description);
+      return {id:String(s.id),name:s.name,description:travel.details,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active),summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime};
+    }),
     locations:locations.map((l:any)=>({id:String(l.id),name:l.name,address:l.address||'',city:l.city||'',state:l.state||'',country:l.country||'',room:l.room||''})),
     availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published),location:{id:String(a.location_id),name:a.location_name||'',address:a.address||'',city:a.city||'',state:a.state||'',country:a.country||'',room:a.room||''}})),
     appointments:appointments.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceName:a.service_name||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():null,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():null,rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,location:{name:a.location_name||'',address:a.location_address||'',city:a.location_city||'',state:a.location_state||'',country:a.location_country||'',room:a.location_room||''},clientName:a.client_name,clientPhone:a.client_phone,clientEmail:a.client_email||''}))
@@ -189,16 +193,44 @@ export async function PATCH(req:Request){
   if(action==='add_service'){
     const name=String(body.name||'').trim();
     if(!name) return NextResponse.json({error:'Escribe el nombre del servicio'},{status:400});
+    const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
+    let description=String(body.description||'');
+    if(travelMode){
+      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||'')};
+      const issue=validateTravelServiceMeta(meta);
+      if(issue)return NextResponse.json({error:issue},{status:400});
+      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
+      description=serializeTravelServiceDescription(meta);
+    }
     const rows=await sql`INSERT INTO provider_services(doctor_id,name,description,duration_minutes,price,currency,active)
-      VALUES(${provider.doctor_id},${name},${String(body.description||'')||null},${Math.max(5,Number(body.durationMinutes||30))},${Math.max(0,Number(body.price||0))},${String(body.currency||'USD')},true)
+      VALUES(${provider.doctor_id},${name},${description||null},${Math.max(5,Number(body.durationMinutes||30))},${Math.max(0,Number(body.price||0))},${String(body.currency||'USD')},true)
       RETURNING id`;
     return NextResponse.json({ok:true,id:String((rows[0] as any)?.id)});
   }
 
   if(action==='update_service'){
+    const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
+    let descriptionValue:any=body.description??null;
+    const hasTravelPayload=['summary','travelImage','travelDate','departureTime','returnTime'].some(k=>Object.prototype.hasOwnProperty.call(body,k));
+    if(travelMode&&(hasTravelPayload||Object.prototype.hasOwnProperty.call(body,'description'))){
+      const current=await sql`SELECT description FROM provider_services WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id} LIMIT 1`;
+      const previous=travelServiceFields((current[0] as any)?.description||'');
+      const meta={
+        summary:Object.prototype.hasOwnProperty.call(body,'summary')?String(body.summary||''):previous.summary,
+        details:Object.prototype.hasOwnProperty.call(body,'description')?String(body.description||''):previous.details,
+        image:Object.prototype.hasOwnProperty.call(body,'travelImage')?String(body.travelImage||''):previous.image,
+        travelDate:Object.prototype.hasOwnProperty.call(body,'travelDate')?String(body.travelDate||''):previous.travelDate,
+        departureTime:Object.prototype.hasOwnProperty.call(body,'departureTime')?String(body.departureTime||''):previous.departureTime,
+        returnTime:Object.prototype.hasOwnProperty.call(body,'returnTime')?String(body.returnTime||''):previous.returnTime
+      };
+      const issue=validateTravelServiceMeta(meta);
+      if(issue)return NextResponse.json({error:issue},{status:400});
+      if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
+      descriptionValue=serializeTravelServiceDescription(meta);
+    }
     await sql`UPDATE provider_services SET
       name=COALESCE(${body.name||null},name),
-      description=COALESCE(${body.description??null},description),
+      description=COALESCE(${descriptionValue},description),
       duration_minutes=COALESCE(${body.durationMinutes?Math.max(5,Number(body.durationMinutes)):null},duration_minutes),
       price=COALESCE(${body.price!==undefined?Math.max(0,Number(body.price)):null},price),
       currency=COALESCE(${body.currency||null},currency),
