@@ -3,10 +3,12 @@ import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { sql } from '@/lib/db';
 import Link from 'next/link';
-import { Search, AlertTriangle } from 'lucide-react';
+import { Search, AlertTriangle, UserRound, ExternalLink, Mail, Phone, BriefcaseBusiness } from 'lucide-react';
 import ProfessionalActions from './ProfessionalActions';
 import RecoverProfessionalButton from './RecoverProfessionalButton';
 import RepairProfessionalButton from './RepairProfessionalButton';
+import ProfessionalViewToggle from './ProfessionalViewToggle';
+import { parseProviderMedia } from '@/lib/provider-media';
 
 export const dynamic='force-dynamic';
 const labels:any={
@@ -24,6 +26,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
   const sp=await searchParams;
   const q=String(sp.q||'').trim().toLowerCase();
   const status=String(sp.status||'TODOS');
+  const view=String(sp.view||'list')==='cards'?'cards':'list';
 
   const rows=sql?await sql`
     SELECT
@@ -35,6 +38,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       d.provider_category,
       d.provider_activity,
       d.provider_type,
+      d.bio,
       d.accepts_online_booking,
       u.full_name,
       u.email,
@@ -75,7 +79,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       ),'')<>'PROFILE_DELETED'
     GROUP BY
       ap.auth_user_id,ap.full_name,ap.email,ap.phone,
-      d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.accepts_online_booking,
+      d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.bio,d.accepts_online_booking,
       u.full_name,u.email,u.phone,u.active,
       cc.status,cc.id,cc.trial_ends_at,cc.created_at,cc.category,cc.subcategory,cc.type,cc.phone
     ORDER BY ap.full_name,ap.email` : [];
@@ -113,7 +117,9 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
     profile_complete:Boolean(r.public_slug),
     needs_repair:!r.public_slug||!r.provider_category||!r.provider_activity||!r.commercial_client_id||!r.trial_ends_at,
     trial_end:r.trial_ends_at?new Date(r.trial_ends_at):null,
-    trial_days_remaining:r.trial_ends_at?Math.max(0,Math.ceil((new Date(r.trial_ends_at).getTime()-Date.now())/86400000)):0
+    trial_days_remaining:r.trial_ends_at?Math.max(0,Math.ceil((new Date(r.trial_ends_at).getTime()-Date.now())/86400000)):0,
+    profile_image:parseProviderMedia(r.bio).profileImage||'',
+    about:parseProviderMedia(r.bio).about||''
   }));
 
   const filtered=normalized.filter(r=>{
@@ -170,6 +176,10 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       <div className="muted" style={{fontSize:12,marginTop:8}}>
         Todo profesional nuevo aparece aquí desde su registro con 15 días de prueba. Solo pasa a Suscripciones cuando envía o tiene un pago.
       </div>
+      <div className="row space" style={{gap:12,flexWrap:'wrap',marginTop:14}}>
+        <div className="muted" style={{fontSize:12}}>Vista del directorio</div>
+        <ProfessionalViewToggle currentView={view}/>
+      </div>
     </section>
 
     {recoverable.length>0&&<section className="panel" style={{marginTop:18}}>
@@ -201,52 +211,113 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
     <section className="panel" style={{marginTop:18}}>
       {filtered.length===0
         ?<div className="notice">Todavía no hay profesionales registrados con esos filtros.</div>
-        :<div style={{overflowX:'auto'}}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nombre</th><th>Rubro</th><th>Tipo</th><th>Servicios</th><th>Estado</th><th>Reserva pública</th><th>Administrar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r:any)=><tr key={String(r.auth_user_id||r.display_email)}>
-                <td>
-                  <strong>{r.display_name}</strong>
-                  {String(r.commercial_status)==='DEMO'&&<span className="pill" style={{marginLeft:8}}>Demo</span>}
-                  <div className="muted" style={{fontSize:12}}>{r.display_email} · {r.display_phone}</div>
-                  {!r.profile_complete&&<div className="notice" style={{marginTop:6,padding:'6px 8px',fontSize:12}}>
-                    <AlertTriangle size={13}/> Cuenta conservada. Faltan datos técnicos del perfil profesional.
-                  </div>}
-                </td>
-                <td>{r.display_category}<div className="muted" style={{fontSize:12}}>{r.display_activity}</div></td>
-                <td>{r.display_type}</td>
-                <td>{r.services||0}</td>
-                <td>
-                  {String(r.commercial_status)==='TRIAL'&&r.trial_end?<>
-                    <span className="pill">Prueba gratis · {r.trial_days_remaining} día{r.trial_days_remaining===1?'':'s'} restante{r.trial_days_remaining===1?'':'s'}</span>
-                    <div className="muted" style={{fontSize:11,marginTop:5}}>15 días de prueba · hasta {r.trial_end.toLocaleDateString('es-VE')}</div>
-                  </>:<span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>}
-                  {r.commercial_client_id&&<div style={{marginTop:6}}>
-                    <Link href={'/master/clientes/'+r.commercial_client_id} className="muted" style={{fontSize:12}}>Abrir ficha comercial</Link>
-                  </div>}
-                </td>
-                <td>
-                  {r.profile_complete&&r.accepts_online_booking&&r.active
-                    ?<a className="btn btn-secondary" href={'/reservar/'+r.public_slug} target="_blank" rel="noreferrer">Ver página</a>
-                    :<span className="muted">{r.profile_complete?'Pausada':'Aún no creada'}</span>}
-                </td>
-                <td>
-                  <div style={{display:'grid',gap:8}}>
-                    {r.needs_repair&&<RepairProfessionalButton authUserId={String(r.auth_user_id)} email={String(r.display_email)} name={String(r.display_name)}/>}
-                    {r.profile_complete
-                      ?<ProfessionalActions slug={r.public_slug} active={Boolean(r.active)} name={r.display_name}/>
-                      :!r.needs_repair?<span className="muted">Completar registro</span>:null}
+        :view==='cards'
+          ?<div className="master-professional-card-grid">
+            {filtered.map((r:any)=><article className="master-professional-card" key={String(r.auth_user_id||r.display_email)}>
+              <div className="master-professional-cover">
+                {r.profile_image
+                  ?<img src={r.profile_image} alt={'Foto de '+r.display_name}/>
+                  :<div className="master-professional-avatar"><UserRound size={34}/></div>}
+                <div className="master-professional-status">
+                  {String(r.commercial_status)==='TRIAL'&&r.trial_end
+                    ?<span className="pill">Prueba · {r.trial_days_remaining} día{r.trial_days_remaining===1?'':'s'}</span>
+                    :<span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>}
+                </div>
+              </div>
+
+              <div className="master-professional-body">
+                <div>
+                  <div className="row" style={{gap:7,flexWrap:'wrap'}}>
+                    <h3 style={{margin:0,fontSize:20}}>{r.display_name}</h3>
+                    {String(r.commercial_status)==='DEMO'&&<span className="pill">Demo</span>}
                   </div>
-                </td>
-              </tr>)}
-            </tbody>
-          </table>
-        </div>}
+                  <div className="muted" style={{fontSize:13,marginTop:4}}>{r.display_activity}</div>
+                  <div className="muted" style={{fontSize:12}}>{r.display_category} · {r.display_type}</div>
+                </div>
+
+                {r.about&&<p className="master-professional-about">{r.about}</p>}
+
+                <div className="master-professional-meta">
+                  <div><Mail size={14}/><span>{r.display_email}</span></div>
+                  <div><Phone size={14}/><span>{r.display_phone}</span></div>
+                  <div><BriefcaseBusiness size={14}/><span>{r.services||0} servicio{Number(r.services||0)===1?'':'s'}</span></div>
+                </div>
+
+                {!r.profile_complete&&<div className="notice" style={{padding:'8px 10px',fontSize:12}}>
+                  <AlertTriangle size={13}/> Cuenta conservada. Faltan datos técnicos del perfil.
+                </div>}
+
+                {String(r.commercial_status)==='TRIAL'&&r.trial_end&&<div className="muted" style={{fontSize:11}}>
+                  Prueba de 15 días hasta {r.trial_end.toLocaleDateString('es-VE')}
+                </div>}
+
+                <div className="master-professional-actions">
+                  {r.profile_complete&&r.public_slug
+                    ?<a href={'/reservar/'+r.public_slug} target="_blank" rel="noreferrer" className="btn btn-primary"><ExternalLink size={14}/> Ver perfil completo</a>
+                    :<span className="btn btn-secondary" style={{opacity:.65,cursor:'default'}}>Perfil incompleto</span>}
+                  {r.commercial_client_id&&<Link href={'/master/clientes/'+r.commercial_client_id} className="btn btn-secondary">Ficha comercial</Link>}
+                </div>
+
+                <div className="master-professional-admin">
+                  {r.needs_repair&&<RepairProfessionalButton authUserId={String(r.auth_user_id)} email={String(r.display_email)} name={String(r.display_name)}/>}
+                  {r.profile_complete&&<ProfessionalActions slug={r.public_slug} active={Boolean(r.active)} name={r.display_name}/>}
+                </div>
+              </div>
+            </article>)}
+          </div>
+          :<div style={{overflowX:'auto'}}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Nombre</th><th>Rubro</th><th>Tipo</th><th>Servicios</th><th>Estado</th><th>Reserva pública</th><th>Administrar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r:any)=><tr key={String(r.auth_user_id||r.display_email)}>
+                  <td>
+                    <div className="row" style={{gap:10,alignItems:'center'}}>
+                      {r.profile_image
+                        ?<img src={r.profile_image} alt="" style={{width:42,height:42,borderRadius:12,objectFit:'cover',flex:'0 0 auto'}}/>
+                        :<div className="profile-avatar" style={{width:42,height:42,flex:'0 0 auto'}}><UserRound size={18}/></div>}
+                      <div>
+                        <strong>{r.display_name}</strong>
+                        {String(r.commercial_status)==='DEMO'&&<span className="pill" style={{marginLeft:8}}>Demo</span>}
+                        <div className="muted" style={{fontSize:12}}>{r.display_email} · {r.display_phone}</div>
+                      </div>
+                    </div>
+                    {!r.profile_complete&&<div className="notice" style={{marginTop:6,padding:'6px 8px',fontSize:12}}>
+                      <AlertTriangle size={13}/> Cuenta conservada. Faltan datos técnicos del perfil profesional.
+                    </div>}
+                  </td>
+                  <td>{r.display_category}<div className="muted" style={{fontSize:12}}>{r.display_activity}</div></td>
+                  <td>{r.display_type}</td>
+                  <td>{r.services||0}</td>
+                  <td>
+                    {String(r.commercial_status)==='TRIAL'&&r.trial_end?<>
+                      <span className="pill">Prueba gratis · {r.trial_days_remaining} día{r.trial_days_remaining===1?'':'s'} restante{r.trial_days_remaining===1?'':'s'}</span>
+                      <div className="muted" style={{fontSize:11,marginTop:5}}>15 días de prueba · hasta {r.trial_end.toLocaleDateString('es-VE')}</div>
+                    </>:<span className="pill">{labels[r.commercial_status]||r.commercial_status}</span>}
+                    {r.commercial_client_id&&<div style={{marginTop:6}}>
+                      <Link href={'/master/clientes/'+r.commercial_client_id} className="muted" style={{fontSize:12}}>Abrir ficha comercial</Link>
+                    </div>}
+                  </td>
+                  <td>
+                    {r.profile_complete&&r.accepts_online_booking&&r.active
+                      ?<a className="btn btn-secondary" href={'/reservar/'+r.public_slug} target="_blank" rel="noreferrer">Ver perfil</a>
+                      :<span className="muted">{r.profile_complete?'Pausada':'Aún no creada'}</span>}
+                  </td>
+                  <td>
+                    <div style={{display:'grid',gap:8}}>
+                      {r.needs_repair&&<RepairProfessionalButton authUserId={String(r.auth_user_id)} email={String(r.display_email)} name={String(r.display_name)}/>}
+                      {r.profile_complete
+                        ?<ProfessionalActions slug={r.public_slug} active={Boolean(r.active)} name={r.display_name}/>
+                        :!r.needs_repair?<span className="muted">Completar registro</span>:null}
+                    </div>
+                  </td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>}
     </section>
   </main></div>;
 }
