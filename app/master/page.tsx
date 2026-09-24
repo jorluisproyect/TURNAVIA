@@ -6,11 +6,12 @@ import { sql, hasDatabase } from '@/lib/db';
 import { neonAuthConfigured } from '@/lib/auth/config';
 import MasterActions from './MasterActions';
 import { refreshAllCommercialStatuses } from '@/lib/subscription';
-import { currentSession, isOwnerMasterSession } from '@/lib/access';
+import { currentSession, isOwnerMasterSession, MASTER_EMAIL } from '@/lib/access';
 import { teamMemberForUser } from '@/lib/master-team';
 import TeamMasterDashboard from './TeamMasterDashboard';
 import { redirect } from 'next/navigation';
 import ResetTucitaDataButton from './configuracion/ResetTucitaDataButton';
+import { ensureRealStartReset } from '@/lib/master-reset';
 
 export const dynamic='force-dynamic';
 
@@ -26,6 +27,13 @@ export default async function Master(){
     if(!member)redirect('/panel');
     return <TeamMasterDashboard member={member}/>;
   }
+  let automaticResetError='';
+  try{
+    await ensureRealStartReset(MASTER_EMAIL);
+  }catch(error:any){
+    automaticResetError=String(error?.message||error||'No se pudo ejecutar el reinicio automático.');
+  }
+
   await refreshAllCommercialStatuses();
   const rows=sql ? await sql`SELECT c.*,
     (SELECT e.metadata FROM audit_events e WHERE e.action='PAYMENT_SUBMITTED' AND e.entity_type='COMMERCIAL_CLIENT' AND e.entity_id=c.id::text ORDER BY e.id DESC LIMIT 1) AS pending_payment,
@@ -63,6 +71,7 @@ export default async function Master(){
       </div>
 
       {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TUCITA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
+      {automaticResetError&&<div className="notice danger" style={{marginBottom:18}}><strong>No se pudo completar el reinicio automático inicial.</strong><br/><span className="muted">{automaticResetError}</span></div>}
 
       <section id="alertas" className="panel" style={{marginBottom:18}}>
         <div className="row space" style={{gap:14,flexWrap:'wrap'}}>
