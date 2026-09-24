@@ -1,0 +1,52 @@
+name: Build cPanel Production Artifact
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-cpanel-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEON_AUTH_COOKIE_SECRET: ci-validation-secret-32-characters-minimum
+      APP_URL: https://tucita.com.ve
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build Next.js production bundle
+        run: npm run build
+
+      - name: Package .next for cPanel
+        shell: bash
+        run: |
+          test -f .next/BUILD_ID
+          tar -czf tucita-next-build.tar.gz .next
+          sha256sum tucita-next-build.tar.gz > tucita-next-build.sha256
+
+      - name: Upload cPanel build
+        uses: actions/upload-artifact@v4
+        with:
+          name: tucita-cpanel-build
+          path: |
+            tucita-next-build.tar.gz
+            tucita-next-build.sha256
+          if-no-files-found: error
+          retention-days: 14
