@@ -44,23 +44,37 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   if(teamToken&&!teamInvite)return {error:'La invitación de equipo caducó, ya fue usada o no corresponde a este correo.'};
   let existing;
   try{existing=await existingAccountKind(email)}catch{return {error:'No se pudo verificar el correo. Intenta de nuevo.'}}
-  if(existing){
+  const staleAuthOnly=existing==='REGISTERED';
+  if(existing&&!staleAuthOnly){
     if(teamInvite)return {error:'Este correo ya tiene cuenta. Inicia sesión con él y acepta la invitación.'};
     return {error:existingAccountMessage(existing)};
   }
   const passwordProblems=passwordIssues(password);
   if(passwordProblems.length) return {error:'La contraseña necesita '+passwordProblems.join(', ')+'.'};
 
-  const {data,error}=await auth.signUp.email({name,email,password});
-  if(error){
-    try{
-      const already=await existingAccountKind(email);
-      if(already)return {error:existingAccountMessage(already)};
-    }catch{}
-    return {error:error.message||'No se pudo crear la cuenta.'};
+  let authData:any=null;
+
+  if(staleAuthOnly){
+    const {data,error}=await auth.signIn.email({email,password});
+    if(error){
+      return {
+        error:'Este correo pertenecía a una prueba anterior de TUCITA. Puedes reutilizarlo: escribe la contraseña anterior o usa “Olvidé mi contraseña” para crear una nueva.'
+      };
+    }
+    authData=data;
+  }else{
+    const {data,error}=await auth.signUp.email({name,email,password});
+    if(error){
+      try{
+        const already=await existingAccountKind(email);
+        if(already)return {error:existingAccountMessage(already)};
+      }catch{}
+      return {error:error.message||'No se pudo crear la cuenta.'};
+    }
+    authData=data;
   }
 
-  let authUserId=(data as any)?.user?.id || (data as any)?.id;
+  let authUserId=(authData as any)?.user?.id || (authData as any)?.id;
   if(!authUserId && sql){
     const found=await sql`SELECT id FROM neon_auth.user WHERE lower(email)=lower(${email}) LIMIT 1`;
     authUserId=(found[0] as any)?.id;
