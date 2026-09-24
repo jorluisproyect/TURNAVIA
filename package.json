@@ -8,7 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "cpanel:build": "next build",
-    "cpanel:start": "node server.js"
+    "cpanel:start": "node server.js",
+    "build:cpanel": "CPANEL_BUILD=1 NODE_OPTIONS='--max-old-space-size=384 --max-semi-space-size=16' next build"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
