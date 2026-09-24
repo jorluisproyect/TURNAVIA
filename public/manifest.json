@@ -1,12 +1,16 @@
 {
-  "name": "TUCITA · Tu consulta, a tu hora",
+  "id": "/",
+  "name": "TUCITA · Tu servicio, a tu hora",
   "short_name": "TUCITA",
-  "description": "Agenda médica inteligente para médicos, clínicas y pacientes.",
+  "description": "Citas, turnos y reservas para profesionales, negocios y clientes.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#f6fbf9",
   "theme_color": "#0f766e",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "lifestyle"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -21,5 +25,16 @@
       "purpose": "any maskable"
     }
   ],
-  "orientation": "portrait-primary"
+  "shortcuts": [
+    {
+      "name": "Explorar servicios",
+      "short_name": "Explorar",
+      "url": "/explorar"
+    },
+    {
+      "name": "Ingresar",
+      "short_name": "Ingresar",
+      "url": "/ingresar"
+    }
+  ]
 }
