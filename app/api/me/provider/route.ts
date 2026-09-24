@@ -7,7 +7,7 @@ import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
 import { parseProviderMedia, serializeProviderMedia, validateProviderMedia } from '@/lib/provider-media';
 import { validatePhone } from '@/lib/phone';
 import { normalizedBirthDate, normalizedDocument, dateForInput } from '@/lib/personal-profile';
-import { isTravelProvider, serializeTravelServiceDescription, travelServiceFields, validateTravelServiceMeta } from '@/lib/travel-service';
+import { isTravelProvider, serializeTravelServiceDescription, travelServiceFields, validateTravelServiceMeta, travelPartyFromReason } from '@/lib/travel-service';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -124,7 +124,7 @@ export async function GET(){
     WHERE ab.doctor_id=${provider.doctor_id} AND ab.starts_at>=now()-interval '1 day'
     ORDER BY ab.starts_at LIMIT 120`;
   const appointments=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.service_name,a.consultation_price,a.consultation_currency,
-      a.payment_method,a.payment_reference,a.payment_proof_url,a.payment_submitted_at,a.payment_approved_at,a.reschedule_used,
+      a.payment_method,a.payment_reference,a.payment_proof_url,a.payment_submitted_at,a.payment_approved_at,a.reschedule_used,a.reason_short,
       a.receipt_number,a.checked_in_at,a.completed_at,
       COALESCE(a.location_name_snapshot,l.name) AS location_name,
       COALESCE(a.location_address_snapshot,l.address) AS location_address,
@@ -164,11 +164,11 @@ export async function GET(){
     },
     services:services.map((s:any)=>{
       const travel=travelServiceFields(s.description);
-      return {id:String(s.id),name:s.name,description:travel.details,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active),summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity};
+      return {id:String(s.id),name:s.name,description:travel.details,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active),summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,childPrice:travel.childPrice};
     }),
     locations:locations.map((l:any)=>({id:String(l.id),name:l.name,address:l.address||'',city:l.city||'',state:l.state||'',country:l.country||'',room:l.room||''})),
     availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published),location:{id:String(a.location_id),name:a.location_name||'',address:a.address||'',city:a.city||'',state:a.state||'',country:a.country||'',room:a.room||''}})),
-    appointments:appointments.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceName:a.service_name||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():null,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():null,rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,location:{name:a.location_name||'',address:a.location_address||'',city:a.location_city||'',state:a.location_state||'',country:a.location_country||'',room:a.location_room||''},clientName:a.client_name,clientPhone:a.client_phone,clientEmail:a.client_email||''}))
+    appointments:appointments.map((a:any)=>{const party=travelPartyFromReason(a.reason_short);return ({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceName:a.service_name||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():null,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():null,rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,location:{name:a.location_name||'',address:a.location_address||'',city:a.location_city||'',state:a.location_state||'',country:a.location_country||'',room:a.location_room||''},clientName:a.client_name,clientPhone:a.client_phone,clientEmail:a.client_email||'',travelAdults:party.adults,travelChildren:party.children,travelers:party.travelers,note:party.note})})
   });
 }
 
@@ -266,7 +266,7 @@ export async function PATCH(req:Request){
     let description=String(body.description||'');
     if(travelMode){
       const internalLocationId=await ensureTravelInternalLocation(provider);
-      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||''),locationId:internalLocationId,capacity:Math.max(1,Number(body.capacity||1))};
+      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||''),locationId:internalLocationId,capacity:Math.max(1,Number(body.capacity||1)),childPrice:body.childPrice===''||body.childPrice===null||body.childPrice===undefined?null:Math.max(0,Number(body.childPrice||0))};
       const issue=validateTravelServiceMeta(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
       if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
@@ -297,7 +297,8 @@ export async function PATCH(req:Request){
         departureTime:Object.prototype.hasOwnProperty.call(body,'departureTime')?String(body.departureTime||''):previous.departureTime,
         returnTime:Object.prototype.hasOwnProperty.call(body,'returnTime')?String(body.returnTime||''):previous.returnTime,
         locationId:previous.locationId||await ensureTravelInternalLocation(provider),
-        capacity:Object.prototype.hasOwnProperty.call(body,'capacity')?Math.max(1,Number(body.capacity||1)):previous.capacity
+        capacity:Object.prototype.hasOwnProperty.call(body,'capacity')?Math.max(1,Number(body.capacity||1)):previous.capacity,
+        childPrice:Object.prototype.hasOwnProperty.call(body,'childPrice')?(body.childPrice===''||body.childPrice===null?null:Math.max(0,Number(body.childPrice||0))):previous.childPrice
       };
       const issue=validateTravelServiceMeta(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});

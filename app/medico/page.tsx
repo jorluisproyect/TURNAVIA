@@ -44,7 +44,7 @@ export default function Medico(){
  const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|'location'|null>(null);
  const [profile,setProfile]=useState<any>({});
  const [settings,setSettings]=useState<any>({});
- const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:0,currency:'USD',travelImage:'',travelDate:'',departureTime:'',returnTime:'',locationId:'',capacity:1};
+ const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:0,currency:'USD',childPrice:'',travelImage:'',travelDate:'',departureTime:'',returnTime:'',locationId:'',capacity:1};
  const [service,setService]=useState<any>(emptyService);
  const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',locationId:''});
  const [locationForm,setLocationForm]=useState({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
@@ -188,6 +188,7 @@ export default function Medico(){
      durationMinutes:Number(s.durationMinutes||30),
      price:Number(s.price||0),
      currency:s.currency||'USD',
+     childPrice:s.childPrice===null||s.childPrice===undefined?'':Number(s.childPrice),
      travelImage:s.travelImage||'',
      travelDate:s.travelDate||'',
      departureTime:s.departureTime||'',
@@ -301,7 +302,7 @@ export default function Medico(){
       {travelMode&&s.travelDate&&<div className="pill" style={{width:'fit-content',marginBottom:8}}>{new Date(s.travelDate+'T12:00:00').toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long'})}{s.departureTime?' · '+s.departureTime:''}{s.returnTime?'–'+s.returnTime:''}</div>}
       {travelMode&&<div className="muted" style={{fontSize:12,marginBottom:8}}>{s.capacity||1} cupo{Number(s.capacity||1)===1?'':'s'}</div>}
       <p>{(travelMode?s.summary:s.description)||'Sin descripción'}</p>
-      <div className="row" style={{gap:8,flexWrap:'wrap',alignItems:'center'}}><span className="pill">{s.durationMinutes} min</span><span className="pill">{s.currency}</span><strong>{s.price}</strong></div>
+      <div className="row" style={{gap:8,flexWrap:'wrap',alignItems:'center'}}><span className="pill">{s.durationMinutes} min</span><span className="pill">{s.currency}</span><strong>{s.price}</strong>{travelMode&&s.childPrice!==null&&s.childPrice!==undefined&&<span className="muted" style={{fontSize:11}}>Niño: {s.currency} {s.childPrice}</span>}</div>
       <div className="row" style={{gap:8,marginTop:12,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editService(s)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'update_service',id:s.id,active:!s.active})} disabled={saving}>{saving?'Procesando…':s.active?'Pausar':'Activar'}</button></div>
     </div>)}</div>}
   </section>
@@ -312,7 +313,7 @@ export default function Medico(){
     {upcoming.length===0?<div className="notice" style={{marginTop:14}}>Todavía no tienes reservas reales. Comparte tu enlace para comenzar.</div>:
     <div style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Cliente</th><th>Servicio</th><th>Fecha</th><th>Pago</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{upcoming.map((a:any)=><tr key={a.id}>
       <td><strong>{a.clientName}</strong><div className="muted" style={{fontSize:12}}>{a.clientEmail} · {a.clientPhone}</div></td>
-      <td>{a.serviceName}<div className="muted" style={{fontSize:12}}>{a.currency} {a.price}</div></td>
+      <td>{a.serviceName}<div className="muted" style={{fontSize:12}}>{a.currency} {a.price}</div>{travelMode&&a.travelers>1&&<div className="muted" style={{fontSize:11}}>{a.travelAdults} adulto{a.travelAdults===1?'':'s'}{a.travelChildren?' + '+a.travelChildren+' niño'+(a.travelChildren===1?'':'s'):''} · {a.travelers} viajeros</div>}</td>
       <td>{new Date(a.startsAt).toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short',timeZone:'America/Caracas'})}<div className="muted" style={{fontSize:12,marginTop:4}}><MapPin size={12}/> {a.location?.name||'Ubicación'}</div></td>
       <td>{a.paymentMethod||'—'}{a.paymentReference&&<div><strong>Ref: {a.paymentReference}</strong></div>}{a.paymentProofUrl&&<a className="btn btn-secondary" style={{marginTop:6,padding:'6px 9px'}} target="_blank" rel="noreferrer" href={a.paymentProofUrl}><Eye size={14}/> Ver</a>}</td>
       <td><StatusPill tone={a.status==='PAYMENT_REVIEW'?'warn':a.status==='PAYMENT_REJECTED'?'bad':['CONFIRMED','COMPLETED','ARRIVED','IN_CONSULTATION'].includes(a.status)?'ok':''}>{labels[a.status]||a.status}</StatusPill></td>
@@ -379,7 +380,8 @@ export default function Medico(){
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}>
      <div className="field" style={{flex:1,minWidth:150}}><label>{travelMode?'Duración del viaje':'Duración real'}</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>2 h</option><option value={180}>3 h</option>{travelMode&&<><option value={240}>4 h</option><option value={360}>6 h</option><option value={480}>8 h</option><option value={600}>10 h</option><option value={720}>12 h</option><option value={1440}>24 h</option></>}</select></div>
      <div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div>
-     <div className="field" style={{flex:1,minWidth:150}}><label>Precio</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div>
+     <div className="field" style={{flex:1,minWidth:150}}><label>{travelMode?'Precio por adulto':'Precio'}</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div>
+     {travelMode&&<div className="field" style={{flex:1,minWidth:150}}><label>Precio por niño (opcional)</label><input type="number" min="0" step="0.01" value={service.childPrice} onChange={e=>setService({...service,childPrice:e.target.value===''?'':Number(e.target.value)})} placeholder="Igual al adulto"/><small className="muted">Si lo dejas vacío, el niño paga el mismo precio del adulto.</small></div>}
    </div>{fxPreview(Number(service.price||0),service.currency||'USD')}
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService} disabled={saving}>{saving?'Guardando…':service.id?'Guardar cambios':travelMode?'Agregar viaje':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 

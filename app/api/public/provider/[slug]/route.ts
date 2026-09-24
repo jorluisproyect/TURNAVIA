@@ -5,7 +5,7 @@ import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subsc
 import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
 import { randomUUID } from 'crypto';
 import { parseProviderMedia } from '@/lib/provider-media';
-import { isTravelProvider, travelServiceFields } from '@/lib/travel-service';
+import { isTravelProvider, travelServiceFields, serializeTravelParty, travelPartyFromReason } from '@/lib/travel-service';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -97,7 +97,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     LEFT JOIN doctor_locations dl ON dl.doctor_id=ab.doctor_id AND dl.location_id=ab.location_id
     WHERE ab.doctor_id=${p.id} AND ab.published=true AND ab.ends_at>=now()
     ORDER BY ab.starts_at LIMIT 120`;
-  const aps=await sql`SELECT service_id,starts_at,ends_at,status FROM appointments WHERE doctor_id=${p.id} AND ends_at>=now()-interval '1 day'`;
+  const aps=await sql`SELECT service_id,starts_at,ends_at,status,reason_short FROM appointments WHERE doctor_id=${p.id} AND ends_at>=now()-interval '1 day'`;
   const statusRows=await sql`SELECT status,delay_minutes FROM doctor_status_updates WHERE doctor_id=${p.id} ORDER BY updated_at DESC LIMIT 1`;
 
   const availability=blocks.map((b:any)=>{
@@ -112,7 +112,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     let slots:any[];
     if(travelMode&&chosen){
       const capacity=Math.max(1,Number(chosenTravel.capacity||b.max_patients||1));
-      const used=(aps as any[]).filter(a=>String(a.service_id||'')===String(chosen.id)&&!['CANCELLED','PAYMENT_REJECTED'].includes(String(a.status))&&new Date(a.starts_at).getTime()===new Date(b.starts_at).getTime()).length;
+      const used=(aps as any[]).filter(a=>String(a.service_id||'')===String(chosen.id)&&!['CANCELLED','PAYMENT_REJECTED'].includes(String(a.status))&&new Date(a.starts_at).getTime()===new Date(b.starts_at).getTime()).reduce((sum,a)=>sum+travelPartyFromReason(a.reason_short).travelers,0);
       slots=[{
         startsAt:new Date(b.starts_at).toISOString(),
         endsAt:new Date(b.ends_at).toISOString(),
@@ -142,7 +142,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     },
     services:services.map((s:any)=>{
       const travel=travelServiceFields(s.description);
-      return {id:String(s.id),name:s.name,description:travel.details,summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'};
+      return {id:String(s.id),name:s.name,description:travel.details,summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,childPrice:travel.childPrice,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'};
     }),
     availability,
     selectedServiceDuration:durationMinutes,
@@ -206,7 +206,15 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   const requestedStart=new Date(startsAt);
   if(Number.isNaN(requestedStart.getTime())) return NextResponse.json({error:'Horario inválido'},{status:400});
   const serviceTravel=travelServiceFields(service.description||'');
-  if(isTravelProvider(p.provider_category,p.provider_activity)&&serviceTravel.travelDate){
+  const travelModeBooking=isTravelProvider(p.provider_category,p.provider_activity);
+  const travelAdults=travelModeBooking?Math.max(1,Math.min(100,Math.floor(Number(body.travelAdults||1)))):1;
+  const travelChildren=travelModeBooking?Math.max(0,Math.min(100,Math.floor(Number(body.travelChildren||0)))):0;
+  const travelers=travelAdults+travelChildren;
+  if(travelModeBooking&&travelers>Math.max(1,Number(serviceTravel.capacity||1)))return NextResponse.json({error:'La cantidad de viajeros supera los cupos de este viaje.'},{status:400});
+  const childUnitPrice=serviceTravel.childPrice===null||serviceTravel.childPrice===undefined?Number(service.price||0):Number(serviceTravel.childPrice||0);
+  const bookingTotal=travelModeBooking?(travelAdults*Number(service.price||0)+travelChildren*childUnitPrice):Number(service.price||0);
+  const bookingReason=travelModeBooking?serializeTravelParty({adults:travelAdults,children:travelChildren,note:String(body.note||'')}):String(body.note||'')||null;
+  if(travelModeBooking&&serviceTravel.travelDate){
     const localDate=requestedStart.toLocaleDateString('en-CA',{timeZone:'America/Caracas'});
     if(localDate!==serviceTravel.travelDate)return NextResponse.json({error:'Ese viaje solo puede reservarse en la fecha indicada en su tarjeta.'},{status:409});
     if(serviceTravel.departureTime){
@@ -278,16 +286,23 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
       capacity_ok AS (
         SELECT vb.*
         FROM valid_block vb
-        WHERE (
-          SELECT count(*) FROM appointments a
+        WHERE COALESCE((
+          SELECT sum(
+            CASE
+              WHEN a.reason_short LIKE 'TUCITA_TRAVEL_PARTY_V1|%'
+                THEN COALESCE(NULLIF(substring(a.reason_short from 'T=([0-9]+)'),'')::int,1)
+              ELSE 1
+            END
+          )
+          FROM appointments a
           WHERE a.service_id=${service.id}
             AND a.starts_at=${requestedStart.toISOString()}::timestamptz
             AND a.status NOT IN ('CANCELLED','PAYMENT_REJECTED')
-        ) < ${capacity}
+        ),0) + ${travelers} <= ${capacity}
       ),
       inserted AS (
         INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot)
-        SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room
+        SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${bookingReason},${service.id},${service.name},${bookingTotal},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room
         FROM capacity_ok vb
         RETURNING id,checkin_token
       )
@@ -334,13 +349,13 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(initialStatus==='CONFIRMED'){
     const receipt=await buildAppointmentReceiptPdf(appointmentId);
     const loc=[receipt.data.locationName,receipt.data.address,receipt.data.room].filter(Boolean).join(' · ');
-    customerMail=await sendTransactionalEmail({to:email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${clientName}</strong>.</p><p>Tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos tu recibo TUCITA con el código QR que debes presentar al llegar.</p>`),attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]});
+    customerMail=await sendTransactionalEmail({to:email,subject:'Tu reserva TUCITA fue confirmada',html:tucitaEmail('Reserva confirmada',`<p>Hola <strong>${clientName}</strong>.</p><p>Tu reserva quedó confirmada.</p><p><strong>Servicio:</strong> ${service.name}<br/>${travelModeBooking?'<strong>Viajeros:</strong> '+travelAdults+' adulto'+(travelAdults===1?'':'s')+(travelChildren?' + '+travelChildren+' niño'+(travelChildren===1?'':'s'):'')+'<br/><strong>Total:</strong> '+(service.currency||'USD')+' '+bookingTotal.toFixed(2)+'<br/>':''}<strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}<br/><strong>Lugar:</strong> ${loc||'Por confirmar'}</p><p>Adjuntamos tu recibo TUCITA con el código QR que debes presentar al llegar.</p>`),attachments:[{filename:String(receipt.data.receipt_number||'recibo-tucita')+'.pdf',content:receipt.buffer.toString('base64')}]});
   }else{
-    customerMail=await sendTransactionalEmail({to:email,subject:'Recibimos tu reserva TUCITA',html:tucitaEmail('Reserva preagendada',`<p>Hola <strong>${clientName}</strong>.</p><p>Recibimos tu reserva y comprobante. El profesional o negocio revisará el pago antes de confirmarla.</p><p><strong>Servicio:</strong> ${service.name}<br/><strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p><p>Cuando el pago sea aprobado recibirás por correo tu recibo PDF con el código QR de la cita.</p>`)});
+    customerMail=await sendTransactionalEmail({to:email,subject:'Recibimos tu reserva TUCITA',html:tucitaEmail('Reserva preagendada',`<p>Hola <strong>${clientName}</strong>.</p><p>Recibimos tu reserva y comprobante. El profesional o negocio revisará el pago antes de confirmarla.</p><p><strong>Servicio:</strong> ${service.name}<br/>${travelModeBooking?'<strong>Viajeros:</strong> '+travelAdults+' adulto'+(travelAdults===1?'':'s')+(travelChildren?' + '+travelChildren+' niño'+(travelChildren===1?'':'s'):'')+'<br/><strong>Total:</strong> '+(service.currency||'USD')+' '+bookingTotal.toFixed(2)+'<br/>':''}<strong>Con:</strong> ${p.full_name}<br/><strong>Fecha y hora:</strong> ${when}</p><p>Cuando el pago sea aprobado recibirás por correo tu recibo PDF con el código QR de la cita.</p>`)});
   }
   const providerEmail=String(p.organization_email||p.email||'').trim();
   if(providerEmail){
-    await sendTransactionalEmail({to:providerEmail,subject:'Nueva reserva en TUCITA',html:tucitaEmail('Nueva reserva recibida',`<p><strong>${clientName}</strong> reservó <strong>${service.name}</strong> con ${p.full_name}.</p><p><strong>Fecha y hora:</strong> ${when}<br/><strong>Monto:</strong> ${service.currency||'USD'} ${Number(service.price||0)}<br/><strong>Estado:</strong> ${initialStatus==='CONFIRMED'?'Confirmada':'Pago por revisar'}</p><p><a href="${process.env.APP_URL||'https://tucita.com.ve'}/panel">Abrir TUCITA</a></p>`)});
+    await sendTransactionalEmail({to:providerEmail,subject:'Nueva reserva en TUCITA',html:tucitaEmail('Nueva reserva recibida',`<p><strong>${clientName}</strong> reservó <strong>${service.name}</strong> con ${p.full_name}.</p><p><strong>Fecha y hora:</strong> ${when}<br/><strong>Monto:</strong> ${service.currency||'USD'} ${bookingTotal.toFixed(2)}${travelModeBooking?'<br/><strong>Viajeros:</strong> '+travelAdults+' adulto'+(travelAdults===1?'':'s')+(travelChildren?' + '+travelChildren+' niño'+(travelChildren===1?'':'s'):''):''}<br/><strong>Estado:</strong> ${initialStatus==='CONFIRMED'?'Confirmada':'Pago por revisar'}</p><p><a href="${process.env.APP_URL||'https://tucita.com.ve'}/panel">Abrir TUCITA</a></p>`)});
   }
   return NextResponse.json({ok:true,appointmentId,receiptToken,status:initialStatus,emailNotice:customerMail.ok?'sent':'pending'},{status:201});
 }
