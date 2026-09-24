@@ -7,6 +7,7 @@ import { Brand } from '@/components/Brand';
 import { ArrowRight, Building2, Eye, EyeOff, Stethoscope, UserRound } from 'lucide-react';
 import { PASSWORD_HELP } from '@/lib/password-policy';
 import { PROVIDER_CATEGORIES, COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
+import { ADULT_CATEGORY, ADULT_COMPLIANCE_TEXT, PROVIDER_COMPLIANCE_TEXT } from '@/lib/compliance';
 import { countryDialCode, countryPhoneInfo, digitsOnly, phoneAllowedLengths, phoneLengthHelp, phoneMaxLength, phoneMinLength } from '@/lib/phone';
 
 const categories=PROVIDER_CATEGORIES;
@@ -29,6 +30,8 @@ export default function RegistroClient(){
   const checkSeq=useRef(0);
   const [state,action,pending]=useActionState(registerUser,null);
   const [showPassword,setShowPassword]=useState(false);
+  const [providerCompliance,setProviderCompliance]=useState(false);
+  const [adultCompliance,setAdultCompliance]=useState(false);
   const phoneCode=countryDialCode(phoneCountry);
   const phoneInfo=countryPhoneInfo(phoneCountry);
   const phoneAllowed=phoneAllowedLengths(phoneCountry);
@@ -104,7 +107,7 @@ export default function RegistroClient(){
           <div className="field" style={{flex:1,minWidth:190}}><label>Rubro</label><select name="category" value={category} onChange={e=>{const next=e.target.value;setCategory(next);setActivity(categories[next][0])}}>{Object.keys(categories).map(c=><option key={c}>{c}</option>)}</select></div>
           <div className="field" style={{flex:1,minWidth:190}}><label>Actividad</label><select name="activity" value={activity} onChange={e=>setActivity(e.target.value)}>{categories[category].map(a=><option key={a}>{a}</option>)}</select></div>
         </div>}
-        {category==='Servicios 18+'&&provider&&<div className="notice">Categoría reservada a mayores de edad y actividades permitidas por la legislación aplicable.</div>}
+        {category===ADULT_CATEGORY&&provider&&<div className="notice"><strong>Solo +18 legal y no sexual.</strong><br/>Esta categoría no admite prostitución, escorts sexuales, citas remuneradas, actos sexuales pagados, pornografía, explotación, trata ni servicios con menores.</div>}
         {provider&&<div className="field">
           <label>País donde presta el servicio</label>
           <select name="country" value={country} onChange={e=>{const next=e.target.value;setCountry(next);setPhoneCountry(next);setPhoneLocal('')}} required>
@@ -152,8 +155,12 @@ export default function RegistroClient(){
         </div><small className="muted">{PASSWORD_HELP}</small></div>
         {team&&<div className="notice">Acceso de equipo por invitación, con permisos limitados a tu función.</div>}
         {provider&&<div className="notice">Tienes 15 días de prueba gratuita. El documento de identidad y la fecha de nacimiento se pueden completar después, desde tu perfil privado.</div>}
+        {provider&&<>
+          <label className="notice row" style={{alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" name="providerComplianceAccepted" value="1" checked={providerCompliance} onChange={e=>setProviderCompliance(e.target.checked)} required/><span><strong>Aceptación legal del proveedor.</strong><br/>{PROVIDER_COMPLIANCE_TEXT} <Link href="/legal/terminos">Términos</Link> · <Link href="/legal/privacidad">Privacidad</Link> · <Link href="/legal/servicios-prohibidos">Servicios prohibidos</Link>.</span></label>
+          {category===ADULT_CATEGORY&&<label className="notice row" style={{alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" name="adultComplianceAccepted" value="1" checked={adultCompliance} onChange={e=>setAdultCompliance(e.target.checked)} required/><span><strong>Declaración adicional +18.</strong><br/>{ADULT_COMPLIANCE_TEXT}</span></label>}
+        </>}
         {state?.error&&<div className="notice danger" role="alert">{state.error}</div>}
-        <button className="btn btn-primary" disabled={pending||availability?.state==='taken'} aria-busy={pending}>{pending?'Creando cuenta...':team?'Unirme al equipo':'Crear cuenta '+kind}</button>
+        <button className="btn btn-primary" disabled={pending||availability?.state==='taken'||(provider&&!providerCompliance)||(provider&&category===ADULT_CATEGORY&&!adultCompliance)} aria-busy={pending}>{pending?'Creando cuenta...':team?'Unirme al equipo':'Crear cuenta '+kind}</button>
         <div className="muted" style={{fontSize:13}}>Tus datos personales se utilizan para tu cuenta y sus operaciones, no se publican en tu página de reservas.</div>
       </form>
     </section>
