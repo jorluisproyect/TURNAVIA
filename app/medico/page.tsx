@@ -44,7 +44,7 @@ export default function Medico(){
  const [profile,setProfile]=useState<any>({});
  const [settings,setSettings]=useState<any>({});
  const [service,setService]=useState({id:'',name:'',description:'',durationMinutes:30,price:0,currency:'USD'});
- const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',slotMinutes:15,locationId:''});
+ const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',locationId:''});
  const [locationForm,setLocationForm]=useState({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
  const [dayStatus,setDayStatus]=useState({status:'NORMAL',delayMinutes:0,note:''});
  const [fx,setFx]=useState<any>(null);
@@ -206,10 +206,10 @@ export default function Medico(){
     <div className="grid-3" style={{marginTop:14}}>{data.availability.map((a:any)=><div className="card" key={a.id}>
       <CalendarPlus size={18}/><h3>{new Date(a.startsAt).toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long',timeZone:'America/Caracas'})}</h3>
       <p><strong>{new Date(a.startsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'})}</strong> a <strong>{new Date(a.endsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'})}</strong></p>
-      <div className="notice" style={{margin:'10px 0'}}><MapPin size={15}/> <strong>Atención en {a.location?.name||'ubicación por confirmar'}</strong><br/><span className="muted">{[a.location?.address,a.location?.city,a.location?.state,a.location?.country].filter(Boolean).join(' · ')}{a.location?.room?' · '+a.location.room:''}</span></div><div className="muted" style={{fontSize:12}}>Inicios cada {a.slotMinutes} min. TUCITA adapta el espacio a la duración real del servicio.</div>
+      <div className="notice" style={{margin:'10px 0'}}><MapPin size={15}/> <strong>Atención en {a.location?.name||'ubicación por confirmar'}</strong><br/><span className="muted">{[a.location?.address,a.location?.city,a.location?.state,a.location?.country].filter(Boolean).join(' · ')}{a.location?.room?' · '+a.location.room:''}</span></div><div className="muted" style={{fontSize:12}}>Inicio automático. TUCITA calcula la siguiente hora según la duración del servicio y el final de la reserva anterior.</div>
       <button className="btn btn-secondary" style={{marginTop:12}} onClick={()=>patch({action:'delete_availability',id:a.id})} disabled={saving}><Trash2 size={15}/> {saving?'Procesando…':'Eliminar horario'}</button>
     </div>)}</div>}
-    <div className="notice" style={{marginTop:14}}><strong>Ejemplo:</strong> si publicas 9:00–13:00 y un corte dura 30 minutos, TUCITA ofrece horas que permitan completar esos 30 minutos. Si “Corte + barba” dura 45 minutos, recalcula automáticamente las horas disponibles.</div>
+    <div className="notice" style={{marginTop:14}}><strong>Ejemplo automático:</strong> si una cita comienza a las 9:00 y el servicio dura 45 minutos, la próxima hora disponible será 9:45. Si esa siguiente reserva dura 30 minutos, la próxima será 10:15. No tienes que configurar intervalos manuales.</div>
   </section>
 
   <section className="panel" id="servicios" style={{marginTop:18}}>
@@ -271,7 +271,7 @@ export default function Medico(){
  </div></div><div className="button-row profile-modal-actions"><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile})} disabled={saving}>{saving?'Guardando…':'Guardar perfil'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='service'&&<div className="modal-backdrop"><div className="modal"><h2>{service.id?'Editar servicio':'Nuevo servicio'}</h2><div className="form">
-   <div className="notice">{serviceHint}</div>
+   <div className="notice">{serviceHint}<br/><strong>Importante:</strong> esta duración controla automáticamente la agenda. No necesitas configurar cada cuánto comienza una cita.</div>
    <div className="field"><label>Nombre del servicio</label><input value={service.name} onChange={e=>setService({...service,name:e.target.value})} placeholder={activity.includes('barber')?'Ej. Corte + barba':activity.includes('manicur')?'Ej. Acrílicas':'Ej. Consulta / Servicio premium'}/></div>
    <div className="field"><label>Descripción</label><textarea rows={3} value={service.description} onChange={e=>setService({...service,description:e.target.value})}/></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Duración real</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>120 min</option><option value={180}>180 min</option></select></div><div className="field" style={{flex:1,minWidth:150}}><label>Precio</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(service.price||0),service.currency||'USD')}
@@ -289,8 +289,13 @@ export default function Medico(){
    <div className="field"><label>¿Dónde atenderás en este horario?</label><select value={av.locationId} onChange={e=>setAv({...av,locationId:e.target.value})}><option value="">Selecciona una ubicación</option>{(data.locations||[]).map((l:any)=><option key={l.id} value={l.id}>{l.name}{l.room?' · '+l.room:''}</option>)}</select></div>
    <div className="field"><label>Día disponible</label><input type="date" value={av.date} onChange={e=>setAv({...av,date:e.target.value})}/></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:150}}><label>Disponible desde</label><input type="time" value={av.start} onChange={e=>setAv({...av,start:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:150}}><label>Disponible hasta</label><input type="time" value={av.end} onChange={e=>setAv({...av,end:e.target.value})}/></div></div>
-   <div className="field"><label>Cada cuánto puede comenzar una reserva</label><select value={av.slotMinutes} onChange={e=>setAv({...av,slotMinutes:Number(e.target.value)})}><option value={10}>Cada 10 min</option><option value={15}>Cada 15 min</option><option value={20}>Cada 20 min</option><option value={30}>Cada 30 min</option><option value={45}>Cada 45 min</option><option value={60}>Cada 60 min</option></select></div>
-   <div className="notice">La duración no se fija aquí. La duración viene de cada servicio. Por ejemplo: corte 30 min, corte + barba 45 min, acrílicas 90 min.</div>
+   <div className="notice" style={{display:'grid',gap:8}}>
+     <strong>✓ TUCITA calcula las horas automáticamente</strong>
+     <span>✓ Tú solo indicas el día, desde qué hora atiendes y hasta qué hora.</span>
+     <span>✓ La duración se toma de cada servicio: 15, 30, 45, 60 min, etc.</span>
+     <span>✓ La siguiente cita comienza exactamente cuando termina la anterior.</span>
+     <span>✓ Si cambia el servicio reservado, TUCITA recalcula las siguientes horas disponibles sin solaparlas.</span>
+   </div>
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'add_availability',...av})} disabled={saving}><Clock3 size={16}/> {saving?'Publicando…':'Publicar horario'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='settings'&&<div className="modal-backdrop"><div className="modal"><h2>Configuración de reservas</h2><div className="form">
