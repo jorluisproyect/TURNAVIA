@@ -12,7 +12,7 @@ export const PROVIDER_CATEGORIES:Record<string,string[]>={
   'Eventos':['Fotografía','Wedding planner','Salón de fiesta','Catering','Alquiler de vestidos','Otro'],
   'Viajes':['Agencia de viajes','Asesor de viajes','Guía turístico','Tours y excursiones','Planificación de viajes','Otro'],
   'Tatuador':['Tatuajes','Piercing','Micropigmentación','Diseño personalizado','Otro'],
-  'Servicios 18+':['Servicio privado con reserva','Otro'],
+  'Servicios para adultos (no sexuales)':['Evento exclusivo para mayores de edad','Actividad recreativa +18 no sexual','Otro servicio legal +18 no sexual'],
   'Otro':['Otro servicio con citas']
 };
 
