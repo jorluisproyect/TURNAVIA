@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { isOwnerMasterSession, MASTER_EMAIL } from '@/lib/access';
-import { databaseUrl, sql } from '@/lib/db';
-import { Pool } from '@neondatabase/serverless';
+import { sql } from '@/lib/db';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
 
 export async function POST(req:Request){
-  if(!sql||!databaseUrl)return NextResponse.json({error:'Base de datos no disponible.'},{status:503});
+  if(!sql)return NextResponse.json({error:'Base de datos no disponible.'},{status:503});
   if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo el Master propietario puede reiniciar TUCITA.'},{status:403});
 
   const body=await req.json().catch(()=>({}));
@@ -17,99 +16,113 @@ export async function POST(req:Request){
 
   const masterEmail=String(MASTER_EMAIL||'').trim().toLowerCase();
   if(!masterEmail)return NextResponse.json({error:'Correo Master no configurado.'},{status:500});
-  const safeMaster=masterEmail.replaceAll("'","''");
 
-  const resetSql=`
-DO $reset$
-DECLARE
-  master_email text := '${safeMaster}';
-  tbl record;
-  master_auth_count integer;
-BEGIN
-  SELECT count(*)::int INTO master_auth_count
-  FROM neon_auth."user"
-  WHERE lower(email)=lower(master_email);
-
-  IF master_auth_count <> 1 THEN
-    RAISE EXCEPTION 'No se puede reiniciar: se esperaba exactamente 1 cuenta Master en Neon Auth y se encontraron %.', master_auth_count;
-  END IF;
-
-  CREATE TEMP TABLE _tucita_keep_master_profile ON COMMIT DROP AS
-    SELECT * FROM public.app_user_profiles
-    WHERE lower(email)=lower(master_email);
-
-  CREATE TEMP TABLE _tucita_keep_master_payment_methods ON COMMIT DROP AS
-    SELECT * FROM public.payment_methods
-    WHERE scope='MASTER';
-
-  FOR tbl IN
-    SELECT table_name
-    FROM information_schema.tables
-    WHERE table_schema='public'
-      AND table_type='BASE TABLE'
-      AND table_name NOT LIKE '\\_%'
-      AND table_name NOT ILIKE '%migration%'
-    ORDER BY table_name
-  LOOP
-    EXECUTE 'TRUNCATE TABLE public.' || quote_ident(tbl.table_name) || ' RESTART IDENTITY CASCADE';
-  END LOOP;
-
-  INSERT INTO public.app_user_profiles
-    SELECT * FROM _tucita_keep_master_profile;
-
-  INSERT INTO public.payment_methods
-    SELECT * FROM _tucita_keep_master_payment_methods;
-
-  DELETE FROM neon_auth."user"
-  WHERE lower(email)<>lower(master_email);
-END
-$reset$;`;
-
-  const pool=new Pool({connectionString:databaseUrl});
-  let client:any=null;
   try{
-    client=await pool.connect();
-    await client.query('BEGIN');
-    await client.query(resetSql);
-    await client.query('COMMIT');
+    const masterAuth=await sql`
+      SELECT id,email
+      FROM neon_auth."user"
+      WHERE lower(email)=lower(${masterEmail})`;
+
+    if(masterAuth.length!==1){
+      return NextResponse.json({
+        error:`No se ejecutó el blanqueo: TUCITA esperaba encontrar exactamente 1 cuenta Master y encontró ${masterAuth.length}. No se borró ningún dato.`
+      },{status:409});
+    }
+
+    await sql.transaction([
+      // Datos de operación y atención.
+      sql`DELETE FROM app_notifications`,
+      sql`DELETE FROM waitlist_entries`,
+      sql`DELETE FROM appointments`,
+      sql`DELETE FROM doctor_status_updates`,
+      sql`DELETE FROM availability_blocks`,
+      sql`DELETE FROM doctor_locations`,
+      sql`DELETE FROM provider_services`,
+
+      // Conserva únicamente los métodos de cobro generales del Master.
+      sql`DELETE FROM payment_methods WHERE scope<>'MASTER'`,
+
+      // Cobros, planes y perfiles comerciales.
+      sql`DELETE FROM subscriptions`,
+      sql`DELETE FROM payments`,
+      sql`DELETE FROM patients`,
+      sql`DELETE FROM doctors`,
+      sql`DELETE FROM users WHERE lower(COALESCE(email,''))<>lower(${masterEmail})`,
+      sql`DELETE FROM locations`,
+      sql`DELETE FROM organizations`,
+      sql`DELETE FROM commercial_clients`,
+      sql`DELETE FROM audit_events`,
+
+      // Conserva el perfil de aplicación del Master.
+      sql`DELETE FROM app_user_profiles WHERE lower(email)<>lower(${masterEmail})`,
+
+      // Neon Auth vive en la misma base. Better Auth elimina por cascada
+      // sesiones/cuentas relacionadas al borrar el usuario.
+      sql`DELETE FROM neon_auth."user" WHERE lower(email)<>lower(${masterEmail})`
+    ]);
 
     const counts=await sql`
       SELECT
         (SELECT count(*)::int FROM commercial_clients) AS commercial_clients,
-        (SELECT count(*)::int FROM users) AS internal_users,
+        (SELECT count(*)::int FROM users WHERE lower(COALESCE(email,''))<>lower(${masterEmail})) AS internal_users,
         (SELECT count(*)::int FROM doctors) AS professionals,
         (SELECT count(*)::int FROM patients) AS patients,
         (SELECT count(*)::int FROM appointments) AS appointments,
         (SELECT count(*)::int FROM audit_events) AS audit_events,
         (SELECT count(*)::int FROM app_notifications) AS notifications,
-        (SELECT count(*)::int FROM neon_auth."user") AS auth_users,
-        (SELECT count(*)::int FROM app_user_profiles) AS app_profiles`;
+        (SELECT count(*)::int FROM neon_auth."user" WHERE lower(email)<>lower(${masterEmail})) AS non_master_auth_users,
+        (SELECT count(*)::int FROM neon_auth."user" WHERE lower(email)=lower(${masterEmail})) AS master_auth_users,
+        (SELECT count(*)::int FROM app_user_profiles WHERE lower(email)<>lower(${masterEmail})) AS non_master_profiles,
+        (SELECT count(*)::int FROM payment_methods WHERE scope<>'MASTER') AS non_master_payment_methods`;
     const c=counts[0] as any;
+
+    const clean=
+      Number(c?.commercial_clients||0)===0 &&
+      Number(c?.internal_users||0)===0 &&
+      Number(c?.professionals||0)===0 &&
+      Number(c?.patients||0)===0 &&
+      Number(c?.appointments||0)===0 &&
+      Number(c?.audit_events||0)===0 &&
+      Number(c?.notifications||0)===0 &&
+      Number(c?.non_master_auth_users||0)===0 &&
+      Number(c?.non_master_profiles||0)===0 &&
+      Number(c?.non_master_payment_methods||0)===0 &&
+      Number(c?.master_auth_users||0)===1;
+
+    if(!clean){
+      return NextResponse.json({
+        error:'El blanqueo terminó, pero la verificación encontró datos restantes. No continúes creando usuarios todavía.',
+        counts:c
+      },{status:409});
+    }
 
     return NextResponse.json({
       ok:true,
-      message:'TUCITA fue blanqueado correctamente. Solo se conservó la cuenta Master y su configuración de cobro.',
+      message:'TUCITA fue blanqueado correctamente. Solo se conservó la cuenta Master y sus métodos de cobro.',
       counts:{
-        clients:Number(c?.commercial_clients||0),
-        users:Number(c?.internal_users||0),
-        professionals:Number(c?.professionals||0),
-        patients:Number(c?.patients||0),
-        appointments:Number(c?.appointments||0),
-        auditEvents:Number(c?.audit_events||0),
-        notifications:Number(c?.notifications||0),
-        authUsers:Number(c?.auth_users||0),
-        appProfiles:Number(c?.app_profiles||0)
+        clients:0,
+        users:0,
+        professionals:0,
+        patients:0,
+        appointments:0,
+        auditEvents:0,
+        notifications:0,
+        authUsers:1,
+        appProfiles:Number(c?.non_master_profiles||0),
+        masterAuthUsers:1
       }
     });
   }catch(error:any){
-    if(client){try{await client.query('ROLLBACK')}catch{}}
     console.error('TUCITA master reset error',error);
+    const raw=String(error?.message||error||'Error desconocido');
+    const safe=raw
+      .replace(/postgres(?:ql)?:\/\/[^\s]+/gi,'[conexion protegida]')
+      .replace(/password=[^\s]+/gi,'password=[protegido]')
+      .slice(0,600);
+
     return NextResponse.json({
-      error:'No se pudo completar el blanqueo. La operación se revirtió para evitar dejar datos a medias.',
-      detail:process.env.NODE_ENV==='development'?String(error?.message||error):undefined
+      error:'No se pudo completar el blanqueo. La transacción se revirtió y no debe haber quedado un borrado parcial.',
+      technicalDetail:safe
     },{status:500});
-  }finally{
-    if(client){try{client.release()}catch{}}
-    try{await pool.end()}catch{}
   }
 }
