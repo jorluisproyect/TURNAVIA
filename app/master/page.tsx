@@ -10,7 +10,6 @@ import { currentSession, isOwnerMasterSession } from '@/lib/access';
 import { teamMemberForUser } from '@/lib/master-team';
 import TeamMasterDashboard from './TeamMasterDashboard';
 import { redirect } from 'next/navigation';
-import ResetTucitaDataButton from './configuracion/ResetTucitaDataButton';
 
 export const dynamic='force-dynamic';
 
@@ -168,11 +167,6 @@ export default async function Master(){
         </tr>)}</tbody></table></div>}
       </section>
 
-      <section className="panel" style={{marginTop:18}}>
-        <h2>Reiniciar sistema</h2>
-        <p className="muted">Uso exclusivo del Master propietario. Deja TUCITA completamente en cero para comenzar de nuevo.</p>
-        <ResetTucitaDataButton/>
-      </section>
     </main>
   </div>;
 }

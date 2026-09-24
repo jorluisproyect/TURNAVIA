@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { isOwnerMasterSession } from '@/lib/access';
 import { teamMemberForUser } from '@/lib/master-team';
+import MasterRefreshControl from '@/components/MasterRefreshControl';
 
 export const dynamic='force-dynamic';
 
@@ -16,5 +17,5 @@ export default async function MasterLayout({children}:{children:React.ReactNode}
     const rows=await sql`SELECT must_change_password FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
     if(Boolean((rows[0] as any)?.must_change_password)) redirect('/cuenta/seguridad');
   }
-  return children;
+  return <>{children}<MasterRefreshControl/></>;
 }

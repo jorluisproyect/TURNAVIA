@@ -19,13 +19,25 @@ export default function MasterEquipo(){
   const [msg,setMsg]=useState('');
   const [invitationUrl,setInvitationUrl]=useState('');
   const [busy,setBusy]=useState(false);
+  const [loading,setLoading]=useState(true);
   const busyRef=useRef(false);
 
   async function load(){
-    const r=await fetch('/api/master/team',{cache:'no-store'});
-    const j=await r.json();
-    if(r.ok)setMembers(j.members||[]);
-    else setMsg(j.error||'No se pudo cargar el equipo.');
+    if(loading&&members.length>0)return;
+    setLoading(true);
+    try{
+      const r=await fetch('/api/master/team',{cache:'no-store'});
+      const j=await r.json();
+      if(r.ok){
+        setMembers(j.members||[]);
+      }else{
+        setMsg(j.error||'No se pudo cargar el equipo.');
+      }
+    }catch{
+      setMsg('No se pudo actualizar el equipo. Revisa tu conexión e intenta nuevamente.');
+    }finally{
+      setLoading(false);
+    }
   }
   useEffect(()=>{load()},[]);
 
@@ -94,7 +106,7 @@ export default function MasterEquipo(){
           <div className="field" style={{flex:1,minWidth:230}}><label>Correo</label><input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="juan@correo.com"/></div>
           <div className="field" style={{flex:1,minWidth:220}}><label>Área / rol</label><select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}>{roles.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>
         </div>
-        <button className="btn btn-primary" onClick={add} disabled={busy}><UserPlus size={16}/>{busy?' Agregando...':' Agregar e invitar'}</button>
+        <button className="btn btn-primary" onClick={add} disabled={busy} aria-busy={busy}><UserPlus size={16}/>{busy?' Agregando…':' Agregar e invitar'}</button>
         {msg&&<div className="notice">{msg}</div>}
         {invitationUrl&&<div className="notice" style={{display:'grid',gap:9}}>
           <strong>Enlace privado para tu compañero</strong>
@@ -106,8 +118,8 @@ export default function MasterEquipo(){
     </section>
 
     <section className="panel" style={{marginTop:18}}>
-      <div className="row space" style={{gap:12,flexWrap:'wrap'}}><div><h2>Miembros del equipo</h2><p className="muted">Solo tú, como Master propietario, puedes invitar, cambiar roles o revocar accesos.</p></div><button className="btn btn-secondary" onClick={load}><RefreshCcw size={15}/> Actualizar</button></div>
-      {members.length===0?<div className="notice">Todavía no has agregado compañeros.</div>:<div className="grid-3" style={{marginTop:12}}>{members.map(m=><div className="card" key={m.email}>
+      <div className="row space" style={{gap:12,flexWrap:'wrap'}}><div><h2>Miembros del equipo</h2><p className="muted">Solo tú, como Master propietario, puedes invitar, cambiar roles o revocar accesos.</p></div><button className="btn btn-secondary" onClick={load} disabled={loading||busy} aria-busy={loading}><RefreshCcw size={15}/> {loading?'Actualizando…':'Actualizar'}</button></div>
+      {loading&&members.length===0?<div className="notice"><span className="tucita-loader" style={{marginRight:8}}/> Cargando equipo…</div>:members.length===0?<div className="notice">Todavía no has agregado compañeros.</div>:<div className="grid-3" style={{marginTop:12}}>{members.map(m=><div className="card" key={m.email}>
         <div className="row space"><div className="iconbox">{m.role==='DATABASE'?<Database/>:<Code2/>}</div><span className={'status '+(m.status==='ACTIVE'?'ok':m.status==='REVOKED'?'bad':'warn')}>{m.status==='ACTIVE'?'Master activo':m.status==='INVITED'?'Invitado':'Revocado'}</span></div>
         <h3>{m.name||m.email}</h3>
         <p>{m.roleLabel}</p>

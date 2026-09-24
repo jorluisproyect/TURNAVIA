@@ -581,3 +581,40 @@ button:disabled{
 .danger-zone p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.48}
 .danger-zone .btn-danger{justify-self:start}
 @media(max-width:560px){.danger-zone .btn-danger{width:100%;justify-content:center}}
+
+
+/* Master operational feedback */
+.master-refresh-dock{
+  position:fixed;right:18px;bottom:18px;z-index:820;
+  display:flex;align-items:center;gap:8px;padding:8px;
+  border:1px solid rgba(219,231,228,.96);border-radius:18px;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(14px);
+  box-shadow:0 16px 44px rgba(20,49,47,.16);
+}
+.master-refresh-button{min-width:132px}
+.master-refresh-ok{
+  display:inline-flex;align-items:center;gap:5px;
+  color:var(--success);font-size:12px;font-weight:850;padding:0 8px 0 2px;
+}
+.master-route-loading{
+  min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--bg);
+}
+.master-route-loading-card{
+  width:min(390px,100%);display:grid;justify-items:center;gap:10px;text-align:center;
+  background:white;border:1px solid var(--line);border-radius:22px;padding:28px;
+  box-shadow:var(--shadow);
+}
+.master-route-loading-card>span:last-child{color:var(--muted);font-size:13px;line-height:1.45}
+.tucita-loader{
+  display:inline-block;width:22px;height:22px;border-radius:999px;
+  border:3px solid #cfe9e4;border-right-color:var(--brand);
+  animation:tucita-spin .72s linear infinite;vertical-align:middle;flex:none;
+}
+@media(max-width:900px){
+  .master-refresh-dock{
+    right:14px;bottom:calc(88px + env(safe-area-inset-bottom));
+    max-width:calc(100vw - 28px);
+  }
+  .master-refresh-button{min-width:120px;padding:11px 14px}
+}
+@media(prefers-reduced-motion:reduce){.tucita-loader{animation:none}}
