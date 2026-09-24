@@ -106,6 +106,39 @@ export default function Medico(){
    setAv(v=>({...v,date:v.date||today,locationId:v.locationId||data?.locations?.[0]?.id||''}));
    setModal('availability');
  }
+
+ async function saveAvailability(){
+   if(!av.locationId||!av.date||!av.start||!av.end){
+     setToast('Completa lugar, día, hora inicial y hora final.');
+     return;
+   }
+   const start=new Date(`${av.date}T${av.start}:00-04:00`);
+   const end=new Date(`${av.date}T${av.end}:00-04:00`);
+   if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime())||end<=start){
+     setToast('La hora final debe ser posterior a la hora inicial.');
+     return;
+   }
+   const exact=(data?.availability||[]).some((x:any)=>
+     x.location?.id===av.locationId &&
+     new Date(x.startsAt).getTime()===start.getTime() &&
+     new Date(x.endsAt).getTime()===end.getTime()
+   );
+   if(exact){
+     setToast('Este bloque ya está publicado. No puedes agregar el mismo horario dos veces.');
+     return;
+   }
+   const overlap=(data?.availability||[]).find((x:any)=>
+     new Date(x.startsAt).getTime()<end.getTime() &&
+     new Date(x.endsAt).getTime()>start.getTime()
+   );
+   if(overlap){
+     const from=new Date(overlap.startsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'});
+     const to=new Date(overlap.endsAt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Caracas'});
+     setToast('Ese horario se cruza con otro bloque ya publicado ('+from+'–'+to+').');
+     return;
+   }
+   await patch({action:'add_availability',...av});
+ }
  function newLocation(){
    setLocationForm({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
    setModal('location');
@@ -295,8 +328,9 @@ export default function Medico(){
      <span>✓ La duración se toma de cada servicio: 15, 30, 45, 60 min, etc.</span>
      <span>✓ La siguiente cita comienza exactamente cuando termina la anterior.</span>
      <span>✓ Si cambia el servicio reservado, TUCITA recalcula las siguientes horas disponibles sin solaparlas.</span>
+     <span>✓ No puedes publicar dos veces el mismo bloque ni crear bloques que se crucen entre sí.</span>
    </div>
- </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'add_availability',...av})} disabled={saving}><Clock3 size={16}/> {saving?'Publicando…':'Publicar horario'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveAvailability} disabled={saving}><Clock3 size={16}/> {saving?'Publicando…':'Publicar horario'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='settings'&&<div className="modal-backdrop"><div className="modal"><h2>Configuración de reservas</h2><div className="form">
    <div className="row" style={{gap:12,alignItems:'stretch'}}><div className="field" style={{flex:1}}><label>Precio base</label><input type="number" value={settings.price??0} onChange={e=>setSettings({...settings,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1}}><label>Moneda</label><select value={settings.currency||'USD'} onChange={e=>setSettings({...settings,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(settings.price||0),settings.currency||'USD')}
