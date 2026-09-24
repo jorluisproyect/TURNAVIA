@@ -91,7 +91,7 @@ export default async function Master(){
     <main className="main">
       <div className="topbar">
         <div><div className="muted" style={{fontSize:13}}>TUCITA · Administración comercial</div><h1>Panel Master</h1></div>
-        <div className="row" style={{gap:8,flexWrap:'wrap'}}><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Crear cliente</Link><Link href="/master/suscripciones?status=REVISION_BINANCE" className="btn btn-secondary"><DollarSign size={16}/> Pagos</Link><Link href="/master/clientes" className="btn btn-secondary"><Building2 size={16}/> Clientes</Link></div>
+        <div className="row" style={{gap:8,flexWrap:'wrap'}}><Link href="/activar" className="btn btn-primary"><UserPlus size={16}/> Nueva prueba</Link><Link href="/master/suscripciones?status=REVISION_BINANCE" className="btn btn-secondary"><DollarSign size={16}/> Pagos</Link><Link href="/master/usuarios" className="btn btn-secondary"><UserRound size={16}/> Usuarios</Link></div>
       </div>
 
       {!hasDatabase&&<div className="notice danger" style={{marginBottom:18}}><strong>Base de datos de producción no conectada.</strong><br/>El Master abrió correctamente, pero TUCITA no puede leer clientes, pagos ni profesionales hasta restablecer la conexión con Neon. <Link href="/master/configuracion">Abrir diagnóstico</Link>.</div>}
@@ -103,7 +103,7 @@ export default async function Master(){
         </div>
         <div className="grid-3" style={{marginTop:14}}>
           <Link href="/master/suscripciones?status=REVISION_BINANCE" className="notice" style={{textDecoration:'none'}}><strong>{reviews.length} pago{reviews.length===1?'':'s'} por revisar</strong><br/><span className="muted">Abrir bandeja de cobros</span></Link>
-          <Link href="/master/clientes?status=TRIAL" className="notice" style={{textDecoration:'none'}}><strong>{expiring.length} prueba{expiring.length===1?'':'s'} vence{expiring.length===1?'':'n'} en 24 h</strong><br/><span className="muted">Dar seguimiento</span></Link>
+          <Link href="/master/profesionales?status=TRIAL" className="notice" style={{textDecoration:'none'}}><strong>{expiring.length} prueba{expiring.length===1?'':'s'} vence{expiring.length===1?'':'n'} en 24 h</strong><br/><span className="muted">Dar seguimiento</span></Link>
           <Link href="/master/configuracion" className={systemOk?'notice':'notice danger'} style={{textDecoration:'none'}}>{systemOk?<CheckCircle2 size={17}/>:<AlertTriangle size={17}/>} <strong>{systemOk?'Conexiones críticas OK':'Hay una configuración pendiente'}</strong></Link>
         </div>
       </section>
@@ -157,7 +157,7 @@ export default async function Master(){
       </section>
 
       <section className="panel" style={{marginTop:18}}>
-        <div className="row space" style={{gap:12,flexWrap:'wrap'}}><div><h2>Clientes recientes</h2><div className="muted" style={{fontSize:13}}>Los demos se muestran, pero no cuentan en tus métricas reales.</div></div><Link href="/master/clientes" className="btn btn-secondary">Ver todos</Link></div>
+        <div className="row space" style={{gap:12,flexWrap:'wrap'}}><div><h2>Cuentas comerciales recientes</h2><div className="muted" style={{fontSize:13}}>Profesionales y negocios creados en el módulo comercial. Los demos no cuentan en tus métricas reales.</div></div><Link href="/master/clientes" className="btn btn-secondary">Ver cuentas</Link></div>
         {clients.length===0?<div className="notice" style={{marginTop:16}}>Aún no hay profesionales o negocios registrados como clientes.</div>:
         <div style={{overflowX:'auto',marginTop:12}}><table className="table"><thead><tr><th>Cliente</th><th>Plan</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{clients.slice(0,8).map(c=><tr key={c.id}>
           <td><Link href={'/master/clientes/'+c.id}><strong>{c.name}</strong></Link>{c.demo&&<span className="pill" style={{marginLeft:8}}>Demo</span>}<div className="muted" style={{fontSize:12}}>{c.email}</div></td>

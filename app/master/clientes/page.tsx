@@ -37,16 +37,16 @@ export default async function ClientesMaster({searchParams}:{searchParams:Promis
   const real=filtered.filter((r:any)=>!String(r.email||'').toLowerCase().includes('demo'));
 
   return <div className="dashboard"><Sidebar role="master"/><main className="main">
-    <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Administración</div><h1>Clientes</h1></div><Link href="/activar" className="btn btn-primary">Nueva prueba</Link></div>
+    <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Administración</div><h1>Cuentas comerciales</h1></div><Link href="/activar" className="btn btn-primary">Nueva prueba comercial</Link></div>
 
     <section className="panel">
       <form method="get" className="row" style={{gap:10,flexWrap:'wrap',alignItems:'end'}}>
-        <div className="field" style={{flex:1,minWidth:240}}><label>Buscar</label><div style={{position:'relative'}}><Search size={16} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/><input name="q" defaultValue={String(sp.q||'')} placeholder="Nombre, correo, teléfono o rubro" style={{paddingLeft:38}}/></div></div>
+        <div className="field" style={{flex:1,minWidth:240}}><label>Buscar</label><div style={{position:'relative'}}><Search size={16} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/><input name="q" defaultValue={String(sp.q||'')} placeholder="Profesional, negocio, correo, teléfono o rubro" style={{paddingLeft:38}}/></div></div>
         <div className="field" style={{minWidth:210}}><label>Estado</label><select name="status" defaultValue={status}><option value="TODOS">Todos</option><option value="ACTIVO">Activo</option><option value="TRIAL">Prueba</option><option value="REVISION_BINANCE">Pago en revisión</option><option value="PAGO_PENDIENTE">Pago pendiente</option><option value="SUSPENDIDO">Suspendido</option></select></div>
         <button className="btn btn-primary" type="submit">Filtrar</button>
         <Link className="btn btn-secondary" href="/master/clientes">Limpiar</Link>
       </form>
-      <div className="muted" style={{fontSize:12,marginTop:10}}>{real.length} cliente{real.length===1?'':'s'} real{real.length===1?'':'es'} en este resultado.</div>
+      <div className="muted" style={{fontSize:12,marginTop:10}}>{real.length} cuenta{real.length===1?'':'s'} comercial{real.length===1?'':'es'} en este resultado.</div>
     </section>
 
     <section className="panel" style={{marginTop:18}}>

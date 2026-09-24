@@ -40,8 +40,9 @@ const config = {
   ],
   master: [
     ["/master", "Resumen", LayoutDashboard],
-    ["/master/clientes", "Clientes", Building2],
     ["/master/profesionales", "Profesionales", HeartPulse],
+    ["/master/usuarios", "Usuarios finales", UserRound],
+    ["/master/clientes", "Cuentas comerciales", Building2],
     ["/master/suscripciones", "Suscripciones", BarChart3],
     ["/master/equipo", "Equipo de trabajo", Users],
     ["/master/eliminados", "Perfiles eliminados", RotateCcw],
@@ -101,9 +102,9 @@ export function Sidebar({role}:{role:keyof typeof config}){
     ]:
     role==='master'?[
       ['/master','Resumen',LayoutDashboard],
-      ['/master/clientes','Clientes',Building2],
+      ['/master/profesionales','Profesionales',HeartPulse],
+      ['/master/usuarios','Usuarios',UserRound],
       ['/master/suscripciones','Pagos',WalletCards],
-      ['/master#alertas','Alertas',BarChart3],
       ['__more__','Más',Menu],
     ]:[
       ['/medico','Inicio',LayoutDashboard],
@@ -120,7 +121,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
     ]:
     role==='masterTeam'?[]:
     role==='master'?[
-      ['/master/profesionales','Profesionales',HeartPulse],
+      ['/master/clientes','Cuentas comerciales',Building2],
       ['/master/equipo','Equipo de trabajo',Users],
       ['/master/eliminados','Perfiles eliminados',RotateCcw],
       ['/master/configuracion','Configuración',Settings],
