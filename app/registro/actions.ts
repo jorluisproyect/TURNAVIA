@@ -178,6 +178,29 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     }catch(error){console.error('TUCITA welcome notification error',error)}
   }
 
+  if(sql&&authUserId&&!teamInvite){
+    try{
+      await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+        SELECT
+          'ACCOUNT_REGISTERED',
+          'ACCOUNT_PROFILE',
+          ${String(authUserId)},
+          jsonb_build_object(
+            'email',${email},
+            'role',${role},
+            'accountType',${accountType},
+            'name',${name}
+          )
+        WHERE NOT EXISTS (
+          SELECT 1 FROM audit_events ae
+          WHERE ae.action='ACCOUNT_REGISTERED'
+            AND ae.entity_type='ACCOUNT_PROFILE'
+            AND lower(COALESCE(ae.metadata->>'email',''))=lower(${email})
+            AND COALESCE(ae.metadata->>'role','')=${role}
+        )`;
+    }catch(error){console.error('TUCITA account registration audit error',error)}
+  }
+
   const appUrl=process.env.APP_URL||'https://tucita.com.ve';
   const publicPath=businessPublicPath||providerPublicPath;
   const welcomeMail=await sendTransactionalEmail({
