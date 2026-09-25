@@ -58,6 +58,8 @@ export function categoryUsesWorkReferences(category?:string,activity?:string){
     'evento','fotograf','catering','vestido',
     'arquitect','diseñ','espacios','estudio de grabación',
     'grooming','mascota',
+    'salud','médico','medico','odont','psicolog','fisioter','nutric','veterin',
+    'legal','abogad','derecho','jurídic','juridic',
     'otro','tatuaj','piercing','micropigment','viaje','turismo','tour'
   ].some(x=>text.includes(x));
 }
