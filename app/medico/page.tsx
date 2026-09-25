@@ -305,7 +305,10 @@ export default function Medico(){
   <section className="panel" id="agenda" style={{marginTop:18}}>
     <div className="row space" style={{gap:10,flexWrap:'wrap'}}>
       <div><h2>Calendario de disponibilidad</h2><div className="muted" style={{fontSize:13}}>Publica exactamente qué días y horas puedes atender. El cliente solo verá horas libres.</div></div>
-      <button className="btn btn-primary" onClick={openAvailability}><CalendarPlus size={16}/> Agregar día y horario</button>
+      <div className="button-row">
+        <Link className="btn btn-secondary" href="/medico/agenda"><CalendarPlus size={16}/> Ver almanaque en grande</Link>
+        <button className="btn btn-primary" onClick={openAvailability}><CalendarPlus size={16}/> Agregar día y horario</button>
+      </div>
     </div>
     {data.availability.length===0?<div className="notice" style={{marginTop:14}}>Todavía no has publicado disponibilidad. Agrega una fecha, hora de inicio y hora de cierre.</div>:
     <div className="grid-3" style={{marginTop:14}}>{data.availability.map((a:any)=><div className="card" key={a.id}>
