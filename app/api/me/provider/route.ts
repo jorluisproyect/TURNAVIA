@@ -8,6 +8,7 @@ import { parseProviderMedia, serializeProviderMedia, validateProviderMedia } fro
 import { validatePhone } from '@/lib/phone';
 import { normalizedBirthDate, normalizedDocument, dateForInput } from '@/lib/personal-profile';
 import { isTravelProvider, serializeTravelServiceDescription, travelServiceFields, validateTravelServiceMeta, travelPartyFromReason } from '@/lib/travel-service';
+import { parseServiceMedia, serializeServiceMedia, validateServiceMedia } from '@/lib/service-media';
 import { prohibitedMarketplaceReason } from '@/lib/compliance';
 
 export const dynamic='force-dynamic';
@@ -164,8 +165,16 @@ export async function GET(){
       dayStatus:(statusRows[0] as any)?.status||'NORMAL',delayMinutes:Number((statusRows[0] as any)?.delay_minutes||0)
     },
     services:services.map((s:any)=>{
+      const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
       const travel=travelServiceFields(s.description);
-      return {id:String(s.id),name:s.name,description:travel.details,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active),summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,childPrice:travel.childPrice};
+      const visual=parseServiceMedia(s.description);
+      return {
+        id:String(s.id),name:s.name,
+        description:travelMode?travel.details:visual.details,
+        serviceImage:travelMode?'':visual.image,
+        durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active),
+        summary:travel.summary,travelImage:travelMode?travel.image:'',travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,childPrice:travel.childPrice
+      };
     }),
     locations:locations.map((l:any)=>({id:String(l.id),name:l.name,address:l.address||'',city:l.city||'',state:l.state||'',country:l.country||'',room:l.room||''})),
     availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published),location:{id:String(a.location_id),name:a.location_name||'',address:a.address||'',city:a.city||'',state:a.state||'',country:a.country||'',room:a.room||''}})),
@@ -276,6 +285,11 @@ export async function PATCH(req:Request){
       if(issue)return NextResponse.json({error:issue},{status:400});
       if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
       description=serializeTravelServiceDescription(meta);
+    }else{
+      const meta={details:description,image:String(body.serviceImage||'')};
+      const issue=validateServiceMedia(meta);
+      if(issue)return NextResponse.json({error:issue},{status:400});
+      description=serializeServiceMedia(meta);
     }
     const rows=await sql`INSERT INTO provider_services(doctor_id,name,description,duration_minutes,price,currency,active)
       VALUES(${provider.doctor_id},${name},${description||null},${Math.max(5,Number(body.durationMinutes||30))},${Math.max(0,Number(body.price||0))},${String(body.currency||'USD')},true)
@@ -293,6 +307,17 @@ export async function PATCH(req:Request){
     const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
     let descriptionValue:any=body.description??null;
     const hasTravelPayload=['summary','travelImage','travelDate','departureTime','returnTime'].some(k=>Object.prototype.hasOwnProperty.call(body,k));
+    if(!travelMode&&(Object.prototype.hasOwnProperty.call(body,'description')||Object.prototype.hasOwnProperty.call(body,'serviceImage'))){
+      const current=await sql`SELECT description FROM provider_services WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id} LIMIT 1`;
+      const previous=parseServiceMedia((current[0] as any)?.description||'');
+      const meta={
+        details:Object.prototype.hasOwnProperty.call(body,'description')?String(body.description||''):previous.details,
+        image:Object.prototype.hasOwnProperty.call(body,'serviceImage')?String(body.serviceImage||''):previous.image
+      };
+      const issue=validateServiceMedia(meta);
+      if(issue)return NextResponse.json({error:issue},{status:400});
+      descriptionValue=serializeServiceMedia(meta);
+    }
     if(travelMode&&(hasTravelPayload||Object.prototype.hasOwnProperty.call(body,'description'))){
       const current=await sql`SELECT description FROM provider_services WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id} LIMIT 1`;
       const previous=travelServiceFields((current[0] as any)?.description||'');
