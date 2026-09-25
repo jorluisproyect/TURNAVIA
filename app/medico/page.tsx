@@ -44,7 +44,7 @@ export default function Medico(){
  const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|'location'|null>(null);
  const [profile,setProfile]=useState<any>({});
  const [settings,setSettings]=useState<any>({});
- const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:0,currency:'USD',childPrice:'',travelImage:'',travelDate:'',departureTime:'',returnTime:'',locationId:'',capacity:1};
+ const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:0,currency:'USD',childPrice:'',serviceImage:'',travelImage:'',travelDate:'',departureTime:'',returnTime:'',locationId:'',capacity:1};
  const [service,setService]=useState<any>(emptyService);
  const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',locationId:''});
  const [locationForm,setLocationForm]=useState({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
@@ -189,6 +189,7 @@ export default function Medico(){
      price:Number(s.price||0),
      currency:s.currency||'USD',
      childPrice:s.childPrice===null||s.childPrice===undefined?'':Number(s.childPrice),
+     serviceImage:s.serviceImage||'',
      travelImage:s.travelImage||'',
      travelDate:s.travelDate||'',
      departureTime:s.departureTime||'',
@@ -197,6 +198,13 @@ export default function Medico(){
      capacity:Number(s.capacity||1)
    });
    setModal('service');
+ }
+ async function serviceImageChange(file?:File){
+   if(!file)return;
+   try{
+     const dataUrl=await resizeImage(file,520,360,.68);
+     setService((x:any)=>({...x,serviceImage:dataUrl}));
+   }catch(e:any){setToast(e?.message||'No se pudo procesar la foto del servicio.')}
  }
  async function travelImageChange(file?:File){
    if(!file)return;
@@ -297,7 +305,8 @@ export default function Medico(){
     {data.services.length===0?<div className="notice" style={{marginTop:14}}>Agrega al menos un servicio para que tus clientes puedan reservar.</div>:
     <div className="grid-3" style={{marginTop:14}}>{data.services.map((s:any)=><div className="card" key={s.id} style={{overflow:'hidden'}}>
       {travelMode&&s.travelImage&&<img src={s.travelImage} alt={s.name} style={{width:'100%',height:150,objectFit:'cover',borderRadius:14,marginBottom:12}}/>}
-      {!travelMode&&<BriefcaseBusiness size={18}/>}
+      {!travelMode&&s.serviceImage&&<img src={s.serviceImage} alt={s.name} style={{width:'100%',height:150,objectFit:'cover',borderRadius:14,marginBottom:12}}/>}
+      {!travelMode&&!s.serviceImage&&<BriefcaseBusiness size={18}/>}
       <h3>{s.name}</h3>
       {travelMode&&s.travelDate&&<div className="pill" style={{width:'fit-content',marginBottom:8}}>{new Date(s.travelDate+'T12:00:00').toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long'})}{s.departureTime?' · '+s.departureTime:''}{s.returnTime?'–'+s.returnTime:''}</div>}
       {travelMode&&<div className="muted" style={{fontSize:12,marginBottom:8}}>{s.capacity||1} cupo{Number(s.capacity||1)===1?'':'s'}</div>}
@@ -376,7 +385,18 @@ export default function Medico(){
      </div>
      <div className="field" style={{maxWidth:220}}><label>Cupos disponibles</label><input type="number" min="1" max="500" value={service.capacity||1} onChange={e=>setService({...service,capacity:Math.max(1,Number(e.target.value||1))})}/></div>
      <div className="notice"><strong>Calendario automático para Viajes.</strong><br/>Al guardar, TUCITA programa internamente esta salida con su fecha, hora, duración y cupos. No necesitas crear ubicaciones ni publicar un calendario aparte.</div>
-   </>:<div className="field"><label>Descripción</label><textarea rows={3} value={service.description} onChange={e=>setService({...service,description:e.target.value})}/></div>}
+   </>:<>
+     <div className="field">
+       <label>Foto referencial del servicio (recomendada)</label>
+       <div className="row" style={{gap:12,alignItems:'center',flexWrap:'wrap'}}>
+         {service.serviceImage?<img src={service.serviceImage} alt="Vista previa del servicio" style={{width:150,height:104,borderRadius:16,objectFit:'cover'}}/>:<div className="notice" style={{margin:0}}>Ej.: uñas francesas, corte, maquillaje, tatuaje, plato, espacio o resultado del servicio.</div>}
+         <label className="btn btn-secondary" style={{cursor:'pointer'}}><ImagePlus size={16}/> {service.serviceImage?'Cambiar foto':'Subir foto'}<input type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={e=>serviceImageChange(e.target.files?.[0])}/></label>
+         {service.serviceImage&&<button type="button" className="btn btn-secondary" onClick={()=>setService({...service,serviceImage:''})}><Trash2 size={15}/> Quitar</button>}
+       </div>
+       <small className="muted">La miniatura aparecerá junto al precio y el cliente podrá verla grande al seleccionar el servicio.</small>
+     </div>
+     <div className="field"><label>Descripción</label><textarea rows={3} value={service.description} onChange={e=>setService({...service,description:e.target.value})} placeholder="Explica claramente qué incluye el servicio."/></div>
+   </>}
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}>
      <div className="field" style={{flex:1,minWidth:150}}><label>{travelMode?'Duración del viaje':'Duración real'}</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>2 h</option><option value={180}>3 h</option>{travelMode&&<><option value={240}>4 h</option><option value={360}>6 h</option><option value={480}>8 h</option><option value={600}>10 h</option><option value={720}>12 h</option><option value={1440}>24 h</option></>}</select></div>
      <div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div>
