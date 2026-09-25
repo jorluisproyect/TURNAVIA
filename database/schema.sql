@@ -228,3 +228,16 @@ CREATE TABLE IF NOT EXISTS app_notifications (
 );
 CREATE INDEX IF NOT EXISTS app_notifications_user_created_idx ON app_notifications(auth_user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS app_notifications_user_unread_idx ON app_notifications(auth_user_id, read_at);
+
+
+-- PWA / phone push notifications
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_user_id text NOT NULL,
+  endpoint text UNIQUE NOT NULL,
+  p256dh text NOT NULL,
+  auth text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(auth_user_id);
