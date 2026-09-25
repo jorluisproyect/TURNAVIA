@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { commercialClientAccess, MASTER_EMAIL } from '@/lib/access';
 import { sendTransactionalEmail, tucitaEmail } from '@/lib/email';
 import { billingAmount, type BillingCycleMonths } from '@/lib/plans';
+import { sendPushToAuthUser } from '@/lib/push';
 
 export const runtime='nodejs';
 
@@ -67,6 +68,20 @@ export async function POST(req:Request){
     }
   }catch(error){
     console.error('TUCITA in-app payment notification error',error);
+  }
+
+  try{
+    const masterPushRows=await sql`SELECT auth_user_id FROM app_user_profiles WHERE role='MASTER' ORDER BY updated_at DESC LIMIT 1`;
+    const masterPushAuthId=String((masterPushRows[0] as any)?.auth_user_id||'');
+    if(masterPushAuthId){
+      await sendPushToAuthUser(masterPushAuthId,{
+        title:'TUCITA · Nuevo pago',
+        body:r.name+' envió un pago por '+methodLabel+' · Ref. '+reference+' · USD '+amount,
+        url:'/master'
+      });
+    }
+  }catch(error){
+    console.error('TUCITA Master push notification error',error);
   }
 
   const masterMail=await sendTransactionalEmail({
