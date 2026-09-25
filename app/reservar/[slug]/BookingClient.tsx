@@ -7,7 +7,7 @@ import { ReportProviderButton } from '@/components/ReportProviderButton';
 type Slot={time:string;available:boolean;startsAt:string;remaining?:number};
 type LocationInfo={id:string;name:string;address:string;city:string;state:string;country:string;room:string};
 type Availability={id:string;date:string;slots:Slot[];location:LocationInfo};
-type Service={id:string;name:string;description:string;summary?:string;travelImage?:string;travelDate?:string;departureTime?:string;returnTime?:string;locationId?:string;capacity?:number;childPrice?:number|null;durationMinutes:number;price:number;currency:string};
+type Service={id:string;name:string;description:string;summary?:string;serviceImage?:string;travelImage?:string;travelDate?:string;departureTime?:string;returnTime?:string;locationId?:string;capacity?:number;childPrice?:number|null;durationMinutes:number;price:number;currency:string};
 type PaymentMethod={id:string;name:string;type:string;account_label?:string;account_value?:string;instructions?:string;requires_proof?:boolean;active:boolean};
 type State={provider:{slug:string;name:string;initials:string;category:string;activity:string;type:string;location:string;dayStatus:string;delayMinutes:number;profileImage?:string;workImages?:string[]};services:Service[];availability:Availability[];paymentInstructions:string};
 
@@ -164,9 +164,16 @@ export default function BookingClient({slug}:{slug:string}){
               <div className="muted" style={{fontSize:11}}>{s.childPrice!==null&&s.childPrice!==undefined?'Niño '+s.currency+' '+s.childPrice+' · ':''}Duración {s.durationMinutes} min · {s.capacity||1} cupo{Number(s.capacity||1)===1?'':'s'} · {serviceId===s.id?'Seleccionado':'Toca para elegir'}</div>
             </div>
           </button>)}</div>
-         :<div className="field"><select value={serviceId} onChange={e=>setServiceId(e.target.value)}>{data.services.map(s=><option key={s.id} value={s.id}>{s.name} · {s.durationMinutes} min · {s.currency} {s.price}</option>)}</select></div>}
-       {service&&<div className="notice" style={{marginTop:travelMode?4:0}}>
+         :<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
+            {data.services.map(s=><button type="button" key={s.id} onClick={()=>setServiceId(s.id)} className={serviceId===s.id?'selected':''} style={{textAlign:'left',padding:10,border:'1px solid var(--line)',borderRadius:16,background:serviceId===s.id?'#ecfdf5':'#fff',cursor:'pointer'}}>
+              {s.serviceImage?<img src={s.serviceImage} alt={s.name} style={{width:'100%',height:96,borderRadius:12,objectFit:'cover',marginBottom:8}}/>:<div style={{height:54,display:'grid',placeItems:'center',borderRadius:12,background:'#f3f8f6',marginBottom:8'}}><CreditCard size={20}/></div>}
+              <strong style={{display:'block'}}>{s.name}</strong>
+              <span className="muted" style={{fontSize:12}}>{s.durationMinutes} min · {s.currency} {s.price}</span>
+            </button>)}
+          </div>}
+       {service&&<div className="notice" style={{marginTop:travelMode?4:10}}>
          {travelMode&&service.travelImage&&<img src={service.travelImage} alt={service.name} style={{width:'100%',maxHeight:260,objectFit:'cover',borderRadius:14,marginBottom:10}}/>}
+         {!travelMode&&service.serviceImage&&<img src={service.serviceImage} alt={service.name} style={{width:'100%',maxHeight:320,objectFit:'cover',borderRadius:14,marginBottom:10}}/>}
          <strong>{service.name}</strong> · {service.durationMinutes} min · {service.currency} {service.price} por adulto{travelMode&&service.childPrice!==null&&service.childPrice!==undefined?' · niño '+service.currency+' '+service.childPrice:''}
          {travelMode&&service.travelDate?<><br/><strong>{new Date(service.travelDate+'T12:00:00').toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long'})}</strong>{service.departureTime?' · salida '+service.departureTime:''}{service.returnTime?' · regreso aprox. '+service.returnTime:''}</>:null}
          {service.description?<><br/>{service.description}</>:null}
