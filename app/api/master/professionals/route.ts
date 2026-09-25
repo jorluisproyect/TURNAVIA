@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { isMasterSession } from '@/lib/access';
 import { purgeAccountByEmail } from '@/lib/purge-account';
+import { parseProviderMedia, serializeProviderMedia } from '@/lib/provider-media';
 
 export const dynamic='force-dynamic';
 
@@ -10,16 +11,31 @@ export async function PATCH(req:Request){
   if(!(await isMasterSession())) return NextResponse.json({error:'No autorizado'},{status:403});
 
   const body=await req.json();
+  const action=String(body.action||'');
   const slug=String(body.slug||'').trim();
-  const active=Boolean(body.active);
   if(!slug) return NextResponse.json({error:'Profesional no identificado'},{status:400});
 
-  const rows=await sql`SELECT d.id AS doctor_id,u.id AS user_id,u.email
+  const rows=await sql`SELECT d.id AS doctor_id,d.bio,u.id AS user_id,u.email
     FROM doctors d JOIN users u ON u.id=d.user_id
     WHERE d.public_slug=${slug} LIMIT 1`;
   const p=rows[0] as any;
   if(!p) return NextResponse.json({error:'Profesional no encontrado'},{status:404});
 
+  if(action==='credential_review'){
+    const decision=String(body.decision||'');
+    if(!['APPROVED','REJECTED'].includes(decision))return NextResponse.json({error:'Decisión de revisión inválida.'},{status:400});
+    const media=parseProviderMedia(p.bio);
+    const hasCredentials=Boolean(String(media.licenseNumber||'').trim()||(media.workImages||[]).length);
+    if(!hasCredentials)return NextResponse.json({error:'El profesional todavía no ha cargado credenciales.'},{status:409});
+    const bio=serializeProviderMedia(p.bio,{credentialStatus:decision});
+    await sql`UPDATE doctors SET bio=${bio} WHERE id=${p.doctor_id}::uuid`;
+    await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+      VALUES(${decision==='APPROVED'?'PROFESSIONAL_CREDENTIALS_APPROVED':'PROFESSIONAL_CREDENTIALS_REJECTED'},'PROFESSIONAL',${slug},
+      jsonb_build_object('email',${p.email},'decision',${decision}))`;
+    return NextResponse.json({ok:true,status:decision});
+  }
+
+  const active=Boolean(body.active);
   await sql`UPDATE users SET active=${active} WHERE id=${p.user_id}::uuid`;
   await sql`UPDATE doctors SET accepts_online_booking=${active} WHERE id=${p.doctor_id}::uuid`;
 
