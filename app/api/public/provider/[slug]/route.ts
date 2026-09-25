@@ -6,6 +6,7 @@ import { buildAppointmentReceiptPdf } from '@/lib/appointment-receipt';
 import { randomUUID } from 'crypto';
 import { parseProviderMedia } from '@/lib/provider-media';
 import { isTravelProvider, travelServiceFields, serializeTravelParty, travelPartyFromReason } from '@/lib/travel-service';
+import { parseServiceMedia } from '@/lib/service-media';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -142,7 +143,14 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
     },
     services:services.map((s:any)=>{
       const travel=travelServiceFields(s.description);
-      return {id:String(s.id),name:s.name,description:travel.details,summary:travel.summary,travelImage:travel.image,travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,childPrice:travel.childPrice,durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'};
+      const visual=parseServiceMedia(s.description);
+      return {
+        id:String(s.id),name:s.name,
+        description:travelMode?travel.details:visual.details,
+        serviceImage:travelMode?'':visual.image,
+        summary:travel.summary,travelImage:travelMode?travel.image:'',travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,childPrice:travel.childPrice,
+        durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'
+      };
     }),
     availability,
     selectedServiceDuration:durationMinutes,
