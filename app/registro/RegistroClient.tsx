@@ -123,7 +123,7 @@ export default function RegistroClient(){
           {availability&&<div className={'notice '+(availability.state==='taken'?'danger':'')} role="status" aria-live="polite" style={{marginTop:8,fontSize:13}}>{availability.message}</div>}
         </div>
         <div className="field">
-          <label>Teléfono / WhatsApp</label>
+          <label>{provider?'Teléfono / WhatsApp':'País y teléfono / WhatsApp'}</label>
           <div className="register-phone-row">
             <select name="phoneCountry" aria-label="País del teléfono" value={phoneCountry} onChange={e=>{setPhoneCountry(e.target.value);setPhoneLocal('')}}>
               {COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.country}>{x.flag} {x.country} ({x.code})</option>)}
@@ -147,6 +147,7 @@ export default function RegistroClient(){
           </div>
           <small className="muted">
             {phoneInfo.flag} {phoneInfo.country}: {phoneLengthHelp(phoneCountry)} · código {phoneCode} automático · llevas {phoneLocal.length} dígito{phoneLocal.length===1?'':'s'}.
+            {!provider&&<> Usaremos <strong>{phoneInfo.country}</strong> como tu país inicial para mostrarte profesionales cercanos; podrás cambiar de país cuando quieras al explorar.</>}
           </small>
         </div>
         <div className="field"><label>Contraseña</label><div style={{position:'relative'}}>
