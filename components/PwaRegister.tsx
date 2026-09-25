@@ -14,8 +14,21 @@ export function PwaRegister(){
   const [showIosHelp,setShowIosHelp]=useState(false);
 
   useEffect(()=>{
+    let updateTimer:number|undefined;
+    let reloading=false;
+
     if('serviceWorker' in navigator){
-      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+      const hadController=Boolean(navigator.serviceWorker.controller);
+      navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(registration=>{
+        registration.update().catch(()=>{});
+        updateTimer=window.setInterval(()=>registration.update().catch(()=>{}),60_000);
+      }).catch(()=>{});
+
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{
+        if(!hadController||reloading)return;
+        reloading=true;
+        window.location.reload();
+      });
     }
 
     const standalone=window.matchMedia('(display-mode: standalone)').matches||
@@ -34,6 +47,7 @@ export function PwaRegister(){
     window.addEventListener('beforeinstallprompt',before);
     window.addEventListener('appinstalled',done);
     return ()=>{
+      if(updateTimer)window.clearInterval(updateTimer);
       window.removeEventListener('beforeinstallprompt',before);
       window.removeEventListener('appinstalled',done);
     };
