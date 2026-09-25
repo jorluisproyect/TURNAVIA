@@ -93,9 +93,17 @@ export async function GET(){
   const name=String((session.user as any).name||'Cliente');
   const profileRows=await sql`SELECT avatar_data_url,phone FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} OR lower(email)=lower(${email}) ORDER BY updated_at DESC NULLS LAST LIMIT 1`;
   const avatar=String((profileRows[0] as any)?.avatar_data_url||'');
+  const countryRows=await sql`SELECT metadata->>'country' AS country
+    FROM audit_events
+    WHERE action='ACCOUNT_REGISTERED'
+      AND entity_type='ACCOUNT_PROFILE'
+      AND entity_id=${String(session.user.id)}
+    ORDER BY created_at DESC
+    LIMIT 1`;
+  const savedCountry=String((countryRows[0] as any)?.country||'').trim();
 
   if(!p){
-    const country=countryFromPhone(String((profileRows[0] as any)?.phone||''));
+    const country=savedCountry||countryFromPhone(String((profileRows[0] as any)?.phone||''));
     const recommendations=await recommendedProviders(country);
     return NextResponse.json({patient:{name,email,phone:String((profileRows[0] as any)?.phone||''),country,nationalId:'',birthDate:'',profileImage:avatar},appointments:[],recommendedProviders:recommendations});
   }
@@ -117,7 +125,7 @@ export async function GET(){
     WHERE a.patient_id=${p.id}
     ORDER BY a.starts_at DESC LIMIT 100`;
 
-  const country=countryFromPhone(String(p.phone||''));
+  const country=savedCountry||countryFromPhone(String(p.phone||''));
   const recommendations=await recommendedProviders(country);
   return NextResponse.json({
     patient:{name:p.full_name||name,email:p.email||email,phone:p.phone||'',country,nationalId:p.national_id||'',birthDate:dateForInput(p.birth_date),profileImage:avatar},
