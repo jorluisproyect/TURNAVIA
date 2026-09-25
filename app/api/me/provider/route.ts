@@ -151,7 +151,7 @@ export async function GET(){
   const privateProfile=privateRows[0] as any;
   return NextResponse.json({
     provider:{
-      id:String(provider.doctor_id),slug:provider.public_slug,name:provider.full_name,email:provider.email||'',phone:provider.phone||'',profileImage:media.profileImage||'',workImages:media.workImages||[],
+      id:String(provider.doctor_id),slug:provider.public_slug,name:provider.full_name,email:provider.email||'',phone:provider.phone||'',profileImage:media.profileImage||'',workImages:media.workImages||[],licenseNumber:media.licenseNumber||'',
       nationalId:String(privateProfile?.national_id||''),birthDate:dateForInput(privateProfile?.birth_date),personalFieldsReady:Number(privateProfile?.private_columns||0)===2,
       organizationSlug:provider.organization_slug||'',organizationName:provider.organization_name||'',
       publicPath:provider.organization_slug?'/negocio/'+provider.organization_slug:'/reservar/'+provider.public_slug,
@@ -217,7 +217,7 @@ export async function PATCH(req:Request){
     if(detailsReady){
       await sql`UPDATE app_user_profiles SET national_id=${national.value||null},birth_date=${birth.value}::date,updated_at=now() WHERE lower(email)=lower(${email})`;
     }
-    const mediaJson=serializeProviderMedia(provider.bio,{profileImage:String(body.profileImage||''),workImages:Array.isArray(body.workImages)?body.workImages:[]});
+    const mediaJson=serializeProviderMedia(provider.bio,{profileImage:String(body.profileImage||''),workImages:Array.isArray(body.workImages)?body.workImages:[],licenseNumber:String(body.licenseNumber||'')});
     await sql`UPDATE doctors SET specialty=${activity},provider_category=${category},provider_activity=${activity},provider_type=${type},bio=${mediaJson} WHERE id=${provider.doctor_id}`;
     await sql`UPDATE commercial_clients SET name=${name},phone=${phone},type=${type},category=${category},subcategory=${activity},specialty=${activity} WHERE lower(email)=lower(${email})`;
     if(provider.location_id){
