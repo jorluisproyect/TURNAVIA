@@ -9,9 +9,13 @@ type LocationInfo={id:string;name:string;address:string;city:string;state:string
 type Availability={id:string;date:string;slots:Slot[];location:LocationInfo};
 type Service={id:string;name:string;description:string;summary?:string;serviceImage?:string;travelImage?:string;travelDate?:string;departureTime?:string;returnTime?:string;locationId?:string;capacity?:number;childPrice?:number|null;durationMinutes:number;price:number;currency:string};
 type PaymentMethod={id:string;name:string;type:string;account_label?:string;account_value?:string;instructions?:string;requires_proof?:boolean;active:boolean};
-type State={provider:{slug:string;name:string;initials:string;category:string;activity:string;type:string;location:string;dayStatus:string;delayMinutes:number;profileImage?:string;workImages?:string[]};services:Service[];availability:Availability[];paymentInstructions:string};
+type State={provider:{slug:string;name:string;initials:string;category:string;activity:string;type:string;location:string;dayStatus:string;delayMinutes:number;profileImage?:string;workImages?:string[];licenseNumber?:string};services:Service[];availability:Availability[];paymentInstructions:string};
 
 function mapQuery(l:LocationInfo){return [l.address,l.city,l.state,l.country].filter(Boolean).join(', ')}
+function usesProfessionalCredentials(category?:string,activity?:string){
+ const text=(String(category||'')+' '+String(activity||'')).toLowerCase();
+ return ['salud','médico','medico','odont','psicolog','fisioter','nutric','veterin','legal','abogad','derecho','jurídic','juridic'].some(x=>text.includes(x));
+}
 
 export default function BookingClient({slug,patientLoggedIn=false}:{slug:string;patientLoggedIn?:boolean}){
  const [data,setData]=useState<State|null>(null);
@@ -160,7 +164,8 @@ export default function BookingClient({slug,patientLoggedIn=false}:{slug:string;
    <div className="booking-header">{patientLoggedIn?<Link href="/explorar" className="btn btn-secondary">← Volver a explorar</Link>:<Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link>}<p className="muted">Reserva tu servicio en pocos pasos</p></div>
    <section className="profile-card">
      <div className="profile-top">{provider.profileImage?<img src={provider.profileImage} alt={provider.name} style={{width:76,height:76,borderRadius:24,objectFit:'cover',flex:'0 0 auto'}}/>:<div className="profile-avatar">{provider.initials}</div>}<div><h1 style={{fontSize:25,margin:'0 0 4px'}}>{provider.name}</h1><div className="muted">{provider.activity} · {provider.category}</div>{!travelMode&&<div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{provider.location||'Ubicación por confirmar'}</div>}</div></div>
-     {(provider.workImages||[]).length>0&&<div style={{marginTop:16}}><div className="muted" style={{fontSize:12,marginBottom:8}}>Referencias de trabajos</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8}}>{(provider.workImages||[]).map((img,i)=><img key={i} src={img} alt={'Referencia '+(i+1)} style={{width:'100%',height:92,borderRadius:14,objectFit:'cover'}}/>)}</div></div>}
+     {usesProfessionalCredentials(provider.category,provider.activity)&&provider.licenseNumber&&<div className="notice" style={{marginTop:14}}><strong>Credencial profesional declarada:</strong> {provider.licenseNumber}</div>}
+     {(provider.workImages||[]).length>0&&<div style={{marginTop:16}}><div className="muted" style={{fontSize:12,marginBottom:8}}>{usesProfessionalCredentials(provider.category,provider.activity)?'Certificaciones / credenciales':'Referencias de trabajos'}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8}}>{(provider.workImages||[]).map((img,i)=><img key={i} src={img} alt={(usesProfessionalCredentials(provider.category,provider.activity)?'Credencial ':'Referencia ')+(i+1)} style={{width:'100%',height:92,borderRadius:14,objectFit:'cover'}}/>)}</div>{usesProfessionalCredentials(provider.category,provider.activity)&&<small className="muted" style={{display:'block',marginTop:7}}>Información declarada por el profesional. Verifica la habilitación ante el organismo competente cuando corresponda.</small>}</div>}
      {provider.dayStatus==='DELAYED'&&<div className="notice" style={{marginTop:16}}>Este profesional presenta aproximadamente {provider.delayMinutes} minutos de retraso.</div>}
      <ReportProviderButton slug={provider.slug}/>
      <hr style={{border:0,borderTop:'1px solid var(--line)',margin:'24px 0'}}/>
