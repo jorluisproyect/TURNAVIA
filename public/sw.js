@@ -1,4 +1,4 @@
-const CACHE='tucita-shell-v3';
+const CACHE='tucita-shell-v4';
 const SHELL=['/manifest.json','/icons/icon-192.png','/icons/icon-512.png'];
 
 self.addEventListener('install',event=>{
@@ -36,5 +36,35 @@ self.addEventListener('fetch',event=>{
         return response;
       })
       .catch(()=>caches.match(event.request))
+  );
+});
+
+
+self.addEventListener('push',event=>{
+  let data={title:'TUCITA',body:'Tienes una nueva notificación.',url:'/master'};
+  try{data={...data,...event.data?.json()}}catch{}
+  event.waitUntil(self.registration.showNotification(data.title||'TUCITA',{
+    body:data.body||'',
+    icon:'/icons/icon-192.png',
+    badge:'/icons/icon-192.png',
+    tag:'tucita-master-alert',
+    renotify:true,
+    data:{url:data.url||'/master'}
+  }));
+});
+
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
+  const target=event.notification?.data?.url||'/master';
+  event.waitUntil(
+    clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
+      for(const client of list){
+        if('focus' in client){
+          try{client.navigate(target)}catch{}
+          return client.focus();
+        }
+      }
+      return clients.openWindow(target);
+    })
   );
 });
