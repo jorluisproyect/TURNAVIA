@@ -29,6 +29,25 @@ async function doctorId(slug:string){
   return r[0]?.id as string|undefined;
 }
 
+async function doctorCountry(slug:string){
+  if(!sql)return 'Venezuela';
+  const rows=await sql`SELECT COALESCE((
+      SELECT l.country
+      FROM doctor_locations dl
+      JOIN locations l ON l.id=dl.location_id
+      JOIN doctors d2 ON d2.id=dl.doctor_id
+      WHERE d2.public_slug=${slug} AND l.active=true
+      ORDER BY l.created_at
+      LIMIT 1
+    ),'Venezuela') AS country`;
+  return String((rows[0] as any)?.country||'Venezuela');
+}
+
+function paymentTypeAllowed(country:string,type:string){
+  if(String(country||'').trim().toLowerCase()==='venezuela')return ['PAGO_MOVIL','TRANSFERENCIA','PAYPAL','BINANCE'].includes(String(type||'').toUpperCase());
+  return ['PAYPAL','BINANCE'].includes(String(type||'').toUpperCase());
+}
+
 async function access(slug?:string){
   if(!sql) return {master:false,owner:false};
   const {data:session}=await auth.getSession();
@@ -99,6 +118,10 @@ export async function GET(req:Request){
         ORDER BY owner_user.created_at ASC,pm.is_primary DESC,pm.created_at
         LIMIT 10`;
     }
+    if(activeOnly){
+      const country=await doctorCountry(slug);
+      rows=(rows as any[]).filter((m:any)=>paymentTypeAllowed(country,String(m.type||'')));
+    }
     return NextResponse.json({methods:rows});
   }
 
@@ -118,6 +141,12 @@ export async function POST(req:Request){
     if(scope==='DOCTOR'&&!a.master&&!a.owner) return NextResponse.json({error:'No autorizado'},{status:403});
     const did=scope==='DOCTOR'?await doctorId(slug):null;
     if(scope==='DOCTOR'&&!did)return NextResponse.json({error:'Profesional no encontrado'},{status:404});
+    if(scope==='DOCTOR'){
+      const country=await doctorCountry(slug);
+      if(!paymentTypeAllowed(country,String(body.type||''))){
+        return NextResponse.json({error:'En este país TUCITA solo permite PayPal y Binance para cobros al cliente.'},{status:400});
+      }
+    }
     const rows=await sql`INSERT INTO payment_methods(scope,doctor_id,name,type,account_label,account_value,instructions,currency,requires_proof,active,is_primary)
       VALUES(${scope},${did},${body.name},${body.type||'OTRO'},${body.accountLabel||null},${body.accountValue||null},${body.instructions||null},${body.currency||'USD'},${body.requiresProof!==false},true,false)
       RETURNING id`;
@@ -139,6 +168,13 @@ export async function PATCH(req:Request){
     const a=await access(row.scope==='DOCTOR'?row.public_slug:undefined);
     if(row.scope==='MASTER'&&!a.master) return NextResponse.json({error:'No autorizado'},{status:403});
     if(row.scope==='DOCTOR'&&!a.master&&!a.owner) return NextResponse.json({error:'No autorizado'},{status:403});
+    if(row.scope==='DOCTOR'&&body.active!==false){
+      const country=await doctorCountry(String(row.public_slug||''));
+      const nextType=String(body.type||'');
+      if(nextType&&!paymentTypeAllowed(country,nextType)){
+        return NextResponse.json({error:'En este país TUCITA solo permite PayPal y Binance para cobros al cliente.'},{status:400});
+      }
+    }
 
     await sql`UPDATE payment_methods SET
       name=COALESCE(${body.name||null},name),
