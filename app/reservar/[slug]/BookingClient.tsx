@@ -166,7 +166,7 @@ export default function BookingClient({slug}:{slug:string}){
           </button>)}</div>
          :<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
             {data.services.map(s=><button type="button" key={s.id} onClick={()=>setServiceId(s.id)} className={serviceId===s.id?'selected':''} style={{textAlign:'left',padding:10,border:'1px solid var(--line)',borderRadius:16,background:serviceId===s.id?'#ecfdf5':'#fff',cursor:'pointer'}}>
-              {s.serviceImage?<img src={s.serviceImage} alt={s.name} style={{width:'100%',height:96,borderRadius:12,objectFit:'cover',marginBottom:8}}/>:<div style={{height:54,display:'grid',placeItems:'center',borderRadius:12,background:'#f3f8f6',marginBottom:8'}}><CreditCard size={20}/></div>}
+              {s.serviceImage?<img src={s.serviceImage} alt={s.name} style={{width:'100%',height:96,borderRadius:12,objectFit:'cover',marginBottom:8}}/>:<div style={{height:54,display:'grid',placeItems:'center',borderRadius:12,background:'#f3f8f6',marginBottom:8}}><CreditCard size={20}/></div>}
               <strong style={{display:'block'}}>{s.name}</strong>
               <span className="muted" style={{fontSize:12}}>{s.durationMinutes} min · {s.currency} {s.price}</span>
             </button>)}
