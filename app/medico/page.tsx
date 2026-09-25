@@ -338,7 +338,7 @@ export default function Medico(){
 
   <section className="panel" id="pagos" style={{marginTop:18}}>
     <div className="row space" style={{gap:10,flexWrap:'wrap'}}><div><h2>Métodos de pago</h2><div className="muted" style={{fontSize:13}}>Configura cómo te pagarán tus clientes.</div></div><button className="btn btn-secondary" onClick={()=>setModal('settings')}><Settings2 size={16}/> Configuración</button></div>
-    <PaymentMethodsManager scope="DOCTOR" slug={p.slug}/>
+    <PaymentMethodsManager scope="DOCTOR" slug={p.slug} country={p.location?.country||'Venezuela'}/>
   </section>
  </main>
 
