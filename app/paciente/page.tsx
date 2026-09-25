@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
 import { CalendarCheck2, CalendarClock, CarFront, CheckCircle2, MapPin, XCircle, FileText, UserRound, Search } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
+import { COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
 
 const label:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Ya llegaste',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asististe'};
 
@@ -75,22 +76,28 @@ export default function Paciente(){
    <div className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{data.patient.profileImage?<img src={data.patient.profileImage} alt="" style={{width:56,height:56,borderRadius:18,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:56,height:56,borderRadius:18}}><UserRound size={23}/></div>}<div><div className="muted" style={{fontSize:13}}>Mi TUCITA</div><h1>Hola, {data.patient.name}</h1></div></div><Link className="btn btn-primary" href="/explorar"><Search size={16}/> Explorar</Link></div>
 
    {active.length===0&&<section className="panel" style={{marginBottom:18,border:'1px solid #9bd9ce',background:'linear-gradient(145deg,#ffffff,#f0fdfa)'}}>
-     <div className="row space" style={{gap:14,alignItems:'flex-start',flexWrap:'wrap'}}>
-       <div>
-         <span className="eyebrow"><MapPin size={15}/> PROFESIONALES EN TU ZONA</span>
-         <h2 style={{margin:'9px 0 5px'}}>¿Qué necesitas hoy?</h2>
-         <p className="muted" style={{margin:0}}>Te mostramos primero profesionales {data.patient.country?'de '+data.patient.country:'disponibles en TUCITA'}. También puedes buscar en otro país para reservarle a un familiar o amigo.</p>
-       </div>
-       <Link className="btn btn-secondary" href="/explorar?country=ALL">Cambiar país</Link>
+     <div>
+       <span className="eyebrow"><MapPin size={15}/> PROFESIONALES EN TU ZONA</span>
+       <h2 style={{margin:'9px 0 5px'}}>¿Qué necesitas hoy?</h2>
+       <p className="muted" style={{margin:0}}>Tu país inicial es <strong>{data.patient.country||'el registrado en tu cuenta'}</strong>. Puedes cambiarlo para reservar en otro país cuando quieras.</p>
      </div>
 
-     <form action="/explorar" method="get" className="row" style={{gap:8,marginTop:14,flexWrap:'wrap'}}>
-       {data.patient.country&&<input type="hidden" name="country" value={data.patient.country}/>}
-       <div style={{position:'relative',flex:1,minWidth:220}}>
-         <Search size={17} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/>
-         <input name="q" placeholder="Busca uñas, barbería, médico, spa…" style={{paddingLeft:39,width:'100%'}}/>
+     <form action="/explorar" method="get" className="row" style={{gap:8,marginTop:14,flexWrap:'wrap',alignItems:'end'}}>
+       <div className="field" style={{minWidth:205,flex:'0 1 240px',margin:0}}>
+         <label>País</label>
+         <select name="country" defaultValue={data.patient.country||'ALL'}>
+           <option value="ALL">🌎 Todos los países</option>
+           {COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.country}>{x.flag} {x.country}</option>)}
+         </select>
        </div>
-       <button className="btn btn-primary" type="submit"><Search size={16}/> Buscar</button>
+       <div className="field" style={{position:'relative',flex:1,minWidth:220,margin:0}}>
+         <label>Buscar profesional o servicio</label>
+         <div style={{position:'relative'}}>
+           <Search size={18} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/>
+           <input name="q" placeholder="Ej. uñas francesas, pediatra, barbería…" style={{paddingLeft:40,width:'100%'}}/>
+         </div>
+       </div>
+       <button className="btn btn-primary" type="submit" aria-label="Buscar"><Search size={18}/> Buscar</button>
      </form>
 
      {(data.recommendedProviders||[]).length>0?<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:12,marginTop:14}}>
