@@ -7,9 +7,16 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
 const PUBLIC_APP_URL=(process.env.APP_URL||'https://tucita.com.ve').replace(/\/$/,'');
-function publicUrl(path:string){return new URL(path,PUBLIC_APP_URL);}
-function loginRedirect(_req:NextRequest,error:string){
-  const url=publicUrl('/ingresar');
+function requestBaseUrl(req:NextRequest){
+  const host=req.nextUrl.hostname.toLowerCase();
+  if(process.env.VERCEL_ENV==='preview'&&host.endsWith('.vercel.app')){
+    return req.nextUrl.origin;
+  }
+  return PUBLIC_APP_URL;
+}
+function publicUrl(req:NextRequest,path:string){return new URL(path,requestBaseUrl(req));}
+function loginRedirect(req:NextRequest,error:string){
+  const url=publicUrl(req,'/ingresar');
   url.searchParams.set('error',error);
   return NextResponse.redirect(url,303);
 }
@@ -55,7 +62,7 @@ export async function POST(req:NextRequest){
       ? requestedNext
       : '/panel';
 
-    return NextResponse.redirect(publicUrl(next),303);
+    return NextResponse.redirect(publicUrl(req,next),303);
   }catch(error){
     console.error('TUCITA /api/login error',error);
     return loginRedirect(req,'server');
