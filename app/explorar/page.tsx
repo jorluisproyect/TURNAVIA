@@ -7,6 +7,7 @@ import { ArrowRight, MapPin, Search, UserRound } from 'lucide-react';
 import { parseProviderMedia } from '@/lib/provider-media';
 import { COUNTRY_PHONE_CODES, PROVIDER_CATEGORIES } from '@/lib/provider-catalog';
 import { countryFromPhone } from '@/lib/country';
+import { ExploreFilters } from '@/components/ExploreFilters';
 
 export const dynamic='force-dynamic';
 
@@ -118,6 +119,23 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
   const activeCategories=Array.from(new Set(raw.map(r=>String(r.provider_category||'')).filter(Boolean)));
   const allCount=new Set(raw.map(r=>String(r.public_slug))).size;
   const countries=COUNTRY_PHONE_CODES.map(x=>({country:x.country,flag:x.flag}));
+  const locationsByCountry:Record<string,{value:string;label:string}[]>={};
+  for(const row of raw){
+    const countryName=text(row.country);
+    if(!countryName)continue;
+    const cityName=text(row.city);
+    const stateName=text(row.state);
+    const value=cityName||stateName;
+    if(!value)continue;
+    const label=cityName&&stateName&&norm(cityName)!==norm(stateName)?cityName+' · '+stateName:value;
+    locationsByCountry[countryName]??=[];
+    if(!locationsByCountry[countryName].some(x=>norm(x.label)===norm(label))){
+      locationsByCountry[countryName].push({value,label});
+    }
+  }
+  for(const list of Object.values(locationsByCountry)){
+    list.sort((a,b)=>a.label.localeCompare(b.label,'es'));
+  }
 
   const params=(overrides:Record<string,string>)=>{
     const next=new URLSearchParams();
@@ -142,39 +160,15 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
     </div>
 
     <section className="panel" style={{marginBottom:18}}>
-      <form method="get" action="/explorar" className="form">
-        <div className="row" style={{gap:10,alignItems:'end',flexWrap:'wrap'}}>
-          <div className="field" style={{flex:2,minWidth:230}}>
-            <label>Buscar profesional o servicio</label>
-            <div style={{position:'relative'}}>
-              <Search size={18} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/>
-              <input name="q" defaultValue={q} placeholder="Ej. uñas francesas, pediatra, barbería…" style={{paddingLeft:40}}/>
-            </div>
-          </div>
-          <div className="field" style={{flex:1,minWidth:205}}>
-            <label>País</label>
-            <select name="country" defaultValue={allCountries?'ALL':selectedCountry}>
-              <option value="ALL">🌎 Todos los países</option>
-              {countries.map(x=><option key={x.country} value={x.country}>{x.flag} {x.country}</option>)}
-            </select>
-          </div>
-          <button className="btn btn-primary" type="submit" aria-label="Buscar"><Search size={18}/> Buscar</button>
-        </div>
-        <div className="row" style={{gap:10,alignItems:'end',flexWrap:'wrap'}}>
-          <div className="field" style={{flex:1,minWidth:180}}>
-            <label>Ciudad / zona</label>
-            <input name="city" defaultValue={city} placeholder="Ej. Caracas, Buenos Aires…"/>
-          </div>
-          <div className="field" style={{flex:1,minWidth:210}}>
-            <label>Rubro</label>
-            <select name="category" defaultValue={selectedCategory}>
-              <option value="">Todos los rubros</option>
-              {Object.keys(PROVIDER_CATEGORIES).map(category=><option key={category} value={category}>{category}</option>)}
-            </select>
-          </div>
-          <Link className="btn btn-secondary" href="/explorar?country=ALL">Ver todo TUCITA</Link>
-        </div>
-      </form>
+      <ExploreFilters
+        q={q}
+        selectedCountry={allCountries?'ALL':selectedCountry}
+        selectedCity={city}
+        selectedCategory={selectedCategory}
+        countries={countries}
+        locationsByCountry={locationsByCountry}
+        categories={Object.keys(PROVIDER_CATEGORIES)}
+      />
       {accountCountry&&!requestedCountry&&<div className="notice" style={{marginTop:12}}><MapPin size={15}/> País inicial de tu cuenta: <strong>{countries.find(x=>x.country===accountCountry)?.flag||'📍'} {accountCountry}</strong>. Puedes cambiarlo cuando quieras.</div>}
     </section>
 
