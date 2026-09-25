@@ -4,6 +4,8 @@ import { sql } from '@/lib/db';
 import { validateProviderMedia } from '@/lib/provider-media';
 import { validatePhone } from '@/lib/phone';
 import { normalizedBirthDate, normalizedDocument, dateForInput } from '@/lib/personal-profile';
+import { countryFromPhone } from '@/lib/country';
+import { parseProviderMedia } from '@/lib/provider-media';
 
 export const dynamic='force-dynamic';
 
@@ -20,6 +22,68 @@ async function currentPatient(){
   return rows[0] as any || null;
 }
 
+async function recommendedProviders(country:string){
+  if(!sql)return [];
+  const rows=await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.bio,u.full_name,
+      l.city,l.state,l.country
+    FROM doctors d
+    JOIN users u ON u.id=d.user_id
+    JOIN app_user_profiles ap ON lower(ap.email)=lower(u.email) AND ap.role::text='DOCTOR'
+    JOIN neon_auth."user" au ON lower(au.email)=lower(u.email)
+    LEFT JOIN organizations o ON o.id=u.organization_id
+    JOIN LATERAL (
+      SELECT cc.*
+      FROM commercial_clients cc
+      WHERE lower(cc.email)=lower(COALESCE(o.email,u.email))
+      ORDER BY cc.created_at DESC
+      LIMIT 1
+    ) cc ON true
+    LEFT JOIN doctor_locations dl ON dl.doctor_id=d.id
+    LEFT JOIN locations l ON l.id=dl.location_id AND l.active=true
+    WHERE u.active=true
+      AND d.accepts_online_booking=true
+      AND (${country||null}::text IS NULL OR lower(COALESCE(l.country,''))=lower(${country||null}))
+      AND (
+        (cc.status IN ('TRIAL','REVISION_BINANCE') AND cc.trial_ends_at IS NOT NULL AND cc.trial_ends_at>now())
+        OR (
+          cc.status='ACTIVO'
+          AND COALESCE(
+            (
+              SELECT NULLIF(a.metadata->>'paidUntil','')::timestamptz
+              FROM audit_events a
+              WHERE a.entity_type='COMMERCIAL_CLIENT'
+                AND a.entity_id=cc.id::text
+                AND a.action='PAYMENT_APPROVED'
+              ORDER BY a.created_at DESC LIMIT 1
+            ),
+            cc.payment_reviewed_at + interval '31 days',
+            cc.created_at + interval '31 days'
+          )>now()
+        )
+      )
+    ORDER BY u.full_name
+    LIMIT 12`;
+  const unique=new Map<string,any>();
+  for(const row of rows as any[]){
+    const slug=String(row.public_slug);
+    if(unique.has(slug))continue;
+    const media=parseProviderMedia(row.bio);
+    unique.set(slug,{
+      slug,
+      name:row.full_name,
+      category:row.provider_category||'Servicio',
+      activity:row.provider_activity||'Servicio',
+      type:row.provider_type||'',
+      city:row.city||'',
+      state:row.state||'',
+      country:row.country||'',
+      profileImage:media.profileImage||''
+    });
+    if(unique.size>=6)break;
+  }
+  return [...unique.values()];
+}
+
 export async function GET(){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
   const {data:session}=await auth.getSession();
@@ -27,10 +91,14 @@ export async function GET(){
   const p=await currentPatient();
   const email=String((session.user as any).email||'');
   const name=String((session.user as any).name||'Cliente');
-  const profileRows=await sql`SELECT avatar_data_url FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} OR lower(email)=lower(${email}) ORDER BY updated_at DESC NULLS LAST LIMIT 1`;
+  const profileRows=await sql`SELECT avatar_data_url,phone FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} OR lower(email)=lower(${email}) ORDER BY updated_at DESC NULLS LAST LIMIT 1`;
   const avatar=String((profileRows[0] as any)?.avatar_data_url||'');
 
-  if(!p) return NextResponse.json({patient:{name,email,phone:'',nationalId:'',birthDate:'',profileImage:avatar},appointments:[]});
+  if(!p){
+    const country=countryFromPhone(String((profileRows[0] as any)?.phone||''));
+    const recommendations=await recommendedProviders(country);
+    return NextResponse.json({patient:{name,email,phone:String((profileRows[0] as any)?.phone||''),country,nationalId:'',birthDate:'',profileImage:avatar},appointments:[],recommendedProviders:recommendations});
+  }
 
   const aps=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.service_id,a.service_name,a.consultation_price,a.consultation_currency,
       a.payment_method,a.payment_reference,a.reschedule_used,a.receipt_number,a.checked_in_at,a.completed_at,
@@ -49,9 +117,12 @@ export async function GET(){
     WHERE a.patient_id=${p.id}
     ORDER BY a.starts_at DESC LIMIT 100`;
 
+  const country=countryFromPhone(String(p.phone||''));
+  const recommendations=await recommendedProviders(country);
   return NextResponse.json({
-    patient:{name:p.full_name||name,email:p.email||email,phone:p.phone||'',nationalId:p.national_id||'',birthDate:dateForInput(p.birth_date),profileImage:avatar},
-    appointments:aps.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceId:a.service_id?String(a.service_id):'',serviceName:a.service_name||a.provider_activity||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,providerName:a.provider_name,providerSlug:a.public_slug,category:a.provider_category||'',activity:a.provider_activity||'',location:[a.location_name,a.address,a.city,a.state,a.country,a.room].filter(Boolean).join(' · ')}))
+    patient:{name:p.full_name||name,email:p.email||email,phone:p.phone||'',country,nationalId:p.national_id||'',birthDate:dateForInput(p.birth_date),profileImage:avatar},
+    appointments:aps.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceId:a.service_id?String(a.service_id):'',serviceName:a.service_name||a.provider_activity||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,providerName:a.provider_name,providerSlug:a.public_slug,category:a.provider_category||'',activity:a.provider_activity||'',location:[a.location_name,a.address,a.city,a.state,a.country,a.room].filter(Boolean).join(' · ')})),
+    recommendedProviders:recommendations
   });
 }
 
