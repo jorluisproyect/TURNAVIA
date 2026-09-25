@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { sql } from '@/lib/db';
 import { auth } from '@/lib/auth/server';
 import { Brand } from '@/components/Brand';
+import { Sidebar } from '@/components/Sidebar';
 import { ArrowRight, MapPin, Search, UserRound } from 'lucide-react';
 import { parseProviderMedia } from '@/lib/provider-media';
-import { COUNTRY_SUGGESTIONS, PROVIDER_CATEGORIES } from '@/lib/provider-catalog';
+import { COUNTRY_PHONE_CODES, PROVIDER_CATEGORIES } from '@/lib/provider-catalog';
 import { countryFromPhone } from '@/lib/country';
 
 export const dynamic='force-dynamic';
@@ -20,21 +21,33 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
   const requestedCountry=text(sp.country);
 
   let accountCountry='';
+  let sessionRole='';
+  let loggedIn=false;
+
   try{
     const {data:session}=await auth.getSession();
+    loggedIn=Boolean(session?.user);
     if(sql&&session?.user){
       const email=String((session.user as any).email||'').toLowerCase();
-      const rows=await sql`SELECT COALESCE(NULLIF(ap.phone,''),NULLIF(p.phone,''),'') AS phone
-        FROM app_user_profiles ap
-        LEFT JOIN patients p ON lower(p.email)=lower(ap.email)
-        WHERE ap.auth_user_id=${String(session.user.id)}
-           OR lower(ap.email)=lower(${email})
-        ORDER BY ap.updated_at DESC NULLS LAST
+      const profile=await sql`SELECT role,COALESCE(NULLIF(phone,''),'') AS phone
+        FROM app_user_profiles
+        WHERE auth_user_id=${String(session.user.id)} OR lower(email)=lower(${email})
+        ORDER BY updated_at DESC NULLS LAST
         LIMIT 1`;
-      accountCountry=countryFromPhone(String((rows[0] as any)?.phone||''));
+      sessionRole=String((profile[0] as any)?.role||'');
+      const saved=await sql`SELECT metadata->>'country' AS country
+        FROM audit_events
+        WHERE action='ACCOUNT_REGISTERED'
+          AND entity_type='ACCOUNT_PROFILE'
+          AND entity_id=${String(session.user.id)}
+        ORDER BY created_at DESC
+        LIMIT 1`;
+      accountCountry=String((saved[0] as any)?.country||'').trim()
+        ||countryFromPhone(String((profile[0] as any)?.phone||''));
     }
   }catch{}
 
+  const patientLoggedIn=loggedIn&&sessionRole==='PATIENT';
   const allCountries=requestedCountry==='ALL';
   const selectedCountry=allCountries?'':(requestedCountry||accountCountry);
 
@@ -104,6 +117,7 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
   const visible=[...bySlug.values()];
   const activeCategories=Array.from(new Set(raw.map(r=>String(r.provider_category||'')).filter(Boolean)));
   const allCount=new Set(raw.map(r=>String(r.public_slug))).size;
+  const countries=COUNTRY_PHONE_CODES.map(x=>({country:x.country,flag:x.flag}));
 
   const params=(overrides:Record<string,string>)=>{
     const next=new URLSearchParams();
@@ -115,50 +129,53 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
     return '/explorar'+(qs?'?'+qs:'');
   };
 
-  return <main className="demo-chooser"><div className="container explore-clean">
-    <div className="row space explore-top"><Brand/><Link href="/ingresar" className="btn btn-secondary">Ingresar</Link></div>
+  const content=<main className={patientLoggedIn?'main':'demo-chooser'}><div className={patientLoggedIn?'explore-clean':'container explore-clean'}>
+    {!patientLoggedIn&&<div className="row space explore-top">
+      <Brand/>
+      {loggedIn?<Link href="/panel" className="btn btn-secondary">Mi panel</Link>:<Link href="/ingresar" className="btn btn-secondary">Ingresar</Link>}
+    </div>}
 
     <div className="explore-clean-head">
       <span className="eyebrow"><Search size={15}/> Explorar TUCITA</span>
       <h1>Encuentra el servicio que necesitas.</h1>
-      <p className="muted">Busca cerca de ti o cambia de país para reservarle a alguien en Venezuela, Colombia, Argentina o cualquier lugar disponible en TUCITA.</p>
+      <p className="muted">Te mostramos primero tu país, pero puedes cambiarlo para reservar en cualquier país disponible en TUCITA.</p>
     </div>
 
     <section className="panel" style={{marginBottom:18}}>
       <form method="get" action="/explorar" className="form">
-        <div className="row" style={{gap:10,alignItems:'stretch',flexWrap:'wrap'}}>
+        <div className="row" style={{gap:10,alignItems:'end',flexWrap:'wrap'}}>
           <div className="field" style={{flex:2,minWidth:230}}>
-            <label>¿Qué estás buscando?</label>
+            <label>Buscar profesional o servicio</label>
             <div style={{position:'relative'}}>
-              <Search size={17} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/>
-              <input name="q" defaultValue={q} placeholder="Ej. uñas francesas, barbería, médico…" style={{paddingLeft:39}}/>
+              <Search size={18} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/>
+              <input name="q" defaultValue={q} placeholder="Ej. uñas francesas, pediatra, barbería…" style={{paddingLeft:40}}/>
             </div>
           </div>
-          <div className="field" style={{flex:1,minWidth:190}}>
+          <div className="field" style={{flex:1,minWidth:205}}>
             <label>País</label>
             <select name="country" defaultValue={allCountries?'ALL':selectedCountry}>
-              <option value="ALL">Todos los países</option>
-              {COUNTRY_SUGGESTIONS.map(country=><option key={country} value={country}>{country}</option>)}
+              <option value="ALL">🌎 Todos los países</option>
+              {countries.map(x=><option key={x.country} value={x.country}>{x.flag} {x.country}</option>)}
             </select>
           </div>
-          <div className="field" style={{flex:1,minWidth:170}}>
-            <label>Ciudad / zona</label>
-            <input name="city" defaultValue={city} placeholder="Ej. Caracas, Bogotá…"/>
-          </div>
+          <button className="btn btn-primary" type="submit" aria-label="Buscar"><Search size={18}/> Buscar</button>
         </div>
         <div className="row" style={{gap:10,alignItems:'end',flexWrap:'wrap'}}>
-          <div className="field" style={{flex:1,minWidth:220}}>
+          <div className="field" style={{flex:1,minWidth:180}}>
+            <label>Ciudad / zona</label>
+            <input name="city" defaultValue={city} placeholder="Ej. Caracas, Buenos Aires…"/>
+          </div>
+          <div className="field" style={{flex:1,minWidth:210}}>
             <label>Rubro</label>
             <select name="category" defaultValue={selectedCategory}>
               <option value="">Todos los rubros</option>
               {Object.keys(PROVIDER_CATEGORIES).map(category=><option key={category} value={category}>{category}</option>)}
             </select>
           </div>
-          <button className="btn btn-primary" type="submit"><Search size={16}/> Buscar</button>
           <Link className="btn btn-secondary" href="/explorar?country=ALL">Ver todo TUCITA</Link>
         </div>
       </form>
-      {accountCountry&&!requestedCountry&&<div className="notice" style={{marginTop:12}}><MapPin size={15}/> Mostrando primero profesionales de <strong>{accountCountry}</strong> según el país de tu cuenta. Puedes cambiarlo en cualquier momento.</div>}
+      {accountCountry&&!requestedCountry&&<div className="notice" style={{marginTop:12}}><MapPin size={15}/> País inicial de tu cuenta: <strong>{countries.find(x=>x.country===accountCountry)?.flag||'📍'} {accountCountry}</strong>. Puedes cambiarlo cuando quieras.</div>}
     </section>
 
     {raw.length===0?
@@ -171,7 +188,7 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
       <section>
         <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
           <div>
-            <h2 style={{margin:'0 0 4px'}}>{selectedCountry?'Profesionales en '+selectedCountry:'Profesionales disponibles'}</h2>
+            <h2 style={{margin:'0 0 4px'}}>{selectedCountry?'Profesionales en '+(countries.find(x=>x.country===selectedCountry)?.flag||'')+' '+selectedCountry:'Profesionales disponibles'}</h2>
             <p className="muted" style={{margin:0}}>{visible.length} resultado{visible.length===1?'':'s'} · {allCount} profesional{allCount===1?'':'es'} disponible{allCount===1?'':'s'} en TUCITA.</p>
           </div>
         </div>
@@ -204,4 +221,6 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
       </section>
     }
   </div></main>;
+
+  return patientLoggedIn?<div className="dashboard"><Sidebar role="paciente"/>{content}</div>:content;
 }
