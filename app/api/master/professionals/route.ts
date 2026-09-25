@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { isMasterSession } from '@/lib/access';
+import { purgeAccountByEmail } from '@/lib/purge-account';
 
 export const dynamic='force-dynamic';
 
@@ -53,24 +54,20 @@ export async function DELETE(req:Request){
     FROM commercial_clients WHERE lower(email)=lower(${p.email}) ORDER BY created_at DESC LIMIT 1`;
   const commercial=commercialRows[0] as any;
   const hasCommercialHistory=Boolean(commercial?.payment_submitted_at||commercial?.payment_reviewed_at);
-  const profileRows=await sql`SELECT auth_user_id FROM app_user_profiles WHERE lower(email)=lower(${p.email}) LIMIT 1`;
-  const hasAuthAccount=profileRows.length>0;
-
-  if(appointments>0||hasCommercialHistory||hasAuthAccount){
+  if(appointments>0||hasCommercialHistory){
     return NextResponse.json({
-      error:hasAuthAccount
-        ? 'Esta es una cuenta real con acceso. Para no dejar un usuario de autenticación huérfano, TUCITA la desactiva en lugar de borrarla definitivamente.'
-        : 'Este profesional tiene historial real de citas o pagos. Por seguridad no se elimina; desactívalo para conservar el historial.',
+      error:'Este profesional ya tiene historial real de citas o pagos. Por seguridad no se elimina; desactívalo para conservar el historial.',
       canDeactivate:true
     },{status:409});
   }
 
-  await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
-    VALUES('PROFESSIONAL_DELETED','PROFESSIONAL',${slug},jsonb_build_object('email',${p.email}))`;
-
-  if(commercial?.id) await sql`DELETE FROM commercial_clients WHERE id=${commercial.id}::uuid`;
-  await sql`DELETE FROM doctors WHERE id=${p.doctor_id}::uuid`;
-  await sql`DELETE FROM users WHERE id=${p.user_id}::uuid`;
-
-  return NextResponse.json({ok:true});
+  // Cuentas de prueba sin citas ni pagos reales sí pueden eliminarse de forma
+  // individual. Esto limpia también Neon Auth y libera el correo para reutilizarlo,
+  // sin tener que ejecutar el reinicio total de TUCITA.
+  const result=await purgeAccountByEmail(String(p.email||''));
+  return NextResponse.json({
+    ok:true,
+    emailAvailable:Boolean(result.emailAvailable),
+    message:'Cuenta de prueba eliminada y correo liberado correctamente.'
+  });
 }
