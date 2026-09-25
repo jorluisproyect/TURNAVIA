@@ -1,4 +1,6 @@
 # TUCITA
+
+Nombre oficial del producto, aplicación, PWA, documentación y producción: **TUCITA**. Dominio oficial: **https://tucita.com.ve**.
 MVP operativo de agenda médica digital para médico, clínica/recepción y paciente.
 
 ## Incluye
@@ -9,7 +11,7 @@ MVP operativo de agenda médica digital para médico, clínica/recepción y paci
 - Panel Paciente
 - Panel Master
 - Reserva pública
-- 5 días de prueba gratis
+- 15 días de prueba gratis
 - Flujo PayPal automático preparado por API
 - Flujo Binance con referencia + aprobación Master
 - PWA
