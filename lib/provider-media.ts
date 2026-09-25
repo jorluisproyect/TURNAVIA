@@ -3,6 +3,7 @@ export type ProviderMedia={
   profileImage?:string;
   workImages?:string[];
   licenseNumber?:string;
+  credentialStatus?:'NONE'|'PENDING'|'APPROVED'|'REJECTED';
   employeeStatus?:'AVAILABLE'|'BREAK'|'VACATION'|'INACTIVE';
 };
 
@@ -19,23 +20,26 @@ export function parseProviderMedia(value?:string|null):ProviderMedia{
         profileImage:typeof parsed.profileImage==='string'&&DATA_IMAGE.test(parsed.profileImage)?parsed.profileImage:'',
         workImages:Array.isArray(parsed.workImages)?parsed.workImages.filter((x:any)=>typeof x==='string'&&DATA_IMAGE.test(x)).slice(0,4):[],
         licenseNumber:typeof parsed.licenseNumber==='string'?parsed.licenseNumber:'',
+        credentialStatus:['NONE','PENDING','APPROVED','REJECTED'].includes(String(parsed.credentialStatus))?parsed.credentialStatus:'NONE',
         employeeStatus:['AVAILABLE','BREAK','VACATION','INACTIVE'].includes(String(parsed.employeeStatus))?parsed.employeeStatus:'AVAILABLE'
       };
     }
   }catch{}
-  return {about:raw,profileImage:'',workImages:[],licenseNumber:'',employeeStatus:'AVAILABLE'};
+  return {about:raw,profileImage:'',workImages:[],licenseNumber:'',credentialStatus:'NONE',employeeStatus:'AVAILABLE'};
 }
 
-export function serializeProviderMedia(current:string|undefined|null,next:{profileImage?:string;workImages?:string[];about?:string;licenseNumber?:string;employeeStatus?:string}){
+export function serializeProviderMedia(current:string|undefined|null,next:{profileImage?:string;workImages?:string[];about?:string;licenseNumber?:string;credentialStatus?:string;employeeStatus?:string}){
   const previous=parseProviderMedia(current);
   const profileImage=typeof next.profileImage==='string'?next.profileImage:previous.profileImage||'';
   const workImages=Array.isArray(next.workImages)?next.workImages:previous.workImages||[];
   const status=['AVAILABLE','BREAK','VACATION','INACTIVE'].includes(String(next.employeeStatus))?String(next.employeeStatus):previous.employeeStatus||'AVAILABLE';
+  const credentialStatus=['NONE','PENDING','APPROVED','REJECTED'].includes(String(next.credentialStatus))?String(next.credentialStatus):previous.credentialStatus||'NONE';
   return JSON.stringify({
     about:typeof next.about==='string'?next.about.slice(0,420):previous.about||'',
     profileImage,
     workImages:workImages.slice(0,4),
     licenseNumber:typeof next.licenseNumber==='string'?next.licenseNumber.slice(0,120):previous.licenseNumber||'',
+    credentialStatus,
     employeeStatus:status
   });
 }
