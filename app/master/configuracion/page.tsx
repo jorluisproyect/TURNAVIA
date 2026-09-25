@@ -8,6 +8,7 @@ import { neonAuthConfigured } from '@/lib/auth/config';
 import EmailTestButton from './EmailTestButton';
 import ResetTucitaDataButton from './ResetTucitaDataButton';
 import FreeEmailTool from './FreeEmailTool';
+import PushNotificationsButton from '@/components/PushNotificationsButton';
 
 export const dynamic='force-dynamic';
 
@@ -45,6 +46,12 @@ export default async function ConfiguracionMaster(){
     {hasDatabase&&databaseReachable&&<div className="notice" style={{marginTop:14}}><strong>Neon conectado correctamente.</strong><br/>Variable detectada: <code>{databaseEnvName}</code>. El Master puede operar con datos reales.</div>}
     {!emailReady&&<div className="notice" style={{marginTop:14}}><strong>Correos de TUCITA pendientes.</strong><br/>Falta completar el remitente y al menos un transporte de correo.<br/><span className="muted">SMTP: {smtpReady?'OK':'FALTA'} · Resend respaldo: {resendReady?'OK':'NO CONFIGURADO'} · EMAIL_FROM: {emailFromReady?'OK':'FALTA'}</span></div>}
     {emailReady&&<div className="notice" style={{marginTop:14}}><div><strong>Prueba real de correo.</strong><br/><span className="muted">TUCITA intentará primero el SMTP de tu dominio. Si aún conservas Resend, solo se usará como respaldo si SMTP falla.</span><div style={{marginTop:10}}><EmailTestButton/></div></div></div>}
+  </section>
+
+  <section className="panel" style={{marginTop:18}}>
+    <h2>Notificaciones al teléfono</h2>
+    <p className="muted">Actívalas en tu teléfono Master para recibir un aviso inmediato cuando llegue un nuevo pago de TUCITA, incluso si la app está cerrada.</p>
+    <PushNotificationsButton/>
   </section>
 
   <section className="panel" style={{marginTop:18}}>
