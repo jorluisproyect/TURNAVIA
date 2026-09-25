@@ -25,7 +25,9 @@ export default function RegistroClient(){
   const [country,setCountry]=useState('Venezuela');
   const [phoneCountry,setPhoneCountry]=useState('Venezuela');
   const [phoneLocal,setPhoneLocal]=useState('');
+  const [name,setName]=useState('');
   const [email,setEmail]=useState(sp.get('email')||'');
+  const [password,setPassword]=useState('');
   const [availability,setAvailability]=useState<Availability>(null);
   const checkSeq=useRef(0);
   const [state,action,pending]=useActionState(registerUser,null);
@@ -115,7 +117,7 @@ export default function RegistroClient(){
           </select>
           <small className="muted">Selecciona el país donde atenderás a tus clientes.</small>
         </div>}
-        <div className="field"><label>{provider?'Nombre profesional o del establecimiento':'Nombre completo'}</label><input name="name" required maxLength={120} placeholder={provider?'Ej. Ana Pérez / Barbería Central':'Nombre y apellido'}/></div>
+        <div className="field"><label>{provider?'Nombre profesional o del establecimiento':'Nombre completo'}</label><input name="name" required maxLength={120} value={name} onChange={e=>setName(e.target.value)} placeholder={provider?'Ej. Ana Pérez / Barbería Central':'Nombre y apellido'}/></div>
         <div className="field">
           <label>Correo de acceso</label>
           <input name="email" type="email" required maxLength={254} autoComplete="email" value={email} readOnly={team} onChange={e=>{++checkSeq.current;setEmail(e.target.value);setAvailability(null)}} onBlur={checkEmail} placeholder="correo@ejemplo.com"/>
@@ -151,7 +153,7 @@ export default function RegistroClient(){
           </small>
         </div>
         <div className="field"><label>Contraseña</label><div style={{position:'relative'}}>
-          <input name="password" type={showPassword?'text':'password'} minLength={8} required autoComplete="new-password" placeholder="Crea una contraseña segura" style={{paddingRight:46}}/>
+          <input name="password" type={showPassword?'text':'password'} minLength={6} maxLength={8} required autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Crea una contraseña segura" style={{paddingRight:46}}/>
           <button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button>
         </div><small className="muted">{PASSWORD_HELP}</small></div>
         {team&&<div className="notice">Acceso de equipo por invitación, con permisos limitados a tu función.</div>}
@@ -160,7 +162,7 @@ export default function RegistroClient(){
           <label className="notice row" style={{alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" name="providerComplianceAccepted" value="1" checked={providerCompliance} onChange={e=>setProviderCompliance(e.target.checked)} required/><span><strong>Aceptación legal del proveedor.</strong><br/>{PROVIDER_COMPLIANCE_TEXT} <Link href="/legal/terminos">Términos</Link> · <Link href="/legal/privacidad">Privacidad</Link> · <Link href="/legal/servicios-prohibidos">Servicios prohibidos</Link>.</span></label>
           {category===ADULT_CATEGORY&&<label className="notice row" style={{alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" name="adultComplianceAccepted" value="1" checked={adultCompliance} onChange={e=>setAdultCompliance(e.target.checked)} required/><span><strong>Declaración adicional +18.</strong><br/>{ADULT_COMPLIANCE_TEXT}</span></label>}
         </>}
-        {state?.error&&<div className="notice danger" role="alert">{state.error}</div>}
+        {state?.error&&<div className="notice danger" role="alert"><strong>Revisa este dato:</strong><br/>{state.error}<br/><small>Lo que ya escribiste se mantiene para que solo corrijas lo necesario.</small></div>}
         <button className="btn btn-primary" disabled={pending||availability?.state==='taken'||(provider&&!providerCompliance)||(provider&&category===ADULT_CATEGORY&&!adultCompliance)} aria-busy={pending}>{pending?'Creando cuenta...':team?'Unirme al equipo':'Crear cuenta '+kind}</button>
         <div className="muted" style={{fontSize:13}}>Tus datos personales se utilizan para tu cuenta y sus operaciones, no se publican en tu página de reservas.</div>
       </form>
