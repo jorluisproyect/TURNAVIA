@@ -44,7 +44,8 @@ export default function Medico(){
  const [modal,setModal]=useState<'profile'|'availability'|'settings'|'service'|'status'|'location'|null>(null);
  const [profile,setProfile]=useState<any>({});
  const [settings,setSettings]=useState<any>({});
- const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:0,currency:'USD',childPrice:'',serviceImage:'',travelImage:'',travelDate:'',departureTime:'',returnTime:'',locationId:'',capacity:1};
+ const [paymentReminder,setPaymentReminder]=useState(false);
+ const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:'',currency:'USD',childPrice:'',serviceImage:'',travelImage:'',travelDate:'',departureTime:'',returnTime:'',locationId:'',capacity:''};
  const [service,setService]=useState<any>(emptyService);
  const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',locationId:''});
  const [locationForm,setLocationForm]=useState({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
@@ -229,9 +230,22 @@ export default function Medico(){
        service.durationMinutes=minutes;
      }
    }
+   const wasNew=!service.id;
    const action=service.id?'update_service':'add_service';
    const ok=await patch({action,...service});
-   if(ok)setService({...emptyService});
+   if(ok){
+     setService({...emptyService});
+     if(wasNew&&data?.provider?.slug){
+       try{
+         const r=await fetch('/api/payment-methods?scope=DOCTOR&slug='+encodeURIComponent(data.provider.slug));
+         const j=await r.json();
+         const active=(j.methods||[]).some((m:any)=>m.active!==false);
+         if(!active)setPaymentReminder(true);
+       }catch{
+         setPaymentReminder(true);
+       }
+     }
+   }
  }
 
  if(error&&!data)return <div className="dashboard"><Sidebar role="medico"/><main className="main"><section className="panel"><h1>Tu panel profesional</h1><div className="notice danger">{error}</div></section></main></div>;
@@ -383,7 +397,7 @@ export default function Medico(){
        <div className="field" style={{flex:1,minWidth:150}}><label>Hora de salida</label><input type="time" value={service.departureTime||''} onChange={e=>setService({...service,departureTime:e.target.value})}/></div>
        <div className="field" style={{flex:1,minWidth:150}}><label>Hora estimada de regreso</label><input type="time" value={service.returnTime||''} onChange={e=>setService({...service,returnTime:e.target.value})}/></div>
      </div>
-     <div className="field" style={{maxWidth:220}}><label>Cupos disponibles</label><input type="number" min="1" max="500" value={service.capacity||1} onChange={e=>setService({...service,capacity:Math.max(1,Number(e.target.value||1))})}/></div>
+     <div className="field" style={{maxWidth:220}}><label>Cupos disponibles</label><input type="number" min="1" max="500" value={service.capacity??''} onChange={e=>setService({...service,capacity:e.target.value===''?'':Math.max(1,Number(e.target.value))})} placeholder="Escribe la cantidad"/></div>
      <div className="notice"><strong>Calendario automático para Viajes.</strong><br/>Al guardar, TUCITA programa internamente esta salida con su fecha, hora, duración y cupos. No necesitas crear ubicaciones ni publicar un calendario aparte.</div>
    </>:<>
      <div className="field">
@@ -400,7 +414,7 @@ export default function Medico(){
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}>
      <div className="field" style={{flex:1,minWidth:150}}><label>{travelMode?'Duración del viaje':'Duración real'}</label><select value={service.durationMinutes} onChange={e=>setService({...service,durationMinutes:Number(e.target.value)})}><option value={15}>15 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={75}>75 min</option><option value={90}>90 min</option><option value={120}>2 h</option><option value={180}>3 h</option>{travelMode&&<><option value={240}>4 h</option><option value={360}>6 h</option><option value={480}>8 h</option><option value={600}>10 h</option><option value={720}>12 h</option><option value={1440}>24 h</option></>}</select></div>
      <div className="field" style={{flex:1,minWidth:120}}><label>Moneda</label><select value={service.currency} onChange={e=>setService({...service,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div>
-     <div className="field" style={{flex:1,minWidth:150}}><label>{travelMode?'Precio por adulto':'Precio'}</label><input type="number" min="0" step="0.01" value={service.price} onChange={e=>setService({...service,price:Number(e.target.value)})}/></div>
+     <div className="field" style={{flex:1,minWidth:150}}><label>{travelMode?'Precio por adulto':'Precio'}</label><input type="number" min="0" step="0.01" value={service.price??''} onChange={e=>setService({...service,price:e.target.value===''?'':Number(e.target.value)})} placeholder="Escribe el monto"/></div>
      {travelMode&&<div className="field" style={{flex:1,minWidth:150}}><label>Precio por niño (opcional)</label><input type="number" min="0" step="0.01" value={service.childPrice} onChange={e=>setService({...service,childPrice:e.target.value===''?'':Number(e.target.value)})} placeholder="Igual al adulto"/><small className="muted">Si lo dejas vacío, el niño paga el mismo precio del adulto.</small></div>}
    </div>{fxPreview(Number(service.price||0),service.currency||'USD')}
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService} disabled={saving}>{saving?'Guardando…':service.id?'Guardar cambios':travelMode?'Agregar viaje':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
@@ -428,7 +442,7 @@ export default function Medico(){
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveAvailability} disabled={saving}><Clock3 size={16}/> {saving?'Publicando…':'Publicar horario'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='settings'&&<div className="modal-backdrop"><div className="modal"><h2>Configuración de reservas</h2><div className="form">
-   <div className="row" style={{gap:12,alignItems:'stretch'}}><div className="field" style={{flex:1}}><label>Precio base</label><input type="number" value={settings.price??0} onChange={e=>setSettings({...settings,price:Number(e.target.value)})}/></div><div className="field" style={{flex:1}}><label>Moneda</label><select value={settings.currency||'USD'} onChange={e=>setSettings({...settings,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(settings.price||0),settings.currency||'USD')}
+   <div className="row" style={{gap:12,alignItems:'stretch'}}><div className="field" style={{flex:1}}><label>Precio base</label><input type="number" min="0" step="0.01" value={Number(settings.price||0)===0?'':settings.price} onChange={e=>setSettings({...settings,price:e.target.value===''?'':Number(e.target.value)})} placeholder="Escribe el monto"/></div><div className="field" style={{flex:1}}><label>Moneda</label><select value={settings.currency||'USD'} onChange={e=>setSettings({...settings,currency:e.target.value})}><option>USD</option><option>EUR</option><option>VES</option><option>USDT</option></select></div></div>{fxPreview(Number(settings.price||0),settings.currency||'USD')}
    <div className="field"><label>Duración predeterminada</label><input type="number" value={settings.defaultMinutes||30} onChange={e=>setSettings({...settings,defaultMinutes:Number(e.target.value)})}/></div>
    <div className="field"><label>Instrucciones de pago</label><textarea rows={4} value={settings.paymentInstructions||''} onChange={e=>setSettings({...settings,paymentInstructions:e.target.value})}/></div>
    <label className="notice row"><input type="checkbox" checked={settings.acceptsOnlineBooking!==false} onChange={e=>setSettings({...settings,acceptsOnlineBooking:e.target.checked})}/><span>Aceptar reservas en línea</span></label>
@@ -436,9 +450,20 @@ export default function Medico(){
 
  {modal==='status'&&<div className="modal-backdrop"><div className="modal"><h2>Estado de atención</h2><div className="form">
    <div className="field"><label>Estado</label><select value={dayStatus.status} onChange={e=>setDayStatus({...dayStatus,status:e.target.value})}><option value="NORMAL">Normal</option><option value="DELAYED">Retrasado</option><option value="SUSPENDED">Suspendido</option></select></div>
-   {dayStatus.status==='DELAYED'&&<div className="field"><label>Minutos de retraso</label><input type="number" value={dayStatus.delayMinutes} onChange={e=>setDayStatus({...dayStatus,delayMinutes:Number(e.target.value)})}/></div>}
+   {dayStatus.status==='DELAYED'&&<div className="field"><label>Minutos de retraso</label><input type="number" min="1" value={Number(dayStatus.delayMinutes||0)===0?'':dayStatus.delayMinutes} onChange={e=>setDayStatus({...dayStatus,delayMinutes:e.target.value===''?0:Number(e.target.value)})} placeholder="Escribe los minutos"/></div>}
    <div className="field"><label>Nota opcional</label><input value={dayStatus.note} onChange={e=>setDayStatus({...dayStatus,note:e.target.value})}/></div>
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={()=>patch({action:'day_status',...dayStatus})} disabled={saving}>{saving?'Guardando…':'Guardar estado'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+
+ {paymentReminder&&<div className="modal-backdrop"><div className="modal" style={{maxWidth:470,textAlign:'center'}}>
+   <div style={{fontSize:50,lineHeight:1}}>🎉</div>
+   <h2 style={{marginTop:12}}>¡Tu servicio ya está publicado!</h2>
+   <p className="muted">Solo te falta un paso importante para empezar a recibir reservas: indica cómo podrán pagarte tus clientes.</p>
+   <div className="notice" style={{textAlign:'left',marginTop:14}}><strong>💳 No olvides configurar tus métodos de pago.</strong><br/>TUCITA mostrará al cliente únicamente las opciones válidas según tu país.</div>
+   <div className="button-row" style={{justifyContent:'center',marginTop:18,flexWrap:'wrap'}}>
+     <button className="btn btn-primary" onClick={()=>{setPaymentReminder(false);setTimeout(()=>document.getElementById('pagos')?.scrollIntoView({behavior:'smooth',block:'start'}),80)}}>Configurar pagos ahora</button>
+     <button className="btn btn-secondary" onClick={()=>setPaymentReminder(false)}>Lo haré después</button>
+   </div>
+ </div></div>}
 
  {toast&&<div className="toast">{toast}</div>}
  </div>
