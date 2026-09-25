@@ -3,7 +3,7 @@ export const PROVIDER_CATEGORIES:Record<string,string[]>={
   'Belleza':['Barbería','Peluquería','Manicurista','Cejas y pestañas','Maquillaje','Estética','Otro'],
   'Bienestar':['Spa','Masajes','Yoga','Pilates','Coach personal','Otro'],
   'Legal y abogados':['Abogado general','Derecho civil','Derecho penal','Derecho laboral','Derecho mercantil / corporativo','Derecho de familia','Inmigración / extranjería','Derecho tributario','Derecho inmobiliario','Contratos','Propiedad intelectual','Sucesiones','Asesoría jurídica','Otro'],
-  'Servicios profesionales':['Contador','Consultor','Asesor','Arquitecto','Diseñador','Otro'],
+  'Servicios profesionales':['Abogado','Contador','Consultor','Asesor','Arquitecto','Diseñador','Otro'],
   'Educación':['Profesor particular','Academia','Idiomas','Música','Baile','Otro'],
   'Automotriz':['Taller','Detailing','Autolavado','Cambio de aceite','Accesorios','Otro'],
   'Hogar y técnicos':['Electricista','Plomero','Aire acondicionado','Computación','Celulares','Limpieza','Otro'],
