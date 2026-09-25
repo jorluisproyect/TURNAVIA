@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
+import { LoginPasswordField } from './LoginPasswordField';
 
 export const dynamic='force-dynamic';
 
@@ -33,13 +34,7 @@ export default async function Ingresar({searchParams}:{searchParams?:Params}){
           <input name="email" type="email" required autoComplete="email" inputMode="email" placeholder="correo@ejemplo.com"/>
           <small className="muted">Tu correo es tu usuario de acceso a TUCITA.</small>
         </div>
-        <div className="field">
-          <div className="row space">
-            <label>Contraseña</label>
-            <Link href="/olvidar-contrasena" style={{fontSize:13}}>¿La olvidaste?</Link>
-          </div>
-          <input name="password" type="password" required autoComplete="current-password"/>
-        </div>
+        <LoginPasswordField/>
         {message&&<div className="notice danger" role="alert">{message}</div>}
         <button className="btn btn-primary" type="submit">Ingresar</button>
         <div className="button-row"><Link href="/registro" className="btn btn-secondary">Crear cuenta TUCITA</Link></div>
