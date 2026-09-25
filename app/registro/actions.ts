@@ -25,7 +25,9 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   const accountType=String(formData.get('accountType')||'PATIENT');
   const category=String(formData.get('category')||'Salud').trim();
   const activity=String(formData.get('activity')||'Médico').trim();
-  const country=String(formData.get('country')||'Venezuela').trim()||'Venezuela';
+  const country=rawRole==='DOCTOR'
+    ? (String(formData.get('country')||'Venezuela').trim()||'Venezuela')
+    : phoneCountry;
   const providerComplianceAccepted=String(formData.get('providerComplianceAccepted')||'')==='1';
   const adultComplianceAccepted=String(formData.get('adultComplianceAccepted')||'')==='1';
   const requestedRole=rawRole==='DOCTOR'?'DOCTOR':'PATIENT';
@@ -203,7 +205,9 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
             'email',${email},
             'role',${role},
             'accountType',${accountType},
-            'name',${name}
+            'name',${name},
+            'country',${country},
+            'phoneCountry',${phoneCountry}
           )
         WHERE NOT EXISTS (
           SELECT 1 FROM audit_events ae
