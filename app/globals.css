@@ -776,3 +776,25 @@ button:disabled{
   .agenda-event-person strong{font-size:13px}
   .agenda-event-service{font-size:11px}
 }
+
+
+/* Homepage mobile entry: keep authentication obvious without clutter */
+@media(max-width:600px){
+  .nav-inner{gap:10px}
+  .nav-inner .brand{font-size:19px}
+  .nav-actions{gap:7px;flex:0 0 auto}
+  .nav-actions .nav-login{
+    display:inline-flex!important;
+    min-height:40px;
+    padding:9px 12px;
+    border-radius:12px;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .nav-actions .nav-demo{display:none}
+  .nav-actions>button.btn-secondary{display:none}
+}
+@media(max-width:380px){
+  .nav-inner .brand{font-size:17px}
+  .nav-actions .nav-login{padding:8px 10px;font-size:11px}
+}
