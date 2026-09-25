@@ -11,7 +11,7 @@ import { useEffect,useState } from "react";
 const config = {
   medico: [
     ["/medico", "Resumen", LayoutDashboard],
-    ["/medico#agenda", "Agenda", CalendarDays],
+    ["/medico/agenda", "Agenda", CalendarDays],
     ["/medico#servicios", "Servicios", BriefcaseBusiness],
     ["/medico/clientes", "__AUDIENCE__", Users],
     ["/medico/equipo", "Equipo", Users],
@@ -109,7 +109,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
       ['__more__','Más',Menu],
     ]:[
       ['/medico','Inicio',LayoutDashboard],
-      ['/medico#agenda','Agenda',CalendarDays],
+      ['/medico/agenda','Agenda',CalendarDays],
       [business?'/medico/equipo':'/medico/clientes',business?'Equipo':audience,business?Users:Users],
       ['/medico/finanzas','Finanzas',WalletCards],
       ['__more__','Más',Menu],
