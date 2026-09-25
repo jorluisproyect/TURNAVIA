@@ -74,6 +74,37 @@ export default function Paciente(){
  return <div className="dashboard"><Sidebar role="paciente"/><main className="main">
    <div className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{data.patient.profileImage?<img src={data.patient.profileImage} alt="" style={{width:56,height:56,borderRadius:18,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:56,height:56,borderRadius:18}}><UserRound size={23}/></div>}<div><div className="muted" style={{fontSize:13}}>Mi TUCITA</div><h1>Hola, {data.patient.name}</h1></div></div><Link className="btn btn-primary" href="/explorar"><Search size={16}/> Explorar</Link></div>
 
+   {active.length===0&&<section className="panel" style={{marginBottom:18,border:'1px solid #9bd9ce',background:'linear-gradient(145deg,#ffffff,#f0fdfa)'}}>
+     <div className="row space" style={{gap:14,alignItems:'flex-start',flexWrap:'wrap'}}>
+       <div>
+         <span className="eyebrow"><MapPin size={15}/> PROFESIONALES EN TU ZONA</span>
+         <h2 style={{margin:'9px 0 5px'}}>¿Qué necesitas hoy?</h2>
+         <p className="muted" style={{margin:0}}>Te mostramos primero profesionales {data.patient.country?'de '+data.patient.country:'disponibles en TUCITA'}. También puedes buscar en otro país para reservarle a un familiar o amigo.</p>
+       </div>
+       <Link className="btn btn-secondary" href="/explorar?country=ALL">Cambiar país</Link>
+     </div>
+
+     <form action="/explorar" method="get" className="row" style={{gap:8,marginTop:14,flexWrap:'wrap'}}>
+       {data.patient.country&&<input type="hidden" name="country" value={data.patient.country}/>}
+       <div style={{position:'relative',flex:1,minWidth:220}}>
+         <Search size={17} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)'}}/>
+         <input name="q" placeholder="Busca uñas, barbería, médico, spa…" style={{paddingLeft:39,width:'100%'}}/>
+       </div>
+       <button className="btn btn-primary" type="submit"><Search size={16}/> Buscar</button>
+     </form>
+
+     {(data.recommendedProviders||[]).length>0?<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:12,marginTop:14}}>
+       {(data.recommendedProviders||[]).map((r:any)=><Link href={'/reservar/'+r.slug} key={r.slug} className="card" style={{textDecoration:'none',color:'inherit'}}>
+         <div className="row" style={{gap:10,alignItems:'center'}}>
+           {r.profileImage?<img src={r.profileImage} alt="" style={{width:52,height:52,borderRadius:16,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:52,height:52}}><UserRound size={20}/></div>}
+           <div style={{minWidth:0}}><strong>{r.name}</strong><div className="muted" style={{fontSize:12}}>{r.activity} · {r.category}</div></div>
+         </div>
+         <div className="row muted" style={{fontSize:12,marginTop:10}}><MapPin size={14}/>{[r.city,r.state,r.country].filter(Boolean).join(' · ')||'Ubicación por confirmar'}</div>
+         <div style={{marginTop:10,fontWeight:700,color:'var(--primary)'}}>Ver servicios y agenda →</div>
+       </Link>)}
+     </div>:<div className="notice" style={{marginTop:14}}>Aún no hay profesionales publicados en tu país. <Link href="/explorar?country=ALL">Buscar en todos los países</Link>.</div>}
+   </section>}
+
    {next&&<section className="panel" style={{marginBottom:18,background:'linear-gradient(145deg,#ffffff,#eef9f6)'}}>
      <div className="row space" style={{gap:16,alignItems:'flex-start',flexWrap:'wrap'}}><div><span className="eyebrow"><CalendarCheck2 size={15}/> PRÓXIMA CITA</span><h2 style={{fontSize:26,margin:'10px 0 5px'}}>{next.providerName}</h2><div className="muted">{next.serviceName} · {next.activity}</div><div style={{marginTop:10}}><strong>{new Date(next.startsAt).toLocaleString('es-VE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}</strong></div><div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{next.location||'Ubicación por confirmar'}</div></div><div className="button-row"><Link className="btn btn-secondary" href={'/reservar/'+next.providerSlug}>Reservar otra vez</Link>{next.receiptNumber&&['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION','COMPLETED'].includes(next.status)&&<a className="btn btn-primary" href={'/api/appointments/'+next.id+'/receipt'} target="_blank" rel="noreferrer"><FileText size={16}/> Recibo + QR</a>}</div></div>
    </section>}
