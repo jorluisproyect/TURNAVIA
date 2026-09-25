@@ -9,6 +9,7 @@ import RecoverProfessionalButton from './RecoverProfessionalButton';
 import RepairProfessionalButton from './RepairProfessionalButton';
 import ProfessionalViewToggle from './ProfessionalViewToggle';
 import { parseProviderMedia } from '@/lib/provider-media';
+import CredentialsReviewActions from './CredentialsReviewActions';
 
 export const dynamic='force-dynamic';
 const labels:any={
@@ -119,7 +120,11 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
     trial_end:r.trial_ends_at?new Date(r.trial_ends_at):null,
     trial_days_remaining:r.trial_ends_at?Math.max(0,Math.ceil((new Date(r.trial_ends_at).getTime()-Date.now())/86400000)):0,
     profile_image:parseProviderMedia(r.bio).profileImage||'',
-    about:parseProviderMedia(r.bio).about||''
+    about:parseProviderMedia(r.bio).about||'',
+    credential_status:parseProviderMedia(r.bio).credentialStatus||'NONE',
+    credential_number:parseProviderMedia(r.bio).licenseNumber||'',
+    credential_images:parseProviderMedia(r.bio).workImages||[],
+    has_credentials:Boolean(parseProviderMedia(r.bio).licenseNumber||(parseProviderMedia(r.bio).workImages||[]).length)
   }));
 
   const filtered=normalized.filter(r=>{
@@ -243,6 +248,14 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                   <div><BriefcaseBusiness size={14}/><span>{r.services||0} servicio{Number(r.services||0)===1?'':'s'}</span></div>
                 </div>
 
+                {r.has_credentials&&<div className="notice" style={{padding:10}}>
+                  <strong>Credenciales profesionales</strong>
+                  {r.credential_number&&<div style={{marginTop:4,fontSize:12}}>{r.credential_number}</div>}
+                  {r.credential_images?.length>0&&<div className="row" style={{gap:6,marginTop:8,flexWrap:'wrap'}}>{r.credential_images.slice(0,4).map((img:string,i:number)=><img key={i} src={img} alt={'Credencial '+(i+1)} style={{width:58,height:44,objectFit:'cover',borderRadius:9,border:'1px solid var(--line)'}}/>)}</div>}
+                </div>}
+
+                <CredentialsReviewActions slug={String(r.public_slug||'')} status={String(r.credential_status)} hasCredentials={Boolean(r.has_credentials)}/>
+
                 {!r.profile_complete&&<div className="notice" style={{padding:'8px 10px',fontSize:12}}>
                   <AlertTriangle size={13}/> Cuenta conservada. Faltan datos técnicos del perfil.
                 </div>}
@@ -269,7 +282,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
             <table className="table">
               <thead>
                 <tr>
-                  <th>Nombre</th><th>Rubro</th><th>Tipo</th><th>Servicios</th><th>Estado</th><th>Reserva pública</th><th>Administrar</th>
+                  <th>Nombre</th><th>Rubro</th><th>Tipo</th><th>Servicios</th><th>Credenciales</th><th>Estado</th><th>Reserva pública</th><th>Administrar</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,6 +305,9 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                   <td>{r.display_category}<div className="muted" style={{fontSize:12}}>{r.display_activity}</div></td>
                   <td>{r.display_type}</td>
                   <td>{r.services||0}</td>
+                  <td style={{minWidth:220}}>
+                    <CredentialsReviewActions slug={String(r.public_slug||'')} status={String(r.credential_status)} hasCredentials={Boolean(r.has_credentials)}/>
+                  </td>
                   <td>
                     {String(r.commercial_status)==='TRIAL'&&r.trial_end?<>
                       <span className="pill">Prueba gratis · {r.trial_days_remaining} día{r.trial_days_remaining===1?'':'s'} restante{r.trial_days_remaining===1?'':'s'}</span>
