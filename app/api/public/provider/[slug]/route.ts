@@ -136,7 +136,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
   return NextResponse.json({
     provider:{
       slug:p.public_slug,name:p.full_name,initials,category:p.provider_category||'Otro',activity:p.provider_activity||p.specialty||'Servicio',
-      type:p.provider_type||'Profesional independiente',phone:p.phone||'',specialty:p.specialty||'',profileImage:media.profileImage||'',workImages:media.workImages||[],licenseNumber:media.licenseNumber||'',
+      type:p.provider_type||'Profesional independiente',phone:p.phone||'',specialty:p.specialty||'',profileImage:media.profileImage||'',workImages:media.workImages||[],licenseNumber:media.licenseNumber||'',credentialStatus:media.credentialStatus||'NONE',
       location:[p.location_name,p.address,p.city,p.state,p.country].filter(Boolean).join(' · '),
       country:p.country||'',
       dayStatus:(statusRows[0] as any)?.status||'NORMAL',delayMinutes:Number((statusRows[0] as any)?.delay_minutes||0)
