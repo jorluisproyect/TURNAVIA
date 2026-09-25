@@ -9,6 +9,7 @@ import EmailTestButton from './EmailTestButton';
 import ResetTucitaDataButton from './ResetTucitaDataButton';
 import FreeEmailTool from './FreeEmailTool';
 import PushNotificationsButton from '@/components/PushNotificationsButton';
+import BroadcastUpdateTool from './BroadcastUpdateTool';
 
 export const dynamic='force-dynamic';
 
@@ -52,6 +53,12 @@ export default async function ConfiguracionMaster(){
     <h2>Notificaciones al teléfono</h2>
     <p className="muted">Actívalas en tu teléfono Master para recibir un aviso inmediato cuando llegue un nuevo pago de TUCITA, incluso si la app está cerrada.</p>
     <PushNotificationsButton/>
+  </section>
+
+  <section className="panel" style={{marginTop:18}}>
+    <h2>Comunicar actualizaciones</h2>
+    <p className="muted">Envía una notificación dentro de TUCITA a todos los profesionales registrados cuando publiques una mejora importante.</p>
+    <BroadcastUpdateTool/>
   </section>
 
   <section className="panel" style={{marginTop:18}}>
