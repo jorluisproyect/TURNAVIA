@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
+import { auth } from '@/lib/auth/server';
+import { redirect } from 'next/navigation';
 
 export const dynamic='force-dynamic';
 
@@ -12,6 +14,12 @@ export default async function Ingresar({searchParams}:{searchParams?:Params}){
   const next=nextRaw.startsWith('/equipo/aceptar?invite=') && nextRaw.length<500 && !/[\r\n]/.test(nextRaw)
     ? nextRaw
     : '';
+
+  const {data:session}=await auth.getSession();
+  if(session?.user){
+    if(next)redirect(next);
+    redirect('/panel');
+  }
 
   const message=
     errorRaw==='credentials'?'Correo o contraseña incorrectos.':
