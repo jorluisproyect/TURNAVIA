@@ -13,7 +13,7 @@ type State={provider:{slug:string;name:string;initials:string;category:string;ac
 
 function mapQuery(l:LocationInfo){return [l.address,l.city,l.state,l.country].filter(Boolean).join(', ')}
 
-export default function BookingClient({slug}:{slug:string}){
+export default function BookingClient({slug,patientLoggedIn=false}:{slug:string;patientLoggedIn?:boolean}){
  const [data,setData]=useState<State|null>(null);
  const [methods,setMethods]=useState<PaymentMethod[]>([]);
  const [serviceId,setServiceId]=useState('');
@@ -55,7 +55,20 @@ export default function BookingClient({slug}:{slug:string}){
    fetch('/api/payment-methods?scope=DOCTOR&slug='+encodeURIComponent(slug)+'&active=1').then(r=>r.json()).then(j=>{
      const ms=j.methods||[];setMethods(ms);if(ms[0])setForm(f=>({...f,paymentMethod:ms[0].name}));
    }).catch(()=>{});
- },[slug]);
+   if(patientLoggedIn){
+     fetch('/api/me/patient',{cache:'no-store'}).then(r=>r.json()).then(j=>{
+       const p=j?.patient;
+       if(!p)return;
+       setForm(f=>({
+         ...f,
+         clientName:f.clientName||String(p.name||''),
+         nationalId:f.nationalId||String(p.nationalId||''),
+         phone:f.phone||String(p.phone||''),
+         email:f.email||String(p.email||'')
+       }));
+     }).catch(()=>{});
+   }
+ },[slug,patientLoggedIn]);
 
  useEffect(()=>{
    if(!serviceId)return;
@@ -140,11 +153,11 @@ export default function BookingClient({slug}:{slug:string}){
  const remainingSeats=selectedBlock?.slots?.find(s=>s.startsAt===startsAt)?.remaining;
  if(sent){
    const receiptUrl=appointmentId&&receiptToken?'/api/public/appointments/'+encodeURIComponent(appointmentId)+'/receipt?token='+encodeURIComponent(receiptToken):'';
-   return <div className="booking"><div className="container booking-wrap"><div className="booking-header"><Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link></div><div className="profile-card" style={{textAlign:'center',padding:'44px 28px'}}><div className="iconbox" style={{margin:'0 auto',width:62,height:62,borderRadius:20}}><CheckCircle2 size={30}/></div><h1 style={{fontSize:34,marginBottom:8}}>{resultStatus==='CONFIRMED'?'Reserva confirmada':'Pago enviado para revisión'}</h1><p className="muted">{resultStatus==='CONFIRMED'?<>Tu reserva con <strong>{provider.name}</strong> quedó confirmada.</>:<>Tu horario quedó preagendado mientras <strong>{provider.name}</strong> revisa el comprobante.</>}</p><div className="notice" style={{margin:'22px auto',maxWidth:560,textAlign:'left'}}><strong>{resultStatus==='CONFIRMED'?'Tu recibo TUCITA ya está disponible.':'Pago recibido y en revisión.'}</strong><br/>{resultStatus==='CONFIRMED'?<>Puedes descargar ahora tu comprobante PDF con el <strong>código QR de la cita</strong>. {emailNotice==='sent'?'También fue enviado a tu correo.':'Si el correo tarda, puedes descargarlo aquí.'}</>:<>En cuanto el profesional o negocio apruebe el pago, esta pantalla se actualizará y habilitará tu <strong>recibo PDF + QR</strong>. También lo enviaremos a <strong>{form.email}</strong>.</>}</div><div className="button-row" style={{justifyContent:'center',flexWrap:'wrap'}}>{resultStatus==='CONFIRMED'&&receiptUrl&&<a href={receiptUrl} target="_blank" rel="noreferrer" className="btn btn-primary">Descargar recibo + QR</a>}<Link href={'/registro?role=PATIENT&email='+encodeURIComponent(form.email)} className="btn btn-secondary">Crear mi cuenta</Link><Link href="/ingresar" className="btn btn-secondary">Ya tengo cuenta</Link></div></div></div></div>;
+   return <div className="booking"><div className="container booking-wrap"><div className="booking-header"><Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link></div><div className="profile-card" style={{textAlign:'center',padding:'44px 28px'}}><div className="iconbox" style={{margin:'0 auto',width:62,height:62,borderRadius:20}}><CheckCircle2 size={30}/></div><h1 style={{fontSize:34,marginBottom:8}}>{resultStatus==='CONFIRMED'?'Reserva confirmada':'Pago enviado para revisión'}</h1><p className="muted">{resultStatus==='CONFIRMED'?<>Tu reserva con <strong>{provider.name}</strong> quedó confirmada.</>:<>Tu horario quedó preagendado mientras <strong>{provider.name}</strong> revisa el comprobante.</>}</p><div className="notice" style={{margin:'22px auto',maxWidth:560,textAlign:'left'}}><strong>{resultStatus==='CONFIRMED'?'Tu recibo TUCITA ya está disponible.':'Pago recibido y en revisión.'}</strong><br/>{resultStatus==='CONFIRMED'?<>Puedes descargar ahora tu comprobante PDF con el <strong>código QR de la cita</strong>. {emailNotice==='sent'?'También fue enviado a tu correo.':'Si el correo tarda, puedes descargarlo aquí.'}</>:<>En cuanto el profesional o negocio apruebe el pago, esta pantalla se actualizará y habilitará tu <strong>recibo PDF + QR</strong>. También lo enviaremos a <strong>{form.email}</strong>.</>}</div><div className="button-row" style={{justifyContent:'center',flexWrap:'wrap'}}>{resultStatus==='CONFIRMED'&&receiptUrl&&<a href={receiptUrl} target="_blank" rel="noreferrer" className="btn btn-primary">Descargar recibo + QR</a>}{patientLoggedIn?<><Link href="/paciente" className="btn btn-primary">Volver a mis citas</Link><Link href="/explorar" className="btn btn-secondary">Explorar más</Link></>:<><Link href={'/registro?role=PATIENT&email='+encodeURIComponent(form.email)} className="btn btn-secondary">Crear mi cuenta</Link><Link href="/ingresar" className="btn btn-secondary">Ya tengo cuenta</Link></>}</div></div></div></div>;
  }
 
  return <div className="booking"><div className="container booking-wrap">
-   <div className="booking-header"><Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link><p className="muted">Reserva tu servicio en pocos pasos</p></div>
+   <div className="booking-header">{patientLoggedIn?<Link href="/explorar" className="btn btn-secondary">← Volver a explorar</Link>:<Link href="/" className="brand" style={{justifyContent:'center'}}>TUCITA</Link>}<p className="muted">Reserva tu servicio en pocos pasos</p></div>
    <section className="profile-card">
      <div className="profile-top">{provider.profileImage?<img src={provider.profileImage} alt={provider.name} style={{width:76,height:76,borderRadius:24,objectFit:'cover',flex:'0 0 auto'}}/>:<div className="profile-avatar">{provider.initials}</div>}<div><h1 style={{fontSize:25,margin:'0 0 4px'}}>{provider.name}</h1><div className="muted">{provider.activity} · {provider.category}</div>{!travelMode&&<div className="row muted" style={{fontSize:13,marginTop:8}}><MapPin size={15}/>{provider.location||'Ubicación por confirmar'}</div>}</div></div>
      {(provider.workImages||[]).length>0&&<div style={{marginTop:16}}><div className="muted" style={{fontSize:12,marginBottom:8}}>Referencias de trabajos</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8}}>{(provider.workImages||[]).map((img,i)=><img key={i} src={img} alt={'Referencia '+(i+1)} style={{width:'100%',height:92,borderRadius:14,objectFit:'cover'}}/>)}</div></div>}
