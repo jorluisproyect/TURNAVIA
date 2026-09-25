@@ -39,7 +39,8 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
   const selectedCountry=allCountries?'':(requestedCountry||accountCountry);
 
   const rows=sql?await sql`SELECT d.public_slug,d.provider_category,d.provider_activity,d.provider_type,d.bio,u.full_name,
-      l.city,l.state,l.country,COUNT(ps.id) FILTER (WHERE ps.active=true)::int AS services
+      l.city,l.state,l.country,COUNT(ps.id) FILTER (WHERE ps.active=true)::int AS services,
+      string_agg(DISTINCT ps.name,' · ') FILTER (WHERE ps.active=true) AS service_names
     FROM doctors d
     JOIN users u ON u.id=d.user_id
     JOIN app_user_profiles ap ON lower(ap.email)=lower(u.email) AND ap.role::text='DOCTOR'
@@ -84,7 +85,7 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
     if(selectedCountry&&norm(r.country)!==norm(selectedCountry))return false;
     if(city&&!norm([r.city,r.state].filter(Boolean).join(' ')).includes(norm(city)))return false;
     if(q){
-      const hay=norm([r.full_name,r.provider_category,r.provider_activity,r.provider_type,r.city,r.state,r.country].filter(Boolean).join(' '));
+      const hay=norm([r.full_name,r.provider_category,r.provider_activity,r.provider_type,r.service_names,r.city,r.state,r.country].filter(Boolean).join(' '));
       if(!hay.includes(norm(q)))return false;
     }
     return true;
@@ -194,6 +195,7 @@ export default async function Explorar({searchParams}:{searchParams:Promise<Reco
                 <span className="eyebrow">{r.provider_category||'Servicio'}</span>
                 <h3>{r.full_name}</h3>
                 <p>{r.provider_activity||'Servicio'}{r.provider_type?' · '+r.provider_type:''}</p>
+                {r.service_names&&<small style={{display:'block',marginBottom:4}}>Servicios: {String(r.service_names).split(' · ').slice(0,3).join(' · ')}</small>}
                 <small><MapPin size={12} style={{verticalAlign:'middle'}}/> {(r.locations||[]).filter(Boolean).join(' / ')||'Ubicación por configurar'}</small>
               </div>
             </div>
