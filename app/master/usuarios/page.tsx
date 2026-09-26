@@ -3,8 +3,9 @@ import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { sql } from '@/lib/db';
 import Link from 'next/link';
-import { CalendarDays, Search, UserRound } from 'lucide-react';
+import { CalendarDays, Search, UserRound, LayoutGrid, List } from 'lucide-react';
 import RepairFinalUserButton from './RepairFinalUserButton';
+import FinalUserDeleteButton from './FinalUserDeleteButton';
 
 export const dynamic='force-dynamic';
 
@@ -12,6 +13,7 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
   if(!(await isOwnerMasterSession()))redirect('/master');
   const sp=await searchParams;
   const q=String(sp.q||'').trim().toLowerCase();
+  const view=String(sp.view||'list')==='cards'?'cards':'list';
 
   const rows=sql?await sql`
     SELECT
@@ -95,6 +97,13 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
           <Link href="/master/eliminados" className="btn btn-secondary">Perfiles eliminados</Link>
         </div>
       </div>
+      <div className="row space" style={{gap:12,flexWrap:'wrap',marginTop:14}}>
+        <div className="muted" style={{fontSize:12}}>Vista de usuarios</div>
+        <div className="master-view-toggle">
+          <Link href={'/master/usuarios?view=list'+(q?'&q='+encodeURIComponent(q):'')} className={view==='list'?'active':''}><List size={14}/> Lista</Link>
+          <Link href={'/master/usuarios?view=cards'+(q?'&q='+encodeURIComponent(q):'')} className={view==='cards'?'active':''}><LayoutGrid size={14}/> Tarjetas</Link>
+        </div>
+      </div>
       <form method="get" className="row" style={{gap:10,flexWrap:'wrap',alignItems:'end',marginTop:14}}>
         <div className="field" style={{flex:1,minWidth:240}}>
           <label>Buscar usuario</label>
@@ -110,6 +119,25 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
 
     <section className="panel" style={{marginTop:18}}>
       {filtered.length===0?<div className="notice">Todavía no hay usuarios finales registrados con esos filtros.</div>:
+      view==='cards'?<div className="master-final-user-grid">{filtered.map((r:any)=><article className="master-final-user-card" key={String(r.auth_user_id||r.email)}>
+        <div className="row space" style={{alignItems:'flex-start',gap:10}}>
+          <div className="iconbox"><UserRound size={20}/></div>
+          <span className={r.active?'status ok':'status bad'}>{r.active?'Activo':'Inactivo'}</span>
+        </div>
+        <div>
+          <h3>{r.name}</h3>
+          <div className="muted" style={{fontSize:12,wordBreak:'break-word'}}>{r.email}</div>
+          <div className="muted" style={{fontSize:12}}>{r.phone}</div>
+        </div>
+        <div className="master-final-user-stats">
+          <div><strong>{Number(r.bookings||0)}</strong><small>Reservas</small></div>
+          <div><strong>{r.last_booking?new Date(r.last_booking).toLocaleDateString('es-VE'):'—'}</strong><small>Última</small></div>
+        </div>
+        <div className="row" style={{gap:8,flexWrap:'wrap'}}>
+          {(!r.patient_id||!r.internal_user_id)?<RepairFinalUserButton authUserId={String(r.auth_user_id)} email={String(r.profile_email||r.email)} name={String(r.profile_name||r.name)}/>:<span className="status ok">Sincronizado</span>}
+          <FinalUserDeleteButton email={String(r.email)} name={String(r.name)}/>
+        </div>
+      </article>)}</div>:
       <div style={{overflowX:'auto'}}>
         <table className="table">
           <thead><tr><th>Usuario</th><th>Estado</th><th>Reservas</th><th>Última reserva</th><th>Cuenta</th><th>Acción</th></tr></thead>
@@ -124,9 +152,12 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
             <td><strong>{Number(r.bookings||0)}</strong></td>
             <td>{r.last_booking?<><CalendarDays size={14} style={{verticalAlign:'middle',marginRight:5}}/>{new Date(r.last_booking).toLocaleString('es-VE')}</>:'Sin reservas'}</td>
             <td><span className="muted" style={{fontSize:12}}>El usuario puede eliminar su perfil. El Master controla restauración o borrado definitivo desde Perfiles eliminados.</span></td>
-            <td>{(!r.patient_id||!r.internal_user_id)
-              ?<RepairFinalUserButton authUserId={String(r.auth_user_id)} email={String(r.profile_email||r.email)} name={String(r.profile_name||r.name)}/>
-              :<span className="status ok">Sincronizado</span>}</td>
+            <td><div className="row" style={{gap:8,flexWrap:'wrap'}}>
+              {(!r.patient_id||!r.internal_user_id)
+                ?<RepairFinalUserButton authUserId={String(r.auth_user_id)} email={String(r.profile_email||r.email)} name={String(r.profile_name||r.name)}/>
+                :<span className="status ok">Sincronizado</span>}
+              <FinalUserDeleteButton email={String(r.email)} name={String(r.name)}/>
+            </div></td>
           </tr>)}</tbody>
         </table>
       </div>}
