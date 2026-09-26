@@ -110,8 +110,8 @@ export function Sidebar({role}:{role:keyof typeof config}){
     ]:[
       ['/medico','Inicio',LayoutDashboard],
       ['/medico/agenda','Agenda',CalendarDays],
+      ['/medico/pagos-reservas','Pagos',WalletCards],
       [business?'/medico/equipo':'/medico/clientes',business?'Equipo':audience,business?Users:Users],
-      ['/medico/finanzas','Finanzas',WalletCards],
       ['__more__','Más',Menu],
     ];
 
@@ -132,7 +132,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
     role==='medico'?[
       ['/medico/servicios','Servicios',BriefcaseBusiness],
       ['/medico#ubicaciones','Ubicaciones',MapPin],
-      ['/medico/pagos-reservas','Pagos y reservas',BarChart3],
+      ['/medico/finanzas','Finanzas',WalletCards],
       ['/medico#perfil','Perfil',Settings],
       ['/cuenta/seguridad','Seguridad',ShieldCheck],
     ]:[];
