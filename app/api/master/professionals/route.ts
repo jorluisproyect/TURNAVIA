@@ -29,9 +29,13 @@ export async function PATCH(req:Request){
     if(!hasCredentials)return NextResponse.json({error:'El profesional todavía no ha cargado credenciales.'},{status:409});
     const bio=serializeProviderMedia(p.bio,{credentialStatus:decision});
     await sql`UPDATE doctors SET bio=${bio} WHERE id=${p.doctor_id}::uuid`;
-    await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
-      VALUES(${decision==='APPROVED'?'PROFESSIONAL_CREDENTIALS_APPROVED':'PROFESSIONAL_CREDENTIALS_REJECTED'},'PROFESSIONAL',${slug},
-      jsonb_build_object('email',${p.email},'decision',${decision}))`;
+    try{
+      await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+        VALUES(${decision==='APPROVED'?'PROFESSIONAL_CREDENTIALS_APPROVED':'PROFESSIONAL_CREDENTIALS_REJECTED'},'PROFESSIONAL',${slug},
+        jsonb_build_object('email',${p.email},'decision',${decision}))`;
+    }catch(error){
+      console.error('TUCITA credential review audit warning',error);
+    }
     return NextResponse.json({ok:true,status:decision});
   }
 
