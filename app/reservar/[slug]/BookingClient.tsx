@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, MapPin, ShieldCheck, UploadCloud, CreditCard, Navigation, Clock3, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { ReportProviderButton } from '@/components/ReportProviderButton';
+import { categoryUsesCredentials } from '@/lib/provider-media';
 
 type Slot={time:string;available:boolean;startsAt:string;remaining?:number};
 type LocationInfo={id:string;name:string;address:string;city:string;state:string;country:string;room:string};
@@ -13,8 +14,7 @@ type State={provider:{slug:string;name:string;initials:string;category:string;ac
 
 function mapQuery(l:LocationInfo){return [l.address,l.city,l.state,l.country].filter(Boolean).join(', ')}
 function usesProfessionalCredentials(category?:string,activity?:string){
- const text=(String(category||'')+' '+String(activity||'')).toLowerCase();
- return ['salud','médico','medico','odont','psicolog','fisioter','nutric','veterin','legal','abogad','derecho','jurídic','juridic'].some(x=>text.includes(x));
+ return categoryUsesCredentials(category,activity);
 }
 
 export default function BookingClient({slug,patientLoggedIn=false}:{slug:string;patientLoggedIn?:boolean}){
