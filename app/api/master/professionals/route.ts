@@ -21,6 +21,37 @@ export async function PATCH(req:Request){
   const p=rows[0] as any;
   if(!p) return NextResponse.json({error:'Profesional no encontrado'},{status:404});
 
+  if(action==='soft_delete'){
+    const commercialRows=await sql`SELECT id,status
+      FROM commercial_clients
+      WHERE lower(email)=lower(${p.email})
+      ORDER BY created_at DESC LIMIT 1`;
+    const commercial=commercialRows[0] as any;
+    await sql`UPDATE users SET active=false WHERE id=${p.user_id}::uuid`;
+    await sql`UPDATE doctors SET accepts_online_booking=false WHERE id=${p.doctor_id}::uuid`;
+    if(commercial?.id){
+      await sql`UPDATE commercial_clients SET
+        status='PAGO_PENDIENTE',
+        payment_reviewed_at=NULL,
+        payment_rejection_reason='Perfil eliminado por Master. Requiere nueva activación al restaurar.'
+        WHERE id=${String(commercial.id)}::uuid`;
+    }
+    await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
+      VALUES('PROFILE_DELETED','ACCOUNT_PROFILE',${String(p.user_id)},
+        jsonb_build_object(
+          'email',${p.email},
+          'name',${String(body.name||'Profesional')},
+          'role','DOCTOR',
+          'professional',true,
+          'deletedByMaster',true,
+          'commercialClientId',${commercial?.id?String(commercial.id):null},
+          'previousCommercialStatus',${commercial?.status?String(commercial.status):null},
+          'previousBookingEnabled',true,
+          'hadActiveSubscription',${String(commercial?.status||'')==='ACTIVO'}
+        ))`;
+    return NextResponse.json({ok:true,message:'Profesional movido a Perfiles eliminados.'});
+  }
+
   if(action==='credential_review'){
     const decision=String(body.decision||'');
     if(!['APPROVED','REJECTED'].includes(decision))return NextResponse.json({error:'Decisión de revisión inválida.'},{status:400});
