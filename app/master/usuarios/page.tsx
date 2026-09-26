@@ -105,6 +105,7 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
         </div>
       </div>
       <form method="get" className="row" style={{gap:10,flexWrap:'wrap',alignItems:'end',marginTop:14}}>
+        <input type="hidden" name="view" value={view}/>
         <div className="field" style={{flex:1,minWidth:240}}>
           <label>Buscar usuario</label>
           <div style={{position:'relative'}}>
@@ -113,7 +114,7 @@ export default async function UsuariosFinalesMaster({searchParams}:{searchParams
           </div>
         </div>
         <button className="btn btn-primary" type="submit">Buscar</button>
-        <Link className="btn btn-secondary" href="/master/usuarios">Limpiar</Link>
+        <Link className="btn btn-secondary" href={'/master/usuarios?view='+view}>Limpiar</Link>
       </form>
     </section>
 
