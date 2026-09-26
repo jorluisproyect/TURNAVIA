@@ -12,10 +12,10 @@ const config = {
   medico: [
     ["/medico", "Resumen", LayoutDashboard],
     ["/medico/agenda", "Agenda", CalendarDays],
-    ["/medico#servicios", "Servicios", BriefcaseBusiness],
+    ["/medico/servicios", "Servicios", BriefcaseBusiness],
     ["/medico/clientes", "__AUDIENCE__", Users],
     ["/medico/equipo", "Equipo", Users],
-    ["/medico#pagos", "Pagos", BarChart3],
+    ["/medico/pagos-reservas", "Pagos y reservas", BarChart3],
     ["/medico#perfil", "Perfil", Settings],
     ["/medico/finanzas", "Finanzas", WalletCards],
     ["/cuenta/seguridad", "Seguridad", Settings],
@@ -130,9 +130,9 @@ export function Sidebar({role}:{role:keyof typeof config}){
       ['/cuenta/seguridad','Seguridad',ShieldCheck],
     ]:
     role==='medico'?[
-      ['/medico#servicios','Servicios',BriefcaseBusiness],
+      ['/medico/servicios','Servicios',BriefcaseBusiness],
       ['/medico#ubicaciones','Ubicaciones',MapPin],
-      ['/medico#pagos','Pagos',BarChart3],
+      ['/medico/pagos-reservas','Pagos y reservas',BarChart3],
       ['/medico#perfil','Perfil',Settings],
       ['/cuenta/seguridad','Seguridad',ShieldCheck],
     ]:[];
