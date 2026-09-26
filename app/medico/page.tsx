@@ -83,6 +83,9 @@ export default function Medico(){
      const r=await fetch('/api/me/provider',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
      const j=await r.json();
      if(!r.ok){setToast(j.error||'No se pudieron guardar los cambios.');return false}
+     if(body.action==='profile'&&window.location.hash==='#perfil'){
+       window.history.replaceState(null,'',window.location.pathname+window.location.search);
+     }
      setModal(null);setToast(j.message||'Cambios guardados correctamente.');await load();setTimeout(()=>setToast(''),2800);return true;
    }catch{
      setToast('No se pudo conectar con TUCITA. Intenta nuevamente.');return false;
@@ -397,7 +400,7 @@ export default function Medico(){
    <div className="field"><label>Nombre de ubicación</label><input value={profile.locationName||''} onChange={e=>setProfile({...profile,locationName:e.target.value})}/></div>
    <div className="field"><label>Dirección</label><input value={profile.address||''} onChange={e=>setProfile({...profile,address:e.target.value})}/></div>
    <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap'}}><div className="field" style={{flex:1,minWidth:180}}><label>Ciudad</label><input value={profile.city||''} onChange={e=>setProfile({...profile,city:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>Estado / Provincia</label><input value={profile.state||''} onChange={e=>setProfile({...profile,state:e.target.value})}/></div><div className="field" style={{flex:1,minWidth:180}}><label>País</label><input list="profile-countries" value={profile.country||''} onChange={e=>setProfile({...profile,country:e.target.value})}/><datalist id="profile-countries">{COUNTRY_SUGGESTIONS.map(x=><option key={x} value={x}/>)}</datalist></div></div>
- </div></div><div className="button-row profile-modal-actions"><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile})} disabled={saving}>{saving?'Guardando…':'Guardar perfil'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
+ </div></div><div className="button-row profile-modal-actions"><button className="btn btn-primary" onClick={()=>patch({action:'profile',...profile})} disabled={saving}>{saving?'Guardando…':'Guardar perfil'}</button><button className="btn btn-secondary" onClick={()=>{setModal(null);if(window.location.hash==='#perfil')window.history.replaceState(null,'',window.location.pathname+window.location.search)}}>Cancelar</button></div></div></div>}
 
  {modal==='service'&&<div className="modal-backdrop"><div className="modal"><h2>{service.id?'Editar servicio':travelMode?'Nuevo viaje':'Nuevo servicio'}</h2><div className="form">
    <div className="notice">{serviceHint}<br/><strong>Importante:</strong> esta duración controla automáticamente la agenda. No necesitas configurar cada cuánto comienza una cita.</div>
