@@ -22,15 +22,15 @@ export default function ProfessionalActions({slug,active,name}:{slug:string;acti
   }
 
   async function remove(){
-    const ok=window.confirm(`¿Eliminar definitivamente a "${name}"? Esta opción solo funcionará si no tiene historial real de citas ni pagos.`);
+    const ok=window.confirm(`¿Mover a "${name}" a Perfiles eliminados? Podrás restaurarlo desde Master si fue un error.`);
     if(!ok)return;
     if(busy)return;
-    setBusy('delete');setMsg('Eliminando profesional…');
+    setBusy('delete');setMsg('Moviendo a Perfiles eliminados…');
     try{
-      const r=await fetch('/api/master/professionals',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({slug})});
+      const r=await fetch('/api/master/professionals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'soft_delete',slug,name})});
       const j=await r.json();
       if(!r.ok){setMsg(j.error||'No se pudo eliminar.');return}
-      setMsg('Profesional eliminado correctamente.');router.refresh();
+      setMsg('Profesional movido a Perfiles eliminados.');router.refresh();
     }catch{
       setMsg('No se pudo conectar con TUCITA. Intenta nuevamente.');
     }finally{setBusy('')}
