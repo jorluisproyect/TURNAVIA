@@ -28,7 +28,7 @@ export default async function PerfilesEliminados(){
   return <div className="dashboard"><Sidebar role="master"/><main className="main">
     <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Master · Recuperación</div><h1>Perfiles eliminados</h1></div></div>
     <section className="panel">
-      <div className="row" style={{gap:10,alignItems:'flex-start'}}><Trash2 size={20}/><div><strong>Solo tú puedes ver esta sección.</strong><div className="muted" style={{fontSize:13,marginTop:4}}><strong>Eliminar</strong> conserva el perfil para poder restablecerlo. <strong>Eliminar por completo</strong> es definitivo y borra la cuenta del sistema. Las suscripciones profesionales eliminadas no se recuperan.</div></div></div>
+      <div className="row" style={{gap:10,alignItems:'flex-start'}}><Trash2 size={20}/><div><strong>Solo tú puedes ver esta sección.</strong><div className="muted" style={{fontSize:13,marginTop:4}}><strong>Eliminar</strong> desde Master ahora mueve el perfil aquí para poder restablecerlo. <strong>Eliminar por completo</strong> es definitivo y borra la cuenta del sistema. Las suscripciones profesionales eliminadas no se recuperan. Las cuentas que fueron borradas definitivamente antes de este cambio no pueden aparecer aquí porque ya no existen en la base de datos.</div></div></div>
     </section>
     <section className="panel" style={{marginTop:18}}>
       {rows.length===0?<div className="notice">No hay perfiles eliminados.</div>:<div className="grid-3">{(rows as any[]).map((r:any)=>{
