@@ -67,3 +67,13 @@ export function categoryUsesWorkReferences(category?:string,activity?:string){
     'otro','tatuaj','piercing','micropigment','viaje','turismo','tour'
   ].some(x=>text.includes(x));
 }
+
+
+export function categoryUsesCredentials(category?:string,activity?:string){
+  const text=(String(category||'')+' '+String(activity||'')).toLowerCase();
+  return [
+    'salud','médico','medico','odont','psicolog','fisioter','nutric','veterin',
+    'legal','abogad','derecho','jurídic','juridic',
+    'manicur','uña','nail','pedicur','pestañ','ceja','micropigment','estética','estetica','cosmetolog'
+  ].some(x=>text.includes(x));
+}
