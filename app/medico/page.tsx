@@ -6,7 +6,7 @@ import { CalendarPlus, Clock3, Link2, Share2, Settings2, Eye, Plus, UserRound, B
 import { StatusPill } from '@/components/StatusPill';
 import { PaymentMethodsManager } from '@/components/PaymentMethodsManager';
 import { COUNTRY_SUGGESTIONS, COUNTRY_PHONE_CODES, PROVIDER_CATEGORIES } from '@/lib/provider-catalog';
-import { categoryUsesWorkReferences } from '@/lib/provider-media';
+import { categoryUsesWorkReferences, categoryUsesCredentials } from '@/lib/provider-media';
 import { countryDialCode, digitsOnly, phoneMaxLength } from '@/lib/phone';
 import { DeleteProfileButton } from '@/components/DeleteProfileButton';
 import { isTravelProvider } from '@/lib/travel-service';
@@ -33,8 +33,7 @@ async function resizeImage(file:File,width:number,height:number,quality=.72){
 }
 function mapQuery(l:any){return [l?.address,l?.city,l?.state,l?.country].filter(Boolean).join(', ')}
 function usesProfessionalCredentials(category?:string,activity?:string){
- const text=(String(category||'')+' '+String(activity||'')).toLowerCase();
- return ['salud','médico','medico','odont','psicolog','fisioter','nutric','veterin','legal','abogad','derecho','jurídic','juridic'].some(x=>text.includes(x));
+ return categoryUsesCredentials(category,activity);
 }
 
 
@@ -66,6 +65,12 @@ export default function Medico(){
  }).catch(()=>setError('No se pudo conectar con TUCITA.'));
 
  useEffect(()=>{load();setOrigin(window.location.origin);fetch('/api/fx').then(r=>r.json()).then(setFx).catch(()=>{})},[]);
+ useEffect(()=>{
+   const sync=()=>{if(window.location.hash==='#perfil')setModal('profile')};
+   sync();
+   window.addEventListener('hashchange',sync);
+   return()=>window.removeEventListener('hashchange',sync);
+ },[]);
  const upcoming=useMemo(()=>data?.appointments?.filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-86400000)||[],[data]);
  const review=useMemo(()=>upcoming.filter((a:any)=>a.status==='PAYMENT_REVIEW'),[upcoming]);
  const confirmed=useMemo(()=>upcoming.filter((a:any)=>['CONFIRMED','ON_THE_WAY','ARRIVED','IN_CONSULTATION'].includes(a.status)),[upcoming]);
