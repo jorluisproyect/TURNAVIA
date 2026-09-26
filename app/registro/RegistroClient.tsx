@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { registerUser } from './actions';
 import { Brand } from '@/components/Brand';
 import { ArrowRight, Building2, Eye, EyeOff, Stethoscope, UserRound } from 'lucide-react';
-import { PASSWORD_HELP } from '@/lib/password-policy';
+import { PASSWORD_HELP, passwordIssues } from '@/lib/password-policy';
 import { PROVIDER_CATEGORIES, COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
 import { ADULT_CATEGORY, ADULT_COMPLIANCE_TEXT, PROVIDER_COMPLIANCE_TEXT } from '@/lib/compliance';
-import { countryDialCode, countryPhoneInfo, digitsOnly, phoneAllowedLengths, phoneLengthHelp, phoneMaxLength, phoneMinLength } from '@/lib/phone';
+import { countryDialCode, countryPhoneInfo, digitsOnly, phoneAllowedLengths, phoneLengthHelp, phoneMaxLength, phoneMinLength, validatePhone } from '@/lib/phone';
 
 const categories=PROVIDER_CATEGORIES;
 type Availability={state:'checking'|'available'|'taken'|'error';message:string}|null;
@@ -34,6 +34,7 @@ export default function RegistroClient(){
   const [showPassword,setShowPassword]=useState(false);
   const [providerCompliance,setProviderCompliance]=useState(false);
   const [adultCompliance,setAdultCompliance]=useState(false);
+  const [clientError,setClientError]=useState('');
   const phoneCode=countryDialCode(phoneCountry);
   const phoneInfo=countryPhoneInfo(phoneCountry);
   const phoneAllowed=phoneAllowedLengths(phoneCountry);
@@ -99,7 +100,19 @@ export default function RegistroClient(){
       {!team&&<Link href="/registro" className="btn btn-secondary" style={{marginTop:12}}>Cambiar tipo de cuenta</Link>}
     </div>
     <section className="profile-card">
-      <form action={action} className="form" onSubmit={e=>{if(availability?.state==='taken')e.preventDefault()}}>
+      <form action={action} className="form" noValidate onSubmit={e=>{
+        setClientError('');
+        const emailValue=email.trim().toLowerCase();
+        if(!name.trim()){e.preventDefault();setClientError('Escribe tu nombre antes de continuar.');return}
+        if(!/^\S+@\S+\.\S+$/.test(emailValue)){e.preventDefault();setClientError('Escribe un correo válido.');return}
+        if(availability?.state==='taken'){e.preventDefault();setClientError(availability.message||'Este correo ya está siendo utilizado.');return}
+        const phoneCheck=validatePhone(phoneCountry,phoneLocal);
+        if(phoneCheck.error){e.preventDefault();setClientError(phoneCheck.error);return}
+        const passIssues=passwordIssues(password);
+        if(passIssues.length){e.preventDefault();setClientError('La contraseña necesita '+passIssues.join(', ')+'.');return}
+        if(provider&&!providerCompliance){e.preventDefault();setClientError('Marca la casilla de aceptación legal para crear tu cuenta profesional.');return}
+        if(provider&&category===ADULT_CATEGORY&&!adultCompliance){e.preventDefault();setClientError('Debes aceptar la declaración adicional +18 para continuar.');return}
+      }}>
         {team&&<input type="hidden" name="teamInvite" value={sp.get('invite')||''}/>}
         <input type="hidden" name="accountType" value={accountType}/>
         <input type="hidden" name="role" value={provider?'DOCTOR':'PATIENT'}/>
@@ -136,9 +149,7 @@ export default function RegistroClient(){
                 name="phoneLocal"
                 type="tel"
                 inputMode="numeric"
-                pattern={phonePattern}
                 autoComplete="tel-national"
-                minLength={phoneMin}
                 maxLength={phoneMax}
                 value={phoneLocal}
                 onChange={e=>setPhoneLocal(digitsOnly(e.target.value,phoneMax))}
@@ -162,8 +173,9 @@ export default function RegistroClient(){
           <label className="notice row" style={{alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" name="providerComplianceAccepted" value="1" checked={providerCompliance} onChange={e=>setProviderCompliance(e.target.checked)} required/><span><strong>Aceptación legal del proveedor.</strong><br/>{PROVIDER_COMPLIANCE_TEXT} <Link href="/legal/terminos">Términos</Link> · <Link href="/legal/privacidad">Privacidad</Link> · <Link href="/legal/servicios-prohibidos">Servicios prohibidos</Link>.</span></label>
           {category===ADULT_CATEGORY&&<label className="notice row" style={{alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" name="adultComplianceAccepted" value="1" checked={adultCompliance} onChange={e=>setAdultCompliance(e.target.checked)} required/><span><strong>Declaración adicional +18.</strong><br/>{ADULT_COMPLIANCE_TEXT}</span></label>}
         </>}
-        {state?.error&&<div className="notice danger" role="alert"><strong>Revisa este dato:</strong><br/>{state.error}<br/><small>Lo que ya escribiste se mantiene para que solo corrijas lo necesario.</small></div>}
-        <button className="btn btn-primary" disabled={pending||availability?.state==='taken'||(provider&&!providerCompliance)||(provider&&category===ADULT_CATEGORY&&!adultCompliance)} aria-busy={pending}>{pending?'Creando cuenta...':team?'Unirme al equipo':'Crear cuenta '+kind}</button>
+        {(clientError||state?.error)&&<div className="notice danger" role="alert" aria-live="assertive"><strong>Revisa este dato:</strong><br/>{clientError||state?.error}<br/><small>Lo que ya escribiste se mantiene para que solo corrijas lo necesario.</small></div>}
+        {pending&&<div className="action-status" role="status" aria-live="polite"><span className="tucita-loader"/> <span><strong>Creando tu cuenta…</strong><br/>No cierres esta pantalla. Al terminar entraremos automáticamente a TUCITA.</span></div>}
+        <button type="submit" className="btn btn-primary" disabled={pending} aria-busy={pending}>{pending?'Creando cuenta...':team?'Unirme al equipo':'Crear cuenta '+kind}</button>
         <div className="muted" style={{fontSize:13}}>Tus datos personales se utilizan para tu cuenta y sus operaciones, no se publican en tu página de reservas.</div>
       </form>
     </section>
