@@ -8,7 +8,7 @@ import { ArrowRight, Building2, Eye, EyeOff, Stethoscope, UserRound } from 'luci
 import { PASSWORD_HELP, passwordIssues } from '@/lib/password-policy';
 import { PROVIDER_CATEGORIES, COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
 import { ADULT_CATEGORY, ADULT_COMPLIANCE_TEXT, PROVIDER_COMPLIANCE_TEXT } from '@/lib/compliance';
-import { countryDialCode, countryPhoneInfo, digitsOnly, phoneAllowedLengths, phoneLengthHelp, phoneMaxLength, phoneMinLength, validatePhone } from '@/lib/phone';
+import { countryDialCode, countryPhoneInfo, digitsOnly, phoneLengthHelp, phoneMaxLength, validatePhone } from '@/lib/phone';
 
 const categories=PROVIDER_CATEGORIES;
 type Availability={state:'checking'|'available'|'taken'|'error';message:string}|null;
@@ -37,10 +37,7 @@ export default function RegistroClient(){
   const [clientError,setClientError]=useState('');
   const phoneCode=countryDialCode(phoneCountry);
   const phoneInfo=countryPhoneInfo(phoneCountry);
-  const phoneAllowed=phoneAllowedLengths(phoneCountry);
-  const phoneMin=phoneMinLength(phoneCountry);
   const phoneMax=phoneMaxLength(phoneCountry);
-  const phonePattern=phoneAllowed.length===1?`[0-9]{${phoneAllowed[0]}}`:`(?:${phoneAllowed.map(n=>`[0-9]{${n}}`).join('|')})`;
 
   async function checkEmail(){
     const requested=email.trim().toLowerCase();
