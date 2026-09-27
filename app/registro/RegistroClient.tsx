@@ -1,5 +1,5 @@
 'use client';
-import { useActionState, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { registerUser } from './actions';
@@ -35,8 +35,15 @@ export default function RegistroClient(){
   const [providerCompliance,setProviderCompliance]=useState(false);
   const [adultCompliance,setAdultCompliance]=useState(false);
   const [clientError,setClientError]=useState('');
+  const feedbackRef=useRef<HTMLDivElement|null>(null);
   const phoneCode=countryDialCode(phoneCountry);
   const phoneInfo=countryPhoneInfo(phoneCountry);
+
+  useEffect(()=>{
+    if(clientError||state?.error){
+      window.setTimeout(()=>feedbackRef.current?.scrollIntoView({behavior:'smooth',block:'center'}),50);
+    }
+  },[clientError,state?.error]);
 
   async function checkEmail(){
     const requested=email.trim().toLowerCase();
@@ -170,7 +177,7 @@ export default function RegistroClient(){
           <label className="notice row" style={{alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" name="providerComplianceAccepted" value="1" checked={providerCompliance} onChange={e=>setProviderCompliance(e.target.checked)} required/><span><strong>Aceptación legal del proveedor.</strong><br/>{PROVIDER_COMPLIANCE_TEXT} <Link href="/legal/terminos">Términos</Link> · <Link href="/legal/privacidad">Privacidad</Link> · <Link href="/legal/servicios-prohibidos">Servicios prohibidos</Link>.</span></label>
           {category===ADULT_CATEGORY&&<label className="notice row" style={{alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" name="adultComplianceAccepted" value="1" checked={adultCompliance} onChange={e=>setAdultCompliance(e.target.checked)} required/><span><strong>Declaración adicional +18.</strong><br/>{ADULT_COMPLIANCE_TEXT}</span></label>}
         </>}
-        {(clientError||state?.error)&&<div className="notice danger" role="alert" aria-live="assertive"><strong>Revisa este dato:</strong><br/>{clientError||state?.error}<br/><small>Lo que ya escribiste se mantiene para que solo corrijas lo necesario.</small></div>}
+        {(clientError||state?.error)&&<div ref={feedbackRef} className="notice danger" role="alert" aria-live="assertive"><strong>Revisa este dato:</strong><br/>{clientError||state?.error}<br/><small>Lo que ya escribiste se mantiene para que solo corrijas lo necesario.</small></div>}
         {pending&&<div className="action-status" role="status" aria-live="polite"><span className="tucita-loader"/> <span><strong>Creando tu cuenta…</strong><br/>No cierres esta pantalla. Al terminar entraremos automáticamente a TUCITA.</span></div>}
         <button type="submit" className="btn btn-primary" disabled={pending} aria-busy={pending}>{pending?'Creando cuenta...':team?'Unirme al equipo':'Crear cuenta '+kind}</button>
         <div className="muted" style={{fontSize:13}}>Tus datos personales se utilizan para tu cuenta y sus operaciones, no se publican en tu página de reservas.</div>
