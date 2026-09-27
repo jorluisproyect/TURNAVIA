@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { ImagePlus, Trash2, UserRound } from 'lucide-react';
 import { COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
-import { countryDialCode, digitsOnly, phoneMaxLength } from '@/lib/phone';
+import { countryDialCode, digitsOnly, normalizedNationalPhone, phoneMaxLength } from '@/lib/phone';
 import { DeleteProfileButton } from '@/components/DeleteProfileButton';
 
 function splitPhone(value:string){
@@ -31,7 +31,7 @@ export default function PerfilPaciente(){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const phoneCode=countryDialCode(form.phoneCountry);
-  const phoneMax=phoneMaxLength(phoneCode);
+  const phoneMax=phoneMaxLength(form.phoneCountry);
 
   useEffect(()=>{fetch('/api/me/patient').then(r=>r.json()).then(j=>{if(j.patient){const ph=splitPhone(j.patient.phone||'');setForm({name:j.patient.name||'',email:j.patient.email||'',phoneCountry:ph.country,phoneLocal:ph.local,nationalId:j.patient.nationalId||'',birthDate:j.patient.birthDate||'',profileImage:j.patient.profileImage||''})}setLoading(false)}).catch(()=>setLoading(false))},[]);
 
@@ -56,7 +56,7 @@ export default function PerfilPaciente(){
       <div className="field"><label>Foto de perfil</label><div className="row" style={{gap:12,alignItems:'center',flexWrap:'wrap'}}>{form.profileImage?<img src={form.profileImage} alt="Foto de perfil" style={{width:82,height:82,borderRadius:22,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:82,height:82}}><UserRound size={30}/></div>}<label className="btn btn-secondary" style={{cursor:'pointer'}}><ImagePlus size={16}/> {form.profileImage?'Cambiar foto':'Subir foto'}<input type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={e=>photo(e.target.files?.[0])}/></label>{form.profileImage&&<button type="button" className="btn btn-secondary" onClick={()=>setForm({...form,profileImage:''})}><Trash2 size={15}/> Quitar</button>}</div><small className="muted">La imagen se ajusta automáticamente para no deformarse.</small></div>
       <div className="field"><label>Nombre</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
       <div className="field"><label>Correo de acceso</label><input value={form.email} readOnly/></div>
-      <div className="field"><label>Teléfono</label><div className="register-phone-row"><select aria-label="País del teléfono" value={form.phoneCountry} onChange={e=>setForm({...form,phoneCountry:e.target.value,phoneLocal:''})}>{COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.country}>{x.country} ({x.code})</option>)}</select><div className="register-phone-number"><span>{phoneCode}</span><input type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={phoneMax} value={form.phoneLocal} onChange={e=>setForm({...form,phoneLocal:digitsOnly(e.target.value,phoneMax)})} placeholder={phoneCode==='+58'?'04121234567':'Número nacional'}/></div></div><small className="muted">Solo números · máximo {phoneMax} dígitos; el código internacional se agrega automáticamente.</small></div>
+      <div className="field"><label>Teléfono</label><div className="register-phone-row"><select aria-label="País del teléfono" value={form.phoneCountry} onChange={e=>setForm({...form,phoneCountry:e.target.value,phoneLocal:''})}>{COUNTRY_PHONE_CODES.map(x=><option key={x.country+x.code} value={x.country}>{x.country} ({x.code})</option>)}</select><div className="register-phone-number"><span>{phoneCode}</span><input type="tel" inputMode="numeric" pattern="[0-9]*" value={form.phoneLocal} onChange={e=>setForm({...form,phoneLocal:digitsOnly(e.target.value,24)})} onBlur={()=>{const normalized=normalizedNationalPhone(form.phoneCountry,form.phoneLocal);if(normalized)setForm({...form,phoneLocal:normalized})}} placeholder={phoneCode==='+58'?'04121234567':'Número nacional'}/></div></div><small className="muted">Solo números · máximo {phoneMax} dígitos; el código internacional se agrega automáticamente.</small></div>
       <div className="field"><label>Cédula / documento (opcional)</label><input maxLength={32} autoComplete="off" value={form.nationalId} onChange={e=>setForm({...form,nationalId:e.target.value})} placeholder="Ej. V-12345678"/></div>
       <div className="field"><label>Fecha de nacimiento (opcional)</label><input type="date" max={new Date().toISOString().slice(0,10)} value={form.birthDate} onChange={e=>setForm({...form,birthDate:e.target.value})}/></div>
       <div className="notice">Tu documento y fecha de nacimiento son privados. No aparecen en las páginas públicas de reservas.</div>
