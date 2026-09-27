@@ -161,7 +161,7 @@ export default function RegistroClient(){
           </small>
         </div>
         <div className="field"><label>Contraseña</label><div style={{position:'relative'}}>
-          <input name="password" type={showPassword?'text':'password'} minLength={8} maxLength={8} required autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Crea una contraseña segura" style={{paddingRight:46}}/>
+          <input name="password" type={showPassword?'text':'password'} minLength={8} maxLength={64} required autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Crea una contraseña segura" style={{paddingRight:46}}/>
           <button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button>
         </div><small className="muted">{PASSWORD_HELP}</small></div>
         {team&&<div className="notice">Acceso de equipo por invitación, con permisos limitados a tu función.</div>}
