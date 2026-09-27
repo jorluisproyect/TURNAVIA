@@ -297,5 +297,5 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
 
   if(teamInvite) redirect('/master');
   if(role==='DOCTOR'&&buyIntent&&commercialClientId) redirect('/pago?client='+encodeURIComponent(commercialClientId)+'&months='+billingMonths);
-  redirect('/panel');
+  redirect('/panel?registered=1');
 }
