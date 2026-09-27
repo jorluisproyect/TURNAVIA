@@ -17,7 +17,8 @@ function splitPhone(value:string){
  const v=String(value||'').trim();
  const found=[...COUNTRY_PHONE_CODES].sort((a,b)=>b.code.length-a.code.length).find(x=>v.startsWith(x.code));
  const code=found?.code||'+58';
- return {country:found?.country||'Venezuela',local:digitsOnly(found?v.slice(code.length):v,phoneMaxLength(code))};
+ const country=found?.country||'Venezuela';
+ return {country,local:digitsOnly(found?v.slice(code.length):v,phoneMaxLength(country))};
 }
 async function resizeImage(file:File,width:number,height:number,quality=.72){
  if(file.size>5_000_000)throw new Error('La imagen supera 5 MB.');
