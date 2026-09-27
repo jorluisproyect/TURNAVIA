@@ -20,7 +20,15 @@ export default function Paciente(){
  const [resStart,setResStart]=useState('');
 
  const load=()=>fetch('/api/me/patient').then(async r=>({ok:r.ok,j:await r.json()})).then(({ok,j})=>{if(!ok){setError(j.error||'No se pudo cargar tu cuenta');return}setData(j);setError('')}).catch(()=>setError('No se pudo conectar con TUCITA.'));
- useEffect(()=>{load()},[]);
+ useEffect(()=>{
+   load();
+   const params=new URLSearchParams(window.location.search);
+   if(params.get('registered')==='1'){
+     setMsg('✅ Cuenta creada correctamente. Bienvenido a TUCITA.');
+     window.history.replaceState(null,'',window.location.pathname+window.location.hash);
+     setTimeout(()=>setMsg(''),4200);
+   }
+ },[]);
  const active=useMemo(()=>data?.appointments?.filter((a:any)=>!['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
  const history=useMemo(()=>data?.appointments?.filter((a:any)=>['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
  const next=useMemo(()=>[...active].filter((a:any)=>new Date(a.startsAt).getTime()>=Date.now()-3600000).sort((a:any,b:any)=>new Date(a.startsAt).getTime()-new Date(b.startsAt).getTime())[0],[active]);
