@@ -101,7 +101,8 @@ export default function RegistroClient(){
         const emailValue=email.trim().toLowerCase();
         if(!name.trim()){e.preventDefault();setClientError('Escribe tu nombre antes de continuar.');return}
         if(!/^\S+@\S+\.\S+$/.test(emailValue)){e.preventDefault();setClientError('Escribe un correo válido.');return}
-        if(availability?.state==='taken'){e.preventDefault();setClientError(availability.message||'Este correo ya está siendo utilizado.');return}
+        // The server is the source of truth for existing emails. We intentionally
+        // do not block here: an interrupted registration may need to resume.
         const phoneCheck=validatePhone(phoneCountry,phoneLocal);
         if(phoneCheck.error){e.preventDefault();setClientError(phoneCheck.error);return}
         const passIssues=passwordIssues(password);
