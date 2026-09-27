@@ -59,7 +59,9 @@ export function normalizedNationalPhone(country:string,value:string){
   }
 
   // Domestic trunk prefix, e.g. Venezuela 0412... or UK 07...
-  if(digits.startsWith('0')){
+  // Italy is a known exception where the leading zero can be part of the
+  // internationally dialled subscriber number, so we preserve it.
+  if(digits.startsWith('0')&&selected.country!=='Italia'){
     const withoutZero=digits.slice(1);
     if(allowed.includes(withoutZero.length))digits=withoutZero;
   }
@@ -75,9 +77,15 @@ export function validatePhone(country:string,local:string){
   if(!digits)return {error:'Escribe tu número de teléfono.',phone:'',national:''};
 
   const allowed=[...selected.nationalLengths] as number[];
-  if(!allowed.includes(digits.length)){
+  const codeDigits=selected.code.replace(/\D/g,'');
+  const e164MaxNational=Math.max(7,15-codeDigits.length);
+
+  // Country lengths are useful guidance, but they must not block a real user:
+  // numbering plans and mobile prefixes change, and some countries have valid
+  // ranges beyond the common examples in our selector.
+  if(!allowed.includes(digits.length)&&(digits.length<7||digits.length>e164MaxNational)){
     return {
-      error:`Para ${selected.country} escribe ${phoneLengthHelp(selected.country)}. Puedes ponerlo con o sin ${selected.code}; TUCITA lo ajusta automáticamente.`,
+      error:`Revisa el teléfono. Para ${selected.country} normalmente se usan ${phoneLengthHelp(selected.country)}. Puedes escribirlo con o sin ${selected.code}.`,
       phone:'',
       national:digits
     };
