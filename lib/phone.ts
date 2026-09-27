@@ -9,7 +9,7 @@ export function countryDialCode(country:string){
 }
 
 export function phoneAllowedLengths(country:string){
-  return [...countryPhoneInfo(country).nationalLengths];
+  return [...countryPhoneInfo(country).nationalLengths] as number[];
 }
 
 export function phoneMinLength(country:string){
@@ -30,32 +30,58 @@ export function phoneLengthHelp(country:string){
   return sorted.slice(0,-1).join(', ')+' o '+sorted[sorted.length-1]+' dígitos';
 }
 
-export function digitsOnly(value:string,max=15){
+export function digitsOnly(value:string,max=20){
   return String(value||'').replace(/\D/g,'').slice(0,max);
+}
+
+/**
+ * Accepts the ways people commonly type/paste a phone on mobile:
+ * - national number: 4121234567
+ * - domestic trunk zero: 04121234567
+ * - full international: +58 412 123 4567 / 584121234567
+ * The stored value is always the selected country's international code + national number.
+ */
+export function normalizedNationalPhone(country:string,value:string){
+  const selected=COUNTRY_PHONE_CODES.find(x=>x.country===country);
+  if(!selected)return '';
+  const allowed=[...selected.nationalLengths] as number[];
+  const max=Math.max(...allowed);
+  const codeDigits=selected.code.replace(/\D/g,'');
+  let digits=digitsOnly(value,24);
+
+  // Paste with 00 international prefix.
+  if(digits.startsWith('00'+codeDigits)&&digits.length>max){
+    digits=digits.slice(2+codeDigits.length);
+  // Paste with the selected country's international prefix.
+  }else if(digits.startsWith(codeDigits)&&digits.length>max){
+    const withoutCode=digits.slice(codeDigits.length);
+    if(withoutCode.length>=Math.min(...allowed))digits=withoutCode;
+  }
+
+  // Domestic trunk prefix, e.g. Venezuela 0412... or UK 07...
+  if(digits.startsWith('0')){
+    const withoutZero=digits.slice(1);
+    if(allowed.includes(withoutZero.length))digits=withoutZero;
+  }
+
+  return digits;
 }
 
 export function validatePhone(country:string,local:string){
   const selected=COUNTRY_PHONE_CODES.find(x=>x.country===country);
-  if(!selected)return {error:'Selecciona un país válido para tu teléfono.',phone:''};
+  if(!selected)return {error:'Selecciona un país válido para tu teléfono.',phone:'',national:''};
 
-  let digits=String(local||'').trim().replace(/\D/g,'');
-
-  // Si el usuario escribe un 0 inicial de marcación nacional, lo quitamos cuando
-  // el código internacional ya está separado (+58, +44, etc.).
-  if(digits.startsWith('0')&&!selected.nationalLengths.includes(digits.length as never)){
-    const withoutZero=digits.slice(1);
-    if(selected.nationalLengths.includes(withoutZero.length as never))digits=withoutZero;
-  }
-
-  if(!/^\d+$/.test(digits))return {error:'El teléfono solo debe contener números.',phone:''};
+  const digits=normalizedNationalPhone(country,local);
+  if(!digits)return {error:'Escribe tu número de teléfono.',phone:'',national:''};
 
   const allowed=[...selected.nationalLengths] as number[];
   if(!allowed.includes(digits.length)){
     return {
-      error:`Para ${selected.country} el número nacional debe tener ${phoneLengthHelp(selected.country)}. El ${selected.code} se agrega automáticamente.`,
-      phone:''
+      error:`Para ${selected.country} escribe ${phoneLengthHelp(selected.country)}. Puedes ponerlo con o sin ${selected.code}; TUCITA lo ajusta automáticamente.`,
+      phone:'',
+      national:digits
     };
   }
 
-  return {error:'',phone:selected.code+' '+digits};
+  return {error:'',phone:selected.code+' '+digits,national:digits};
 }
