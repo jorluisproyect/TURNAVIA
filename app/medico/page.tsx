@@ -64,7 +64,15 @@ export default function Medico(){
    setDayStatus({status:j.provider.dayStatus,delayMinutes:j.provider.delayMinutes,note:''});
  }).catch(()=>setError('No se pudo conectar con TUCITA.'));
 
- useEffect(()=>{load();setOrigin(window.location.origin);fetch('/api/fx').then(r=>r.json()).then(setFx).catch(()=>{})},[]);
+ useEffect(()=>{
+   load();setOrigin(window.location.origin);fetch('/api/fx').then(r=>r.json()).then(setFx).catch(()=>{});
+   const params=new URLSearchParams(window.location.search);
+   if(params.get('registered')==='1'){
+     setToast('✅ Cuenta creada correctamente. Bienvenido a TUCITA.');
+     window.history.replaceState(null,'',window.location.pathname+window.location.hash);
+     setTimeout(()=>setToast(''),4200);
+   }
+ },[]);
  useEffect(()=>{
    const sync=()=>{if(window.location.hash==='#perfil')setModal('profile')};
    sync();
