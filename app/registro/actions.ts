@@ -17,7 +17,7 @@ function friendlyAuthError(message:string){
   const raw=String(message||'').trim();
   const lower=raw.toLowerCase();
   if(lower.includes('password')&&(lower.includes('short')||lower.includes('length')||lower.includes('8'))){
-    return 'La contraseña debe tener exactamente 8 caracteres e incluir mayúscula, minúscula, número y símbolo.';
+    return 'La contraseña debe tener mínimo 8 caracteres e incluir mayúscula, minúscula, número y símbolo.';
   }
   if(lower.includes('email')&&lower.includes('invalid'))return 'Escribe un correo válido.';
   if(lower.includes('already')||lower.includes('exist'))return 'Este correo ya está registrado en TUCITA. Intenta ingresar o recuperar tu contraseña.';
@@ -137,7 +137,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
 
   let authUserId=(authData as any)?.user?.id || (authData as any)?.id;
   if(!authUserId && sql){
-    const found=await sql`SELECT id FROM neon_auth.user WHERE lower(email)=lower(${email}) LIMIT 1`;
+    const found=await sql`SELECT id FROM neon_auth."user" WHERE lower(email)=lower(${email}) LIMIT 1`;
     authUserId=(found[0] as any)?.id;
   }
 
@@ -220,7 +220,7 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
       }else{
         await sql`UPDATE users SET full_name=${name},phone=${phone},role='PATIENT',active=true WHERE id=${internalUserId}`;
       }
-      const existingPatient=await sql`SELECT id FROM patients WHERE lower(email)=lower(${email}) OR phone=${phone} ORDER BY created_at DESC LIMIT 1`;
+      const existingPatient=await sql`SELECT id FROM patients WHERE lower(email)=lower(${email}) ORDER BY created_at DESC LIMIT 1`;
       if(existingPatient.length){
         await sql`UPDATE patients SET user_id=${internalUserId},auth_user_id=${String(authUserId)},full_name=${name},phone=${phone},email=${email} WHERE id=${(existingPatient[0] as any).id}`;
       }else{
