@@ -13,6 +13,36 @@ function slugify(input:string){
   return input.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,42)||'profesional';
 }
 
+function friendlyAuthError(message:string){
+  const raw=String(message||'').trim();
+  const lower=raw.toLowerCase();
+  if(lower.includes('password')&&(lower.includes('short')||lower.includes('length')||lower.includes('8'))){
+    return 'La contraseña debe tener exactamente 8 caracteres e incluir mayúscula, minúscula, número y símbolo.';
+  }
+  if(lower.includes('email')&&lower.includes('invalid'))return 'Escribe un correo válido.';
+  if(lower.includes('already')||lower.includes('exist'))return 'Este correo ya está registrado en TUCITA. Intenta ingresar o recuperar tu contraseña.';
+  return raw||'No se pudo crear la cuenta. Revisa los datos e intenta nuevamente.';
+}
+
+async function registrationSetupComplete(email:string,role:'DOCTOR'|'PATIENT',accountType:string){
+  if(!sql)return false;
+  if(role==='PATIENT'){
+    const rows=await sql`SELECT
+      EXISTS(SELECT 1 FROM app_user_profiles ap WHERE lower(ap.email)=lower(${email}) AND ap.role::text='PATIENT') AS profile,
+      EXISTS(SELECT 1 FROM patients p WHERE lower(COALESCE(p.email,''))=lower(${email})) AS patient`;
+    const r=rows[0] as any;
+    return Boolean(r?.profile&&r?.patient);
+  }
+  const rows=await sql`SELECT
+    EXISTS(SELECT 1 FROM app_user_profiles ap WHERE lower(ap.email)=lower(${email}) AND ap.role::text='DOCTOR') AS profile,
+    EXISTS(SELECT 1 FROM doctors d JOIN users u ON u.id=d.user_id WHERE lower(COALESCE(u.email,''))=lower(${email})) AS doctor,
+    EXISTS(SELECT 1 FROM commercial_clients c WHERE lower(c.email)=lower(${email})) AS commercial,
+    EXISTS(SELECT 1 FROM organizations o WHERE lower(COALESCE(o.email,''))=lower(${email})) AS organization`;
+  const r=rows[0] as any;
+  const base=Boolean(r?.profile&&r?.doctor&&r?.commercial);
+  return accountType==='BUSINESS'?Boolean(base&&r?.organization):base;
+}
+
 export async function registerUser(_prev:{error?:string}|null, formData:FormData){
   const name=String(formData.get('name')||'').trim();
   const email=String(formData.get('email')||'').trim().toLowerCase();
@@ -54,7 +84,19 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
   let existing;
   try{existing=await existingAccountKind(email)}catch{return {error:'No se pudo verificar el correo. Intenta de nuevo.'}}
   const staleAuthOnly=existing==='REGISTERED';
+  let resumableIncomplete=false;
   if(existing&&!staleAuthOnly){
+    const sameKind=
+      (requestedRole==='PATIENT'&&existing==='CLIENT') ||
+      (requestedRole==='DOCTOR'&&accountType==='BUSINESS'&&existing==='BUSINESS') ||
+      (requestedRole==='DOCTOR'&&accountType!=='BUSINESS'&&existing==='PROFESSIONAL');
+    if(sameKind){
+      try{resumableIncomplete=!(await registrationSetupComplete(email,requestedRole,accountType))}
+      catch{resumableIncomplete=false}
+    }
+  }
+  const resumableRegistration=staleAuthOnly||resumableIncomplete;
+  if(existing&&!resumableRegistration){
     if(teamInvite)return {error:'Este correo ya tiene cuenta. Inicia sesión con él y acepta la invitación.'};
     return {error:existingAccountMessage(existing)};
   }
@@ -63,24 +105,34 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
 
   let authData:any=null;
 
-  if(staleAuthOnly){
-    const {data,error}=await auth.signIn.email({email,password});
-    if(error){
-      return {
-        error:'Este correo pertenecía a una prueba anterior de TUCITA. Puedes reutilizarlo: escribe la contraseña anterior o usa “Olvidé mi contraseña” para crear una nueva.'
-      };
+  if(resumableRegistration){
+    try{
+      const {data,error}=await auth.signIn.email({email,password});
+      if(error){
+        return {
+          error:resumableIncomplete
+            ?'La cuenta quedó iniciada anteriormente pero faltó terminar el perfil. Escribe la misma contraseña que usaste la primera vez o recupera tu contraseña.'
+            :'Este correo pertenecía a una prueba anterior de TUCITA. Escribe la contraseña anterior o usa “Olvidé mi contraseña”.'
+        };
+      }
+      authData=data;
+    }catch(error:any){
+      return {error:friendlyAuthError(error?.message||'No se pudo validar la cuenta anterior.')};
     }
-    authData=data;
   }else{
-    const {data,error}=await auth.signUp.email({name,email,password});
-    if(error){
-      try{
-        const already=await existingAccountKind(email);
-        if(already)return {error:existingAccountMessage(already)};
-      }catch{}
-      return {error:error.message||'No se pudo crear la cuenta.'};
+    try{
+      const {data,error}=await auth.signUp.email({name,email,password});
+      if(error){
+        try{
+          const already=await existingAccountKind(email);
+          if(already)return {error:existingAccountMessage(already)};
+        }catch{}
+        return {error:friendlyAuthError(error.message||'No se pudo crear la cuenta.')};
+      }
+      authData=data;
+    }catch(error:any){
+      return {error:friendlyAuthError(error?.message||'No se pudo crear la cuenta.')};
     }
-    authData=data;
   }
 
   let authUserId=(authData as any)?.user?.id || (authData as any)?.id;
@@ -89,6 +141,9 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
     authUserId=(found[0] as any)?.id;
   }
 
+  if(!authUserId)return {error:'No pudimos confirmar la creación de tu acceso. Intenta nuevamente; tus datos permanecen en pantalla.'};
+
+  try{
   if(authUserId && sql){
     const profileRole=teamInvite?'PATIENT':role;
     await sql`INSERT INTO app_user_profiles(auth_user_id,role,full_name,email,phone)
@@ -172,6 +227,10 @@ export async function registerUser(_prev:{error?:string}|null, formData:FormData
         await sql`INSERT INTO patients(user_id,auth_user_id,full_name,phone,email) VALUES(${internalUserId},${String(authUserId)},${name},${phone},${email})`;
       }
     }
+  }
+  }catch(error:any){
+    console.error('TUCITA registration provisioning error',error);
+    return {error:'Tu acceso se creó, pero faltó terminar de preparar el perfil. Pulsa “Crear cuenta” nuevamente con la misma contraseña; TUCITA retomará el proceso sin borrar tus datos.'};
   }
 
   if(teamInvite&&sql&&authUserId){
