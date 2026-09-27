@@ -8,7 +8,7 @@ import { ArrowRight, Building2, Eye, EyeOff, Stethoscope, UserRound } from 'luci
 import { PASSWORD_HELP, passwordIssues } from '@/lib/password-policy';
 import { PROVIDER_CATEGORIES, COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
 import { ADULT_CATEGORY, ADULT_COMPLIANCE_TEXT, PROVIDER_COMPLIANCE_TEXT } from '@/lib/compliance';
-import { countryDialCode, countryPhoneInfo, digitsOnly, phoneLengthHelp, phoneMaxLength, validatePhone } from '@/lib/phone';
+import { countryDialCode, countryPhoneInfo, digitsOnly, normalizedNationalPhone, phoneLengthHelp, validatePhone } from '@/lib/phone';
 
 const categories=PROVIDER_CATEGORIES;
 type Availability={state:'checking'|'available'|'taken'|'error';message:string}|null;
@@ -37,7 +37,6 @@ export default function RegistroClient(){
   const [clientError,setClientError]=useState('');
   const phoneCode=countryDialCode(phoneCountry);
   const phoneInfo=countryPhoneInfo(phoneCountry);
-  const phoneMax=phoneMaxLength(phoneCountry);
 
   async function checkEmail(){
     const requested=email.trim().toLowerCase();
@@ -145,23 +144,23 @@ export default function RegistroClient(){
               <input
                 name="phoneLocal"
                 type="tel"
-                inputMode="numeric"
+                inputMode="tel"
                 autoComplete="tel-national"
-                maxLength={phoneMax}
                 value={phoneLocal}
-                onChange={e=>setPhoneLocal(digitsOnly(e.target.value,phoneMax))}
+                onChange={e=>setPhoneLocal(digitsOnly(e.target.value,24))}
+                onBlur={()=>{const normalized=normalizedNationalPhone(phoneCountry,phoneLocal);if(normalized)setPhoneLocal(normalized)}}
                 placeholder={phoneInfo.placeholder}
                 required
               />
             </div>
           </div>
           <small className="muted">
-            {phoneInfo.flag} {phoneInfo.country}: {phoneLengthHelp(phoneCountry)} · código {phoneCode} automático · llevas {phoneLocal.length} dígito{phoneLocal.length===1?'':'s'}.
+            {phoneInfo.flag} {phoneInfo.country}: {phoneLengthHelp(phoneCountry)}. Puedes escribirlo como lo usas normalmente, con 0 inicial o pegarlo con {phoneCode}; TUCITA lo ajusta automáticamente.
             {!provider&&<> Usaremos <strong>{phoneInfo.country}</strong> como tu país inicial para mostrarte profesionales cercanos; podrás cambiar de país cuando quieras al explorar.</>}
           </small>
         </div>
         <div className="field"><label>Contraseña</label><div style={{position:'relative'}}>
-          <input name="password" type={showPassword?'text':'password'} minLength={6} maxLength={8} required autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Crea una contraseña segura" style={{paddingRight:46}}/>
+          <input name="password" type={showPassword?'text':'password'} minLength={8} maxLength={8} required autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Crea una contraseña segura" style={{paddingRight:46}}/>
           <button type="button" aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'} onClick={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',border:0,background:'transparent',padding:6,color:'var(--muted)',display:'grid',placeItems:'center',cursor:'pointer'}}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button>
         </div><small className="muted">{PASSWORD_HELP}</small></div>
         {team&&<div className="notice">Acceso de equipo por invitación, con permisos limitados a tu función.</div>}
