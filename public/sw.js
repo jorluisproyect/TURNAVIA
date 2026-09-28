@@ -1,4 +1,4 @@
-const CACHE='tucita-shell-v7';
+const CACHE='tucita-shell-v8';
 const SHELL=['/manifest.json','/icons/icon-192.png','/icons/icon-512.png'];
 
 self.addEventListener('install',event=>{
