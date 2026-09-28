@@ -273,7 +273,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
 
                 <div className="master-professional-admin">
                   {r.needs_repair&&<RepairProfessionalButton authUserId={String(r.auth_user_id)} email={String(r.display_email)} name={String(r.display_name)}/>}
-                  {r.profile_complete&&<ProfessionalActions slug={r.public_slug} active={Boolean(r.active)} name={r.display_name}/>}
+                  <ProfessionalActions slug={r.profile_complete?String(r.public_slug||''):undefined} email={String(r.display_email)} active={Boolean(r.active)} name={String(r.display_name)}/>
                 </div>
               </div>
             </article>)}
@@ -325,9 +325,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                   <td>
                     <div style={{display:'grid',gap:8}}>
                       {r.needs_repair&&<RepairProfessionalButton authUserId={String(r.auth_user_id)} email={String(r.display_email)} name={String(r.display_name)}/>}
-                      {r.profile_complete
-                        ?<ProfessionalActions slug={r.public_slug} active={Boolean(r.active)} name={r.display_name}/>
-                        :!r.needs_repair?<span className="muted">Completar registro</span>:null}
+                      <ProfessionalActions slug={r.profile_complete?String(r.public_slug||''):undefined} email={String(r.display_email)} active={Boolean(r.active)} name={String(r.display_name)}/>
                     </div>
                   </td>
                 </tr>)}
