@@ -13,22 +13,66 @@ export async function PATCH(req:Request){
   const body=await req.json();
   const action=String(body.action||'');
   const slug=String(body.slug||'').trim();
-  if(!slug) return NextResponse.json({error:'Profesional no identificado'},{status:400});
-
-  const rows=await sql`SELECT d.id AS doctor_id,d.bio,u.id AS user_id,u.email
-    FROM doctors d JOIN users u ON u.id=d.user_id
-    WHERE d.public_slug=${slug} LIMIT 1`;
-  const p=rows[0] as any;
-  if(!p) return NextResponse.json({error:'Profesional no encontrado'},{status:404});
+  const requestedEmail=String(body.email||'').trim().toLowerCase();
 
   if(action==='soft_delete'){
+    if(!slug&&!requestedEmail)return NextResponse.json({error:'Profesional no identificado'},{status:400});
+
+    const rows=slug
+      ?await sql`SELECT
+          ap.auth_user_id,
+          COALESCE(NULLIF(ap.full_name,''),u.full_name,'Profesional') AS full_name,
+          COALESCE(NULLIF(ap.email,''),u.email) AS email,
+          u.id AS user_id,
+          u.active,
+          d.id AS doctor_id,
+          d.accepts_online_booking
+        FROM doctors d
+        JOIN users u ON u.id=d.user_id
+        LEFT JOIN app_user_profiles ap ON lower(ap.email)=lower(u.email)
+        WHERE d.public_slug=${slug}
+        LIMIT 1`
+      :await sql`SELECT
+          ap.auth_user_id,
+          COALESCE(NULLIF(ap.full_name,''),u.full_name,'Profesional') AS full_name,
+          COALESCE(NULLIF(ap.email,''),u.email,${requestedEmail}) AS email,
+          u.id AS user_id,
+          u.active,
+          d.id AS doctor_id,
+          d.accepts_online_booking
+        FROM app_user_profiles ap
+        LEFT JOIN users u ON lower(u.email)=lower(ap.email)
+        LEFT JOIN doctors d ON d.user_id=u.id
+        WHERE lower(ap.email)=lower(${requestedEmail})
+          AND ap.role::text='DOCTOR'
+        ORDER BY ap.updated_at DESC NULLS LAST
+        LIMIT 1`;
+
+    const p=rows[0] as any;
+    if(!p)return NextResponse.json({error:'Profesional no encontrado'},{status:404});
+    const email=String(p.email||requestedEmail).trim().toLowerCase();
+    if(!email)return NextResponse.json({error:'El profesional no tiene correo asociado.'},{status:409});
+
+    const lastLifecycle=await sql`SELECT action
+      FROM audit_events
+      WHERE entity_type='ACCOUNT_PROFILE'
+        AND action IN ('PROFILE_DELETED','PROFILE_RESTORED')
+        AND lower(metadata->>'email')=lower(${email})
+      ORDER BY created_at DESC,id DESC
+      LIMIT 1`;
+    if(String((lastLifecycle[0] as any)?.action||'')==='PROFILE_DELETED'){
+      return NextResponse.json({ok:true,alreadyDeleted:true,message:'El profesional ya está en Perfiles eliminados.'});
+    }
+
     const commercialRows=await sql`SELECT id,status
       FROM commercial_clients
-      WHERE lower(email)=lower(${p.email})
+      WHERE lower(email)=lower(${email})
       ORDER BY created_at DESC LIMIT 1`;
     const commercial=commercialRows[0] as any;
-    await sql`UPDATE users SET active=false WHERE id=${p.user_id}::uuid`;
-    await sql`UPDATE doctors SET accepts_online_booking=false WHERE id=${p.doctor_id}::uuid`;
+
+    if(p.user_id)await sql`UPDATE users SET active=false WHERE id=${String(p.user_id)}::uuid`;
+    if(p.doctor_id)await sql`UPDATE doctors SET accepts_online_booking=false WHERE id=${String(p.doctor_id)}::uuid`;
+
     if(commercial?.id){
       await sql`UPDATE commercial_clients SET
         status='PAGO_PENDIENTE',
@@ -36,21 +80,31 @@ export async function PATCH(req:Request){
         payment_rejection_reason='Perfil eliminado por Master. Requiere nueva activación al restaurar.'
         WHERE id=${String(commercial.id)}::uuid`;
     }
+
     await sql`INSERT INTO audit_events(action,entity_type,entity_id,metadata)
-      VALUES('PROFILE_DELETED','ACCOUNT_PROFILE',${String(p.user_id)},
+      VALUES('PROFILE_DELETED','ACCOUNT_PROFILE',${String(p.auth_user_id||p.user_id||email)},
         jsonb_build_object(
-          'email',${p.email},
-          'name',${String(body.name||'Profesional')},
+          'email',${email},
+          'name',${String(body.name||p.full_name||'Profesional')},
           'role','DOCTOR',
           'professional',true,
           'deletedByMaster',true,
           'commercialClientId',${commercial?.id?String(commercial.id):null},
           'previousCommercialStatus',${commercial?.status?String(commercial.status):null},
-          'previousBookingEnabled',true,
+          'previousBookingEnabled',${p.doctor_id?Boolean(p.accepts_online_booking):null},
           'hadActiveSubscription',${String(commercial?.status||'')==='ACTIVO'}
         ))`;
+
     return NextResponse.json({ok:true,message:'Profesional movido a Perfiles eliminados.'});
   }
+
+  if(!slug) return NextResponse.json({error:'Profesional no identificado'},{status:400});
+
+  const rows=await sql`SELECT d.id AS doctor_id,d.bio,u.id AS user_id,u.email
+    FROM doctors d JOIN users u ON u.id=d.user_id
+    WHERE d.public_slug=${slug} LIMIT 1`;
+  const p=rows[0] as any;
+  if(!p) return NextResponse.json({error:'Profesional no encontrado'},{status:404});
 
   if(action==='credential_review'){
     const decision=String(body.decision||'');
