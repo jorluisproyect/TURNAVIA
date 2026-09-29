@@ -92,6 +92,7 @@ export async function POST(req:Request){
   }else{
     await sql`UPDATE patients
       SET auth_user_id=COALESCE(NULLIF(auth_user_id,''),${account.authUserId}),
+          user_id=COALESCE(user_id,${account.doctor?.user_id||null}::uuid),
           email=COALESCE(NULLIF(email,''),${account.email})
       WHERE id=${String(patient.id)}::uuid`;
   }
@@ -104,4 +105,11 @@ export async function POST(req:Request){
     createdClientProfile:!account.patient,
     redirect:'/paciente'
   });
+}
+
+
+export async function DELETE(){
+  const jar=await cookies();
+  jar.set('tucita_mode','',{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',path:'/',maxAge:0});
+  return NextResponse.json({ok:true});
 }
