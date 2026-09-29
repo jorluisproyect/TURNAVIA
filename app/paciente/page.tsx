@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { CalendarCheck2, CalendarClock, CarFront, CheckCircle2, MapPin, XCircle, FileText, UserRound, Search } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 import { COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
+import { AccountModeSwitcher } from '@/components/AccountModeSwitcher';
 
 const label:any={PAYMENT_REVIEW:'Pago en revisión',PAYMENT_REJECTED:'Pago rechazado',CONFIRMED:'Confirmada',ON_THE_WAY:'En camino',ARRIVED:'Ya llegaste',IN_CONSULTATION:'En atención',COMPLETED:'Completada',CANCELLED:'Cancelada',NO_SHOW:'No asististe'};
 
@@ -81,7 +82,7 @@ export default function Paciente(){
  if(!data)return <div className="dashboard"><Sidebar role="paciente"/><main className="main">Cargando…</main></div>;
 
  return <div className="dashboard"><Sidebar role="paciente"/><main className="main">
-   <div className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{data.patient.profileImage?<img src={data.patient.profileImage} alt="" style={{width:56,height:56,borderRadius:18,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:56,height:56,borderRadius:18}}><UserRound size={23}/></div>}<div><div className="muted" style={{fontSize:13}}>Mi TUCITA</div><h1>Hola, {data.patient.name}</h1></div></div><Link className="btn btn-primary" href="/explorar"><Search size={16}/> Explorar</Link></div>
+   <div className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{data.patient.profileImage?<img src={data.patient.profileImage} alt="" style={{width:56,height:56,borderRadius:18,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:56,height:56,borderRadius:18}}><UserRound size={23}/></div>}<div><div className="muted" style={{fontSize:13}}>Mi TUCITA · Modo cliente</div><h1>Hola, {data.patient.name}</h1></div></div><div className="button-row"><AccountModeSwitcher current="PATIENT" compact/><Link className="btn btn-primary" href="/explorar"><Search size={16}/> Explorar</Link></div></div>
 
    {active.length===0&&<section className="panel" style={{marginBottom:18,border:'1px solid #9bd9ce',background:'linear-gradient(145deg,#ffffff,#f0fdfa)'}}>
      <div>
