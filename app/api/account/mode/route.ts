@@ -31,7 +31,9 @@ async function accountCapabilities(){
 
   const patientRows=await sql`SELECT id,user_id,auth_user_id
     FROM patients
-    WHERE auth_user_id=${authUserId} OR lower(COALESCE(email,''))=lower(${email})
+    WHERE auth_user_id=${authUserId}
+       OR lower(COALESCE(email,''))=lower(${email})
+       OR (${doctor?.user_id||null}::uuid IS NOT NULL AND user_id=${doctor?.user_id||null}::uuid)
     ORDER BY created_at DESC
     LIMIT 1`;
   const patient=(patientRows[0] as any)||null;
