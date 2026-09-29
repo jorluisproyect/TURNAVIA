@@ -55,7 +55,7 @@ export function AccountModeSwitcher({
     return <>
       <button
         type="button"
-        className="account-mode-floating"
+        className={'account-mode-floating '+(isDoctor?'professional':'client')}
         onClick={()=>{setMsg('');setConfirmOpen(true)}}
         aria-label={label}
       >
