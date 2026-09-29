@@ -949,3 +949,44 @@ button:disabled{
 @media(prefers-reduced-motion:reduce){
   .account-mode-floating{transition:none}
 }
+
+
+/* Clear visual identity for each account mode */
+.account-mode-heading{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.055em;
+  width:max-content;
+}
+.account-mode-heading.professional{
+  background:#0b6f69;
+  color:#fff;
+  box-shadow:0 8px 20px rgba(11,111,105,.18);
+}
+.account-mode-heading.client{
+  background:#e3f5f1;
+  color:#075751;
+  border:1px solid #bfe7de;
+}
+.account-mode-floating.client{
+  background:#ffffff;
+  color:#075751;
+  border-color:#b8ddd6;
+  box-shadow:0 18px 48px rgba(20,49,47,.18);
+}
+.account-mode-floating.client .account-mode-floating-icon{
+  background:#e3f5f1;
+  border-color:#c9e9e3;
+  color:#075751;
+}
+.account-mode-floating.client .account-mode-floating-copy small{
+  color:#6f8582;
+}
+.account-mode-floating.client:hover{
+  box-shadow:0 22px 56px rgba(20,49,47,.24);
+}
