@@ -152,6 +152,9 @@ export function Sidebar({role}:{role:keyof typeof config}){
       )}
     </nav>
 
+    {role==='medico'&&<AccountModeSwitcher current="DOCTOR" floating/>}
+    {role==='paciente'&&<AccountModeSwitcher current="PATIENT" floating/>}
+
     {moreOpen&&<div className="mobile-more-layer">
       <button type="button" className="mobile-more-backdrop" aria-label="Cerrar menú" onClick={()=>setMoreOpen(false)}/>
       <section className="mobile-more-sheet" aria-label="Más opciones">
