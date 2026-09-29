@@ -31,10 +31,14 @@ export default function PerfilPaciente(){
   const [msg,setMsg]=useState('');
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
+  const [hasProfessional,setHasProfessional]=useState(false);
   const phoneCode=countryDialCode(form.phoneCountry);
   const phoneMax=phoneMaxLength(form.phoneCountry);
 
-  useEffect(()=>{fetch('/api/me/patient').then(r=>r.json()).then(j=>{if(j.patient){const ph=splitPhone(j.patient.phone||'');setForm({name:j.patient.name||'',email:j.patient.email||'',phoneCountry:ph.country,phoneLocal:ph.local,nationalId:j.patient.nationalId||'',birthDate:j.patient.birthDate||'',profileImage:j.patient.profileImage||''})}setLoading(false)}).catch(()=>setLoading(false))},[]);
+  useEffect(()=>{
+    fetch('/api/me/patient').then(r=>r.json()).then(j=>{if(j.patient){const ph=splitPhone(j.patient.phone||'');setForm({name:j.patient.name||'',email:j.patient.email||'',phoneCountry:ph.country,phoneLocal:ph.local,nationalId:j.patient.nationalId||'',birthDate:j.patient.birthDate||'',profileImage:j.patient.profileImage||''})}setLoading(false)}).catch(()=>setLoading(false));
+    fetch('/api/account/mode').then(r=>r.json()).then(j=>setHasProfessional(Boolean(j?.hasProfessional))).catch(()=>{});
+  },[]);
 
   async function photo(file?:File){
     if(!file)return;
@@ -63,11 +67,11 @@ export default function PerfilPaciente(){
       <div className="notice">Tu documento y fecha de nacimiento son privados. No aparecen en las páginas públicas de reservas.</div>
       <button className="btn btn-primary" onClick={save} disabled={saving} aria-busy={saving}>{saving?'Guardando…':'Guardar cambios'}</button>
     </div>}</section>
-    <section className="panel" style={{marginTop:18}}>
+    {hasProfessional&&<section className="panel" style={{marginTop:18}}>
       <h2>Cuenta profesional</h2>
-      <p className="muted">Si también ofreces servicios en TUCITA, puedes volver a tu panel profesional desde aquí.</p>
+      <p className="muted">Volver a tu panel profesional.</p>
       <AccountModeSwitcher current="PATIENT" compact/>
-    </section>
+    </section>}
     <section className="panel" style={{marginTop:18}}><DeleteProfileButton accountKind="client"/></section>
     {msg&&<div className="toast">{msg}</div>}
   </main></div>;
