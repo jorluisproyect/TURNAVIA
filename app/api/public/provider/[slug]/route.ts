@@ -182,6 +182,10 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
     return NextResponse.json({error:'Uno de los campos supera el tamaño permitido.'},{status:400});
   }
   if(!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({error:'Escribe un correo válido.'},{status:400});
+  const providerAccountEmail=String(p.organization_email||p.email||'').trim().toLowerCase();
+  if(providerAccountEmail&&email===providerAccountEmail){
+    return NextResponse.json({error:'No puedes reservar tus propios servicios desde esta cuenta. Usa tu modo cliente para reservar con otros profesionales de TUCITA.'},{status:409});
+  }
 
   const methodRows=await sql`SELECT pm.requires_proof
     FROM payment_methods pm
