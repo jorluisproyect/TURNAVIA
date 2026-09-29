@@ -70,7 +70,7 @@ export async function POST(req:Request){
     if(!account.doctor)return NextResponse.json({error:'Esta cuenta todavía no tiene perfil profesional.'},{status:409});
     const jar=await cookies();
     jar.set('tucita_mode','DOCTOR',{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',path:'/',maxAge:60*60*24*365});
-    return NextResponse.json({ok:true,mode:'DOCTOR',redirect:'/medico'});
+    return NextResponse.json({ok:true,mode:'DOCTOR',redirect:'/medico?modeChanged=professional'});
   }
 
   let patient=account.patient;
@@ -105,7 +105,7 @@ export async function POST(req:Request){
     ok:true,
     mode:'PATIENT',
     createdClientProfile:!account.patient,
-    redirect:'/paciente'
+    redirect:'/paciente?modeChanged=client'
   });
 }
 
