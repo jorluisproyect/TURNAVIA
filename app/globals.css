@@ -990,3 +990,36 @@ button:disabled{
 .account-mode-floating.client:hover{
   box-shadow:0 22px 56px rgba(20,49,47,.24);
 }
+
+
+/* Minimal account-mode control: one title + one swap icon at the top */
+.account-mode-title-row{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  width:max-content;
+}
+.account-mode-icon-button{
+  width:28px;
+  height:28px;
+  border-radius:9px;
+  display:grid;
+  place-items:center;
+  border:1px solid #c7e3dd;
+  background:#fff;
+  color:#0b6f69;
+  padding:0;
+  cursor:pointer;
+  box-shadow:0 3px 10px rgba(11,111,105,.08);
+  transition:transform .15s ease,background .15s ease,border-color .15s ease;
+}
+.account-mode-icon-button:hover{
+  transform:translateY(-1px);
+  background:#edf6f4;
+  border-color:#9fd2c8;
+}
+.account-mode-icon-button:disabled{
+  opacity:.55;
+  cursor:wait;
+  transform:none;
+}
