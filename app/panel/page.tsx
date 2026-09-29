@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { profileIsDeleted } from '@/lib/profile-lifecycle';
 import { isOwnerMasterSession } from '@/lib/access';
 import { teamMemberForUser } from '@/lib/master-team';
+import { cookies } from 'next/headers';
 
 export const dynamic='force-dynamic';
 
@@ -28,7 +29,18 @@ export default async function Panel({searchParams}:{searchParams:Promise<Record<
     const rows=await sql`SELECT role FROM app_user_profiles WHERE auth_user_id=${String(session.user.id)} LIMIT 1`;
     role=String((rows[0] as any)?.role||'PATIENT');
   }
-  if(role==='DOCTOR') redirect('/medico'+suffix);
+  if(role==='DOCTOR'){
+    const jar=await cookies();
+    const preferredMode=String(jar.get('tucita_mode')?.value||'').toUpperCase();
+    if(preferredMode==='PATIENT'&&sql){
+      const patientRows=await sql`SELECT id FROM patients
+        WHERE auth_user_id=${String(session.user.id)}
+           OR lower(COALESCE(email,''))=lower(${sessionEmail})
+        ORDER BY created_at DESC LIMIT 1`;
+      if(patientRows.length)redirect('/paciente'+suffix);
+    }
+    redirect('/medico'+suffix);
+  }
   if(role==='CLINIC_ADMIN'||role==='RECEPTION') redirect('/recepcion'+suffix);
   if(role==='MASTER') redirect('/cuenta/seguridad');
   redirect('/paciente'+suffix);
