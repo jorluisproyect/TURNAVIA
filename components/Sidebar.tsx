@@ -6,6 +6,7 @@ import { LogoutButton } from "./LogoutButton";
 import { NotificationBell } from "./NotificationBell";
 import { CalendarDays, LayoutDashboard, Users, Building2, Settings, HeartPulse, UserRound, BarChart3, BriefcaseBusiness, Search, WalletCards, Menu, X, ScanLine, MapPin, ShieldCheck, RotateCcw } from "lucide-react";
 import { providerAudienceLabel } from "@/lib/provider-labels";
+import { AccountModeSwitcher } from "./AccountModeSwitcher";
 import { useEffect,useState } from "react";
 
 const config = {
@@ -142,7 +143,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
       const active=activeFor(String(href));
       const visibleLabel=label==='__AUDIENCE__'?audience:label;
       return <Link key={String(href)} href={href} className={`side-link ${active?"active":""}`}><Icon size={18}/>{visibleLabel}</Link>
-    })}<div style={{marginTop:'auto',display:'grid',gap:6}}><NotificationBell/><LogoutButton/></div></aside>
+    })}<div style={{marginTop:'auto',display:'grid',gap:6}}>{role==='medico'&&<AccountModeSwitcher current="DOCTOR"/>}{role==='paciente'&&<AccountModeSwitcher current="PATIENT"/>}<NotificationBell/><LogoutButton/></div></aside>
 
     <nav className={`mobile-bottom-nav ${role==='masterTeam'?'mobile-bottom-nav-compact':''}`} aria-label="Navegación principal">
       {mobilePrimary.map(([href,label,Icon])=>href==='__more__'
@@ -156,7 +157,7 @@ export function Sidebar({role}:{role:keyof typeof config}){
       <section className="mobile-more-sheet" aria-label="Más opciones">
         <div className="row space" style={{gap:12}}><div><strong>Más opciones</strong><div className="muted" style={{fontSize:12}}>Lo menos frecuente, sin llenar tu pantalla.</div></div><button type="button" className="mobile-sheet-close" onClick={()=>setMoreOpen(false)}><X size={20}/></button></div>
         <div className="mobile-more-links">{mobileMore.map(([href,label,Icon])=><Link key={href} href={href} onClick={()=>setMoreOpen(false)} className="mobile-more-link"><span className="iconbox"><Icon size={18}/></span><span>{label}</span></Link>)}</div>
-        <div className="mobile-more-account"><NotificationBell mobile/><LogoutButton/></div>
+        <div className="mobile-more-account">{role==='medico'&&<AccountModeSwitcher current="DOCTOR"/>}{role==='paciente'&&<AccountModeSwitcher current="PATIENT"/>}<NotificationBell mobile/><LogoutButton/></div>
       </section>
     </div>}
   </>;
