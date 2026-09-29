@@ -28,6 +28,10 @@ export default function Paciente(){
      setMsg('✅ Cuenta creada correctamente. Bienvenido a TUCITA.');
      window.history.replaceState(null,'',window.location.pathname+window.location.hash);
      setTimeout(()=>setMsg(''),4200);
+   }else if(params.get('modeChanged')==='client'){
+     setMsg('✅ Ahora estás usando TUCITA en MODO CLIENTE.');
+     window.history.replaceState(null,'',window.location.pathname+window.location.hash);
+     setTimeout(()=>setMsg(''),4200);
    }
  },[]);
  const active=useMemo(()=>data?.appointments?.filter((a:any)=>!['COMPLETED','CANCELLED','PAYMENT_REJECTED'].includes(a.status))||[],[data]);
@@ -82,7 +86,7 @@ export default function Paciente(){
  if(!data)return <div className="dashboard"><Sidebar role="paciente"/><main className="main">Cargando…</main></div>;
 
  return <div className="dashboard"><Sidebar role="paciente"/><main className="main">
-   <div className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{data.patient.profileImage?<img src={data.patient.profileImage} alt="" style={{width:56,height:56,borderRadius:18,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:56,height:56,borderRadius:18}}><UserRound size={23}/></div>}<div><div className="muted" style={{fontSize:13}}>Mi TUCITA · Modo cliente</div><h1>Hola, {data.patient.name}</h1></div></div><div className="button-row"><AccountModeSwitcher current="PATIENT" compact/><Link className="btn btn-primary" href="/explorar"><Search size={16}/> Explorar</Link></div></div>
+   <div className="topbar"><div className="row" style={{gap:12,alignItems:'center'}}>{data.patient.profileImage?<img src={data.patient.profileImage} alt="" style={{width:56,height:56,borderRadius:18,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:56,height:56,borderRadius:18}}><UserRound size={23}/></div>}<div><div className="account-mode-heading client"><UserRound size={14}/> MODO CLIENTE</div><div className="muted" style={{fontSize:13,marginTop:5}}>Explora y reserva servicios</div><h1>Hola, {data.patient.name}</h1></div></div><div className="button-row"><AccountModeSwitcher current="PATIENT" compact/><Link className="btn btn-primary" href="/explorar"><Search size={16}/> Explorar</Link></div></div>
 
    {active.length===0&&<section className="panel" style={{marginBottom:18,border:'1px solid #9bd9ce',background:'linear-gradient(145deg,#ffffff,#f0fdfa)'}}>
      <div>
