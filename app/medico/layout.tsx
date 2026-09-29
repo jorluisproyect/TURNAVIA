@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { profileIsDeleted } from '@/lib/profile-lifecycle';
 import { MASTER_EMAIL } from '@/lib/access';
 import { refreshCommercialClientByEmail, subscriptionAllowed } from '@/lib/subscription';
+import { cookies } from 'next/headers';
 
 export const dynamic='force-dynamic';
 
@@ -20,6 +21,18 @@ export default async function MedicoLayout({children}:{children:React.ReactNode}
   if(role==='PATIENT') redirect('/paciente');
   if(role==='CLINIC_ADMIN'||role==='RECEPTION') redirect('/recepcion');
   if(role!=='DOCTOR') redirect('/panel');
+  if(role==='DOCTOR'){
+    const jar=await cookies();
+    const preferredMode=String(jar.get('tucita_mode')?.value||'').toUpperCase();
+    if(preferredMode==='PATIENT'){
+      const patientRows=await sql`SELECT id FROM patients
+        WHERE auth_user_id=${String(session.user.id)}
+           OR lower(COALESCE(email,''))=lower(${email})
+        ORDER BY created_at DESC
+        LIMIT 1`;
+      if(patientRows.length) redirect('/paciente');
+    }
+  }
 
   const commercial=await refreshCommercialClientByEmail(email);
   if(commercial && !subscriptionAllowed(String(commercial.status||''),commercial.trial_ends_at)){
