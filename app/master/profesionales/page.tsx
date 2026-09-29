@@ -56,7 +56,12 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
       cc.category AS commercial_category,
       cc.subcategory AS commercial_subcategory,
       cc.type AS commercial_type,
-      cc.phone AS commercial_phone
+      cc.phone AS commercial_phone,
+      EXISTS(
+        SELECT 1 FROM patients pat
+        WHERE pat.auth_user_id=ap.auth_user_id
+           OR lower(COALESCE(pat.email,''))=lower(ap.email)
+      ) AS has_client_mode
     FROM app_user_profiles ap
     LEFT JOIN users u ON lower(u.email)=lower(ap.email)
     LEFT JOIN doctors d ON d.user_id=u.id
@@ -235,6 +240,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                   <div className="row" style={{gap:7,flexWrap:'wrap'}}>
                     <h3 style={{margin:0,fontSize:20}}>{r.display_name}</h3>
                     {String(r.commercial_status)==='DEMO'&&<span className="pill">Demo</span>}
+                    {Boolean(r.has_client_mode)&&<span className="pill">Profesional · Cliente</span>}
                   </div>
                   <div className="muted" style={{fontSize:13,marginTop:4}}>{r.display_activity}</div>
                   <div className="muted" style={{fontSize:12}}>{r.display_category} · {r.display_type}</div>
@@ -295,6 +301,7 @@ export default async function ProfesionalesMaster({searchParams}:{searchParams:P
                       <div>
                         <strong>{r.display_name}</strong>
                         {String(r.commercial_status)==='DEMO'&&<span className="pill" style={{marginLeft:8}}>Demo</span>}
+                        {Boolean(r.has_client_mode)&&<span className="pill" style={{marginLeft:8}}>Profesional · Cliente</span>}
                         <div className="muted" style={{fontSize:12}}>{r.display_email} · {r.display_phone}</div>
                       </div>
                     </div>
