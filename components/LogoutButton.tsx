@@ -10,6 +10,7 @@ export function LogoutButton(){
   async function logout(){
     setBusy(true);
     try{await authClient.signOut();}finally{
+      document.cookie='tucita_mode=; Max-Age=0; Path=/; SameSite=Lax';
       router.replace('/ingresar');
       router.refresh();
     }
