@@ -9,8 +9,10 @@ export function LogoutButton(){
   const [busy,setBusy]=useState(false);
   async function logout(){
     setBusy(true);
-    try{await authClient.signOut();}finally{
-      document.cookie='tucita_mode=; Max-Age=0; Path=/; SameSite=Lax';
+    try{
+      await fetch('/api/account/mode',{method:'DELETE'}).catch(()=>{});
+      await authClient.signOut();
+    }finally{
       router.replace('/ingresar');
       router.refresh();
     }
