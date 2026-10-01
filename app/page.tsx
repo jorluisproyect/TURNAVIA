@@ -9,9 +9,9 @@ export default function Home(){
    <section className="hero">
     <div>
       <span className="eyebrow"><HeartPulse size={16}/> Citas, turnos y reservas para cualquier servicio</span>
-      <h1>Tu servicio, <span>a tu hora.</span></h1>
-      <p>TUCITA conecta profesionales, negocios y clientes en una sola agenda. Publicas disponibilidad, el cliente reserva, registra su pago y el negocio organiza todo desde un mismo lugar.</p>
-      <div className="hero-actions"><Link className="btn btn-primary" href="/demo">Explorar demo <ArrowRight size={17}/></Link><Link className="btn btn-secondary" href="/registro">Crear mi cuenta</Link><Link className="btn btn-secondary" href="/explorar">Explorar servicios</Link></div>
+      <h1>Tu tiempo <span>tiene su lugar.</span></h1>
+      <p>TUCITA conecta profesionales, negocios y clientes en una sola agenda. Encuentra un servicio, asegura el horario y recibe recordatorios; o publica tu disponibilidad y reduce citas perdidas.</p>
+      <div className="hero-actions"><Link className="btn btn-conversion" href="/explorar">Reservar un servicio <ArrowRight size={17}/></Link><Link className="btn btn-primary" href="/registro?role=DOCTOR">Quiero ofrecer servicios</Link><Link className="btn btn-secondary" href="/demo">Ver demo</Link></div>
       <div className="hero-proof"><span><CheckCircle2 size={16}/> Sin instalar nada</span><span><CheckCircle2 size={16}/> Funciona en móvil y PC</span><span><CheckCircle2 size={16}/> Diseñado para crecer globalmente</span></div>
     </div>
     <div className="phone-wrap">
@@ -22,7 +22,7 @@ export default function Home(){
           <div style={{marginTop:18,fontSize:13,fontWeight:800}}>Jueves 24 de septiembre</div>
           <div className="slot-grid"><div className="slot active">8:00</div><div className="slot">8:30</div><div className="slot">9:00</div><div className="slot">9:30</div><div className="slot">10:00</div><div className="slot">10:30</div></div>
         </div>
-        <div className="notice" style={{marginTop:14}}>Tu reserva queda registrada y el profesional la gestiona desde su panel.</div>
+        <div className="notice" style={{marginTop:14}}>Tu horario queda reservado y TUCITA te acompaña hasta la cita.</div>
       </div></div>
     </div>
    </section>
@@ -38,6 +38,6 @@ export default function Home(){
    </div></section>
    <section className="section" id="clinicas"><div className="band"><div><h2>Una demo que ya se puede enseñar.</h2><p>Explora cómo un profesional organiza sus servicios y cómo un cliente realiza su reserva con un recorrido guiado.</p></div><Link className="btn btn-primary" href="/demo">Abrir TUCITA <ArrowRight size={17}/></Link></div></section>
   </main>
-  <footer className="footer"><div className="container footer-inner" style={{gap:12,flexWrap:'wrap'}}><div><strong>TUCITA</strong> · Tu servicio, a tu hora.</div><div className="row" style={{gap:12,flexWrap:'wrap'}}><Link href="/legal/terminos">Términos</Link><Link href="/legal/privacidad">Privacidad</Link><Link href="/legal/servicios-prohibidos">Servicios prohibidos</Link><Link href="/legal/seguridad">Seguridad</Link></div></div></footer>
+  <footer className="footer"><div className="container footer-inner" style={{gap:12,flexWrap:'wrap'}}><div><strong>TUCITA</strong> · Tu tiempo tiene su lugar.</div><div className="row" style={{gap:12,flexWrap:'wrap'}}><Link href="/legal/terminos">Términos</Link><Link href="/legal/privacidad">Privacidad</Link><Link href="/legal/servicios-prohibidos">Servicios prohibidos</Link><Link href="/legal/seguridad">Seguridad</Link></div></div></footer>
  </>
 }
