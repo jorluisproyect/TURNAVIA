@@ -101,8 +101,7 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza',country='Venez
       accountNumber:lineValue(value,'Cuenta'),
       holder:lineValue(value,'Titular'),
       email:type==='PAYPAL'?value:'',
-      uid:type==='BINANCE'?value:'',
-      accountValue:type==='MIXTO'?value:value
+      uid:type==='BINANCE'?value:''
     });
     setShow(true);
     setMsg('');
