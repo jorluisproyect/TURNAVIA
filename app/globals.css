@@ -1035,7 +1035,7 @@ button:disabled{
 .brand-lockup strong{font-size:21px;line-height:1;font-weight:900;letter-spacing:.015em}
 .brand-lockup small{font-size:8.5px;line-height:1;color:var(--muted);font-weight:800;letter-spacing:.08em;white-space:nowrap}
 .sidebar .brand{color:#fff}
-.sidebar .brand-mark{background:#fff;border-radius:12px;padding:3px}
+.sidebar .brand-mark{background:transparent;border-radius:0;padding:0;box-shadow:none}
 .sidebar .brand-lockup small{color:#bfe1db}
 .btn-conversion{
   background:var(--conversion);
