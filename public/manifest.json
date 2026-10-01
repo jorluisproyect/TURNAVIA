@@ -1,17 +1,30 @@
 {
   "id": "/",
-  "name": "TUCITA · Tu servicio, a tu hora",
+  "name": "TUCITA · Tu tiempo tiene su lugar",
   "short_name": "TUCITA",
-  "description": "Citas, turnos y reservas para profesionales, negocios y clientes.",
+  "description": "Reserva, asegura y gestiona citas para profesionales, negocios y clientes.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
-  "background_color": "#f6fbf9",
-  "theme_color": "#0f766e",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#F5F8F7",
+  "theme_color": "#0B6F69",
   "orientation": "portrait-primary",
-  "categories": ["business", "productivity", "lifestyle"],
+  "categories": [
+    "business",
+    "productivity",
+    "lifestyle"
+  ],
   "icons": [
+    {
+      "src": "/icons/tucita-brand.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
