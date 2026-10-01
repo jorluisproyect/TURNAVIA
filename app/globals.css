@@ -1106,3 +1106,13 @@ button:disabled{
   .support-fab span{display:none}
   .support-fab{width:42px;height:42px;padding:0;justify-content:center}
 }
+
+
+/* Patient profile: keep sign-out immediately visible on phones */
+.patient-mobile-logout{display:none}
+@media(max-width:900px){
+  .patient-mobile-logout{
+    display:block;
+    margin:-10px 0 16px;
+  }
+}
