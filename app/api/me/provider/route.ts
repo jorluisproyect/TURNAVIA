@@ -10,6 +10,7 @@ import { normalizedBirthDate, normalizedDocument, dateForInput } from '@/lib/per
 import { isTravelProvider, serializeTravelServiceDescription, travelServiceFields, validateTravelServiceMeta, travelPartyFromReason } from '@/lib/travel-service';
 import { parseServiceMedia, serializeServiceMedia, validateServiceMedia } from '@/lib/service-media';
 import { prohibitedMarketplaceReason } from '@/lib/compliance';
+import { ensureAppointmentEnhancements } from '@/lib/booking-payments';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -108,6 +109,7 @@ async function currentProvider(){
 
 export async function GET(){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
+  await ensureAppointmentEnhancements();
   const provider=await currentProvider();
   if(!provider) return NextResponse.json({error:'Cuenta profesional no encontrada'},{status:404});
   const commercial=await refreshCommercialClientByEmail(String(provider.email||''));
@@ -126,7 +128,7 @@ export async function GET(){
     WHERE ab.doctor_id=${provider.doctor_id} AND ab.starts_at>=now()-interval '1 day'
     ORDER BY ab.starts_at LIMIT 120`;
   const appointments=await sql`SELECT a.id,a.starts_at,a.ends_at,a.status,a.service_name,a.consultation_price,a.consultation_currency,
-      a.payment_method,a.payment_reference,a.payment_proof_url,a.payment_submitted_at,a.payment_approved_at,a.reschedule_used,a.reason_short,
+      a.payment_method,a.payment_reference,a.payment_proof_url,a.payment_submitted_at,a.payment_approved_at,a.booking_total,a.deposit_amount,a.amount_due_now,a.balance_due,a.payment_kind,a.reschedule_used,a.reason_short,
       a.receipt_number,a.checked_in_at,a.completed_at,
       COALESCE(a.location_name_snapshot,l.name) AS location_name,
       COALESCE(a.location_address_snapshot,l.address) AS location_address,
@@ -180,7 +182,7 @@ export async function GET(){
     }),
     locations:locations.map((l:any)=>({id:String(l.id),name:l.name,address:l.address||'',city:l.city||'',state:l.state||'',country:l.country||'',room:l.room||''})),
     availability:availability.map((a:any)=>({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),slotMinutes:Number(a.slot_minutes),published:Boolean(a.published),location:{id:String(a.location_id),name:a.location_name||'',address:a.address||'',city:a.city||'',state:a.state||'',country:a.country||'',room:a.room||''}})),
-    appointments:appointments.map((a:any)=>{const party=travelPartyFromReason(a.reason_short);return ({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceName:a.service_name||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():null,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():null,rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,location:{name:a.location_name||'',address:a.location_address||'',city:a.location_city||'',state:a.location_state||'',country:a.location_country||'',room:a.location_room||''},clientName:a.client_name,clientPhone:a.client_phone,clientEmail:a.client_email||'',travelAdults:party.adults,travelChildren:party.children,travelers:party.travelers,note:party.note})})
+    appointments:appointments.map((a:any)=>{const party=travelPartyFromReason(a.reason_short);return ({id:String(a.id),startsAt:new Date(a.starts_at).toISOString(),endsAt:new Date(a.ends_at).toISOString(),status:a.status,serviceName:a.service_name||'Servicio',price:Number(a.consultation_price||0),currency:a.consultation_currency||'USD',paymentMethod:a.payment_method||'',paymentReference:a.payment_reference||'',paymentProofUrl:a.payment_proof_url||'',paymentSubmittedAt:a.payment_submitted_at?new Date(a.payment_submitted_at).toISOString():null,paymentApprovedAt:a.payment_approved_at?new Date(a.payment_approved_at).toISOString():null,bookingTotal:Number(a.booking_total??a.consultation_price??0),depositAmount:Number(a.deposit_amount||0),amountDueNow:Number(a.amount_due_now??a.consultation_price??0),balanceDue:Number(a.balance_due||0),paymentKind:a.payment_kind||'',rescheduleUsed:Boolean(a.reschedule_used),receiptNumber:a.receipt_number||'',checkedInAt:a.checked_in_at?new Date(a.checked_in_at).toISOString():null,completedAt:a.completed_at?new Date(a.completed_at).toISOString():null,location:{name:a.location_name||'',address:a.location_address||'',city:a.location_city||'',state:a.location_state||'',country:a.location_country||'',room:a.location_room||''},clientName:a.client_name,clientPhone:a.client_phone,clientEmail:a.client_email||'',travelAdults:party.adults,travelChildren:party.children,travelers:party.travelers,note:party.note})})
   });
 }
 
