@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "TUCITA · Tu tiempo tiene su lugar",
+  "name": "TUCITA · Agenda, paga y confirma",
   "short_name": "TUCITA",
-  "description": "Reserva, asegura y gestiona citas para profesionales, negocios y clientes.",
+  "description": "Agenda, paga y confirma citas con profesionales y negocios desde un solo lugar.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -23,7 +23,7 @@
       "src": "/icons/tucita-brand.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "/icons/icon-192.png",
