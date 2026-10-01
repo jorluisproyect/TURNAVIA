@@ -44,8 +44,9 @@ async function doctorCountry(slug:string){
 }
 
 function paymentTypeAllowed(country:string,type:string){
-  if(String(country||'').trim().toLowerCase()==='venezuela')return ['PAGO_MOVIL','TRANSFERENCIA','PAYPAL','BINANCE'].includes(String(type||'').toUpperCase());
-  return ['PAYPAL','BINANCE'].includes(String(type||'').toUpperCase());
+  const t=String(type||'').toUpperCase();
+  if(String(country||'').trim().toLowerCase()==='venezuela')return ['PAGO_MOVIL','TRANSFERENCIA','PAYPAL','BINANCE','EFECTIVO','MIXTO'].includes(t);
+  return ['PAYPAL','BINANCE','EFECTIVO','MIXTO'].includes(t);
 }
 
 async function access(slug?:string){
@@ -144,7 +145,7 @@ export async function POST(req:Request){
     if(scope==='DOCTOR'){
       const country=await doctorCountry(slug);
       if(!paymentTypeAllowed(country,String(body.type||''))){
-        return NextResponse.json({error:'En este país TUCITA solo permite PayPal y Binance para cobros al cliente.'},{status:400});
+        return NextResponse.json({error:'Este método de pago no está habilitado para el país configurado.'},{status:400});
       }
     }
     const rows=await sql`INSERT INTO payment_methods(scope,doctor_id,name,type,account_label,account_value,instructions,currency,requires_proof,active,is_primary)
@@ -172,7 +173,7 @@ export async function PATCH(req:Request){
       const country=await doctorCountry(String(row.public_slug||''));
       const nextType=String(body.type||'');
       if(nextType&&!paymentTypeAllowed(country,nextType)){
-        return NextResponse.json({error:'En este país TUCITA solo permite PayPal y Binance para cobros al cliente.'},{status:400});
+        return NextResponse.json({error:'Este método de pago no está habilitado para el país configurado.'},{status:400});
       }
     }
 
