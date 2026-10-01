@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { parseProviderMedia } from '@/lib/provider-media';
 import { isTravelProvider, travelServiceFields, serializeTravelParty, travelPartyFromReason } from '@/lib/travel-service';
 import { parseServiceMedia } from '@/lib/service-media';
+import { depositForTotal, ensureAppointmentEnhancements, normalizedDepositMode } from '@/lib/booking-payments';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -148,6 +149,8 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
         id:String(s.id),name:s.name,
         description:travelMode?travel.details:visual.details,
         serviceImage:travelMode?'':visual.image,
+        depositMode:travelMode?travel.depositMode:visual.depositMode,
+        depositValue:travelMode?travel.depositValue:visual.depositValue,
         summary:travel.summary,travelImage:travelMode?travel.image:'',travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,childPrice:travel.childPrice,
         durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency||'USD'
       };
@@ -160,6 +163,7 @@ export async function GET(req:Request,ctx:{params:Promise<{slug:string}>}){
 
 export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(!sql) return NextResponse.json({error:'Base de datos no disponible'},{status:503});
+  await ensureAppointmentEnhancements();
   const {slug}=await ctx.params;
   const p=await providerBySlug(slug);
   if(!p) return NextResponse.json({error:'Profesional o negocio no encontrado'},{status:404});
@@ -187,7 +191,7 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
     return NextResponse.json({error:'No puedes reservar tus propios servicios desde esta cuenta. Usa tu modo cliente para reservar con otros profesionales de TUCITA.'},{status:409});
   }
 
-  const methodRows=await sql`SELECT pm.requires_proof
+  const methodRows=await sql`SELECT pm.requires_proof,pm.type
     FROM payment_methods pm
     JOIN doctors md ON md.id=pm.doctor_id
     JOIN users mu ON mu.id=md.user_id
@@ -208,7 +212,6 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
     WHERE a.created_at>now()-interval '10 minutes'
       AND (lower(pat.email)=lower(${email}) OR pat.phone=${phone})`;
   if(Number((recent[0] as any)?.n||0)>=5) return NextResponse.json({error:'Has realizado varias solicitudes seguidas. Espera unos minutos e intenta nuevamente.'},{status:429});
-  const initialStatus=requiresProof?'PAYMENT_REVIEW':'CONFIRMED';
 
   const serviceRows=await sql`SELECT id,name,description,duration_minutes,price,currency FROM provider_services WHERE id=${body.serviceId}::uuid AND doctor_id=${p.id} AND active=true LIMIT 1`;
   const service=serviceRows[0] as any;
@@ -225,6 +228,17 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(travelModeBooking&&travelers>Math.max(1,Number(serviceTravel.capacity||1)))return NextResponse.json({error:'La cantidad de viajeros supera los cupos de este viaje.'},{status:400});
   const childUnitPrice=serviceTravel.childPrice===null||serviceTravel.childPrice===undefined?Number(service.price||0):Number(serviceTravel.childPrice||0);
   const bookingTotal=travelModeBooking?(travelAdults*Number(service.price||0)+travelChildren*childUnitPrice):Number(service.price||0);
+  const serviceVisual=parseServiceMedia(service.description||'');
+  const depositMode=normalizedDepositMode(travelModeBooking?serviceTravel.depositMode:serviceVisual.depositMode);
+  const depositValue=travelModeBooking?serviceTravel.depositValue:serviceVisual.depositValue;
+  const depositAmount=depositForTotal(bookingTotal,depositMode,depositValue);
+  const paymentType=String(method.type||'').toUpperCase();
+  if(paymentType==='EFECTIVO'&&depositAmount>0){
+    return NextResponse.json({error:'Este servicio requiere apartado para asegurar el horario. Elige Pago mixto u otro método electrónico.'},{status:409});
+  }
+  const amountDueNow=depositAmount>0?depositAmount:(paymentType==='EFECTIVO'?0:bookingTotal);
+  const balanceDue=Math.max(0,Math.round((bookingTotal-amountDueNow+Number.EPSILON)*100)/100);
+  const initialStatus=requiresProof?'PAYMENT_REVIEW':'CONFIRMED';
   const bookingReason=travelModeBooking?serializeTravelParty({adults:travelAdults,children:travelChildren,note:String(body.note||'')}):String(body.note||'')||null;
   if(travelModeBooking&&serviceTravel.travelDate){
     const localDate=requestedStart.toLocaleDateString('en-CA',{timeZone:'America/Caracas'});
@@ -313,8 +327,8 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
         ),0) + ${travelers} <= ${capacity}
       ),
       inserted AS (
-        INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot)
-        SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${bookingReason},${service.id},${service.name},${bookingTotal},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room
+        INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot,booking_total,deposit_amount,amount_due_now,balance_due,payment_kind)
+        SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${bookingReason},${service.id},${service.name},${bookingTotal},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room,${bookingTotal},${depositAmount},${amountDueNow},${balanceDue},${paymentType}
         FROM capacity_ok vb
         RETURNING id,checkin_token
       )
@@ -338,8 +352,8 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
         LIMIT 1
       ),
       inserted AS (
-        INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot)
-        SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room
+        INSERT INTO appointments(doctor_id,patient_id,location_id,starts_at,ends_at,status,source,reason_short,service_id,service_name,consultation_price,consultation_currency,payment_method,payment_reference,payment_proof_url,payment_submitted_at,reschedule_used,policy_accepted,checkin_token,receipt_number,location_name_snapshot,location_address_snapshot,location_city_snapshot,location_state_snapshot,location_country_snapshot,location_room_snapshot,booking_total,deposit_amount,amount_due_now,balance_due,payment_kind)
+        SELECT ${p.id},${patientId},vb.location_id,${requestedStart.toISOString()}::timestamptz,${requestedEnd.toISOString()}::timestamptz,${initialStatus}::appointment_status,'PATIENT_WEB',${String(body.note||'')||null},${service.id},${service.name},${Number(service.price||0)},${service.currency||'USD'},${paymentMethod},${reference||null},${proof||null},now(),false,true,${randomUUID()},${'TC-'+new Date().getFullYear()+'-'+randomUUID().replace(/-/g,'').slice(0,8).toUpperCase()},vb.name,vb.address,vb.city,vb.state,vb.country,vb.room,${bookingTotal},${depositAmount},${amountDueNow},${balanceDue},${paymentType}
         FROM valid_block vb
         WHERE NOT EXISTS (
           SELECT 1 FROM appointments a
@@ -369,5 +383,5 @@ export async function POST(req:Request,ctx:{params:Promise<{slug:string}>}){
   if(providerEmail){
     await sendTransactionalEmail({to:providerEmail,subject:'Nueva reserva en TUCITA',html:tucitaEmail('Nueva reserva recibida',`<p><strong>${clientName}</strong> reservó <strong>${service.name}</strong> con ${p.full_name}.</p><p><strong>Fecha y hora:</strong> ${when}<br/><strong>Monto:</strong> ${service.currency||'USD'} ${bookingTotal.toFixed(2)}${travelModeBooking?'<br/><strong>Viajeros:</strong> '+travelAdults+' adulto'+(travelAdults===1?'':'s')+(travelChildren?' + '+travelChildren+' niño'+(travelChildren===1?'':'s'):''):''}<br/><strong>Estado:</strong> ${initialStatus==='CONFIRMED'?'Confirmada':'Pago por revisar'}</p><p><a href="${process.env.APP_URL||'https://tucita.com.ve'}/panel">Abrir TUCITA</a></p>`)});
   }
-  return NextResponse.json({ok:true,appointmentId,receiptToken,status:initialStatus,emailNotice:customerMail.ok?'sent':'pending'},{status:201});
+  return NextResponse.json({ok:true,appointmentId,receiptToken,status:initialStatus,emailNotice:customerMail.ok?'sent':'pending',bookingTotal,depositAmount,amountDueNow,balanceDue,currency:service.currency||'USD'},{status:201});
 }
