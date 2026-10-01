@@ -7,6 +7,7 @@ import { countryDialCode, digitsOnly, normalizedNationalPhone, phoneMaxLength } 
 import { DeleteProfileButton } from '@/components/DeleteProfileButton';
 import { AccountModeSwitcher } from '@/components/AccountModeSwitcher';
 import PushNotificationsButton from '@/components/PushNotificationsButton';
+import { LogoutButton } from '@/components/LogoutButton';
 
 function splitPhone(value:string){
   const v=String(value||'').trim();
@@ -78,6 +79,11 @@ export default function PerfilPaciente(){
       <p className="muted">Volver a tu panel profesional.</p>
       <AccountModeSwitcher current="PATIENT" compact/>
     </section>}
+    <section className="panel" style={{marginTop:18}}>
+      <h2>Sesión</h2>
+      <p className="muted" style={{margin:'0 0 12px'}}>Cierra tu sesión de TUCITA en este dispositivo.</p>
+      <LogoutButton variant="panel"/>
+    </section>
     <section className="panel" style={{marginTop:18}}><DeleteProfileButton accountKind="client"/></section>
     {msg&&<div className="toast">{msg}</div>}
   </main></div>;
