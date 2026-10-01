@@ -5,8 +5,8 @@ import { PortraitGuard } from '@/components/PortraitGuard';
 import { SupportFloating } from '@/components/SupportFloating';
 
 export const metadata: Metadata = {
-  title:'TUCITA · Tu tiempo tiene su lugar',
-  description:'Reserva, asegura y gestiona citas para profesionales, negocios y clientes.',
+  title:'TUCITA · Agenda, paga y confirma',
+  description:'Agenda, paga y confirma citas con profesionales y negocios desde un solo lugar.',
   manifest:'/manifest.json',
   applicationName:'TUCITA',
   appleWebApp:{
