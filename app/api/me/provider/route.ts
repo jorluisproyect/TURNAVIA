@@ -172,6 +172,8 @@ export async function GET(){
         id:String(s.id),name:s.name,
         description:travelMode?travel.details:visual.details,
         serviceImage:travelMode?'':visual.image,
+        depositMode:travelMode?travel.depositMode:visual.depositMode,
+        depositValue:travelMode?travel.depositValue:visual.depositValue,
         durationMinutes:Number(s.duration_minutes),price:Number(s.price),currency:s.currency,active:Boolean(s.active),
         summary:travel.summary,travelImage:travelMode?travel.image:'',travelDate:travel.travelDate,departureTime:travel.departureTime,returnTime:travel.returnTime,locationId:travel.locationId,capacity:travel.capacity,childPrice:travel.childPrice
       };
@@ -290,13 +292,13 @@ export async function PATCH(req:Request){
     let description=String(body.description||'');
     if(travelMode){
       const internalLocationId=await ensureTravelInternalLocation(provider);
-      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||''),locationId:internalLocationId,capacity:Math.max(1,Number(body.capacity||1)),childPrice:body.childPrice===''||body.childPrice===null||body.childPrice===undefined?null:Math.max(0,Number(body.childPrice||0))};
+      const meta={summary:String(body.summary||''),details:description,image:String(body.travelImage||''),travelDate:String(body.travelDate||''),departureTime:String(body.departureTime||''),returnTime:String(body.returnTime||''),locationId:internalLocationId,capacity:Math.max(1,Number(body.capacity||1)),childPrice:body.childPrice===''||body.childPrice===null||body.childPrice===undefined?null:Math.max(0,Number(body.childPrice||0)),depositMode:String(body.depositMode||'NONE') as 'NONE'|'FIXED'|'PERCENT',depositValue:Math.max(0,Number(body.depositValue||0))};
       const issue=validateTravelServiceMeta(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
       if(!meta.summary.trim()||!meta.travelDate||!meta.departureTime)return NextResponse.json({error:'En Viajes completa descripción corta, fecha y hora de salida.'},{status:400});
       description=serializeTravelServiceDescription(meta);
     }else{
-      const meta={details:description,image:String(body.serviceImage||'')};
+      const meta={details:description,image:String(body.serviceImage||''),depositMode:String(body.depositMode||'NONE') as 'NONE'|'FIXED'|'PERCENT',depositValue:Math.max(0,Number(body.depositValue||0))};
       const issue=validateServiceMedia(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
       description=serializeServiceMedia(meta);
@@ -316,13 +318,15 @@ export async function PATCH(req:Request){
     if(prohibited)return NextResponse.json({error:prohibited},{status:400});
     const travelMode=isTravelProvider(provider.provider_category,provider.provider_activity);
     let descriptionValue:any=body.description??null;
-    const hasTravelPayload=['summary','travelImage','travelDate','departureTime','returnTime'].some(k=>Object.prototype.hasOwnProperty.call(body,k));
-    if(!travelMode&&(Object.prototype.hasOwnProperty.call(body,'description')||Object.prototype.hasOwnProperty.call(body,'serviceImage'))){
+    const hasTravelPayload=['summary','travelImage','travelDate','departureTime','returnTime','depositMode','depositValue'].some(k=>Object.prototype.hasOwnProperty.call(body,k));
+    if(!travelMode&&['description','serviceImage','depositMode','depositValue'].some(k=>Object.prototype.hasOwnProperty.call(body,k))){
       const current=await sql`SELECT description FROM provider_services WHERE id=${body.id}::uuid AND doctor_id=${provider.doctor_id} LIMIT 1`;
       const previous=parseServiceMedia((current[0] as any)?.description||'');
       const meta={
         details:Object.prototype.hasOwnProperty.call(body,'description')?String(body.description||''):previous.details,
-        image:Object.prototype.hasOwnProperty.call(body,'serviceImage')?String(body.serviceImage||''):previous.image
+        image:Object.prototype.hasOwnProperty.call(body,'serviceImage')?String(body.serviceImage||''):previous.image,
+        depositMode:Object.prototype.hasOwnProperty.call(body,'depositMode')?String(body.depositMode||'NONE') as 'NONE'|'FIXED'|'PERCENT':previous.depositMode,
+        depositValue:Object.prototype.hasOwnProperty.call(body,'depositValue')?Math.max(0,Number(body.depositValue||0)):previous.depositValue
       };
       const issue=validateServiceMedia(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
@@ -340,7 +344,9 @@ export async function PATCH(req:Request){
         returnTime:Object.prototype.hasOwnProperty.call(body,'returnTime')?String(body.returnTime||''):previous.returnTime,
         locationId:previous.locationId||await ensureTravelInternalLocation(provider),
         capacity:Object.prototype.hasOwnProperty.call(body,'capacity')?Math.max(1,Number(body.capacity||1)):previous.capacity,
-        childPrice:Object.prototype.hasOwnProperty.call(body,'childPrice')?(body.childPrice===''||body.childPrice===null?null:Math.max(0,Number(body.childPrice||0))):previous.childPrice
+        childPrice:Object.prototype.hasOwnProperty.call(body,'childPrice')?(body.childPrice===''||body.childPrice===null?null:Math.max(0,Number(body.childPrice||0))):previous.childPrice,
+        depositMode:Object.prototype.hasOwnProperty.call(body,'depositMode')?String(body.depositMode||'NONE') as 'NONE'|'FIXED'|'PERCENT':previous.depositMode,
+        depositValue:Object.prototype.hasOwnProperty.call(body,'depositValue')?Math.max(0,Number(body.depositValue||0)):previous.depositValue
       };
       const issue=validateTravelServiceMeta(meta);
       if(issue)return NextResponse.json({error:issue},{status:400});
