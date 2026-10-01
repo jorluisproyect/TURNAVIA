@@ -1,11 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TUCITA">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#0B6F69"/>
+    <linearGradient id="tucitaGreen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B6F69"/>
       <stop offset="1" stop-color="#075751"/>
     </linearGradient>
+    <linearGradient id="tucitaMint" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8BE1D0"/>
+      <stop offset="1" stop-color="#61CBB8"/>
+    </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#g)"/>
-  <path d="M88 126H224M156 126V386" fill="none" stroke="#FFFFFF" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M426 178c-28-26-61-39-96-39-72 0-130 53-130 117s58 117 130 117c35 0 68-13 96-39" fill="none" stroke="#7ED9C7" stroke-width="54" stroke-linecap="round"/>
+
+  <!-- Official TUCITA TC monogram: the T forms the chair-like silhouette -->
+  <path d="M108 104H305 M184 104V295 Q184 350 236 365 H360 M236 365L202 438 M360 365L398 438"
+        fill="none" stroke="url(#tucitaGreen)" stroke-width="62"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- White separator keeps T and C visually distinct at small sizes -->
+  <path d="M397 172 C322 146 257 185 257 270 C257 352 318 389 406 356"
+        fill="none" stroke="#FFFFFF" stroke-width="82"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M397 172 C322 146 257 185 257 270 C257 352 318 389 406 356"
+        fill="none" stroke="url(#tucitaMint)" stroke-width="58"
+        stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
