@@ -23,6 +23,7 @@ export async function ensureAppointmentEnhancements(){
   ensurePromise=(async()=>{
     await sql`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS booking_total numeric(10,2)`;
     await sql`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS deposit_amount numeric(10,2)`;
+    await sql`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS amount_due_now numeric(10,2)`;
     await sql`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS balance_due numeric(10,2)`;
     await sql`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_kind text`;
     await sql`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS reminder_15_sent_at timestamptz`;
