@@ -59,6 +59,7 @@ export default function PerfilPaciente(){
 
   return <div className="dashboard"><Sidebar role="paciente"/><main className="main">
     <div className="topbar"><div><div className="muted" style={{fontSize:13}}>Mi cuenta</div><h1>Perfil</h1></div></div>
+    <div className="patient-mobile-logout"><LogoutButton variant="panel"/></div>
     <section className="panel"><h2>Datos personales</h2>{loading?<div>Cargando…</div>:<div className="form">
       <div className="field"><label>Foto de perfil</label><div className="row" style={{gap:12,alignItems:'center',flexWrap:'wrap'}}>{form.profileImage?<img src={form.profileImage} alt="Foto de perfil" style={{width:82,height:82,borderRadius:22,objectFit:'cover'}}/>:<div className="profile-avatar" style={{width:82,height:82}}><UserRound size={30}/></div>}<label className="btn btn-secondary" style={{cursor:'pointer'}}><ImagePlus size={16}/> {form.profileImage?'Cambiar foto':'Subir foto'}<input type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={e=>photo(e.target.files?.[0])}/></label>{form.profileImage&&<button type="button" className="btn btn-secondary" onClick={()=>setForm({...form,profileImage:''})}><Trash2 size={15}/> Quitar</button>}</div><small className="muted">La imagen se ajusta automáticamente para no deformarse.</small></div>
       <div className="field"><label>Nombre</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
