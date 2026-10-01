@@ -241,3 +241,13 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(auth_user_id);
+
+
+-- Appointment deposits, balances and 15-minute reminders
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS booking_total numeric(10,2);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS deposit_amount numeric(10,2);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS amount_due_now numeric(10,2);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS balance_due numeric(10,2);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_kind text;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS reminder_15_sent_at timestamptz;
+CREATE INDEX IF NOT EXISTS appointments_reminder_15_idx ON appointments(starts_at,reminder_15_sent_at);
