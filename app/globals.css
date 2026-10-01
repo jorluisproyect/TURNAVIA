@@ -11,6 +11,9 @@
   --success: #198754;
   --warning: #b7791f;
   --danger: #c2414b;
+  --conversion: #f59e0b;
+  --conversion-hover: #d98906;
+  --conversion-ink: #14312f;
   --shadow: 0 20px 50px rgba(11, 111, 105, .10);
 }
 *{box-sizing:border-box}
@@ -1022,4 +1025,84 @@ button:disabled{
   opacity:.55;
   cursor:wait;
   transform:none;
+}
+
+
+/* 2026 TUCITA identity · trust-first teal + focused warm conversion */
+.brand{color:var(--brand-dark);gap:9px;line-height:1}
+.brand-mark{width:39px;height:39px;flex:none;overflow:visible}
+.brand-lockup{display:grid;gap:3px;min-width:0}
+.brand-lockup strong{font-size:21px;line-height:1;font-weight:900;letter-spacing:.015em}
+.brand-lockup small{font-size:9px;line-height:1;color:var(--muted);font-weight:650;letter-spacing:.055em;white-space:nowrap}
+.sidebar .brand{color:#fff}
+.sidebar .brand-lockup small{color:#bfe1db}
+.btn-conversion{
+  background:var(--conversion);
+  color:var(--conversion-ink);
+  box-shadow:0 11px 24px rgba(245,158,11,.24);
+  border:1px solid rgba(181,107,0,.18);
+}
+.btn-conversion:hover{background:var(--conversion-hover);color:#fff}
+.booking-secure-card{
+  border:1px solid #f3d08a;
+  background:linear-gradient(145deg,#fffaf0,#ffffff);
+  border-radius:18px;
+  padding:15px;
+}
+.booking-secure-card strong{color:var(--text)}
+.booking-price-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-top:10px;
+}
+.booking-price-grid>div{
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+  padding:10px;
+}
+.booking-price-grid small{display:block;color:var(--muted);font-size:10px;font-weight:750}
+.booking-price-grid strong{display:block;margin-top:4px;font-size:15px}
+.booking-price-grid .due-now{border-color:#efbd55;background:#fff7e6}
+
+/* Discreet global support */
+.support-fab{
+  position:fixed;
+  right:18px;
+  bottom:78px;
+  z-index:790;
+  min-height:42px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border:1px solid rgba(11,111,105,.22);
+  border-radius:999px;
+  padding:9px 13px;
+  background:rgba(255,255,255,.96);
+  color:var(--brand-dark);
+  box-shadow:0 12px 32px rgba(20,49,47,.14);
+  backdrop-filter:blur(12px);
+  font-size:12px;
+  font-weight:850;
+}
+.support-fab:hover{background:var(--surface-2);transform:translateY(-1px)}
+.support-modal-layer{z-index:1500}
+.support-modal{width:min(560px,100%)}
+.support-honeypot{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+@media(max-width:900px){
+  .support-fab{
+    right:12px;
+    bottom:calc(86px + env(safe-area-inset-bottom));
+    min-height:40px;
+    padding:8px 11px;
+  }
+}
+@media(max-width:460px){
+  .brand-lockup small{display:none}
+  .brand-mark{width:36px;height:36px}
+  .brand-lockup strong{font-size:19px}
+  .booking-price-grid{grid-template-columns:1fr}
+  .support-fab span{display:none}
+  .support-fab{width:42px;height:42px;padding:0;justify-content:center}
 }
