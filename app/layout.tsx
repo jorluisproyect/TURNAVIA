@@ -3,6 +3,7 @@ import './globals.css';
 import { PwaRegister } from '@/components/PwaRegister';
 import { PortraitGuard } from '@/components/PortraitGuard';
 import { SupportFloating } from '@/components/SupportFloating';
+import { AppEnvironment } from '@/components/AppEnvironment';
 
 export const metadata: Metadata = {
   title:'TUCITA · Agenda, paga y confirma',
@@ -18,13 +19,14 @@ export const metadata: Metadata = {
   icons:{icon:'/icons/icon-192.png',apple:'/icons/icon-192.png'}
 };
 
-export const viewport: Viewport = { themeColor:'#0B6F69' };
+export const viewport: Viewport = { themeColor:'#0B6F69', viewportFit:'cover' };
 
 export default function RootLayout({children}:{children:React.ReactNode}){
   return (
     <html lang="es">
       <body>
         <PwaRegister/>
+        <AppEnvironment/>
         <PortraitGuard/>
         {children}
         <SupportFloating/>
