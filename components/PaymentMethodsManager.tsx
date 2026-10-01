@@ -13,6 +13,8 @@ function methodPreset(type:string){
   if(type==='PAGO_MOVIL')return {name:'Pago móvil',accountLabel:'Datos de Pago Móvil',currency:'VES'};
   if(type==='TRANSFERENCIA')return {name:'Transferencia bancaria',accountLabel:'Datos de transferencia',currency:'VES'};
   if(type==='BINANCE')return {name:'Binance',accountLabel:'UID Binance',currency:'USDT'};
+  if(type==='EFECTIVO')return {name:'Efectivo',accountLabel:'Pago presencial',currency:'USD'};
+  if(type==='MIXTO')return {name:'Pago mixto',accountLabel:'Apartado / saldo',currency:'USD'};
   return {name:'PayPal',accountLabel:'Correo PayPal',currency:'USD'};
 }
 
@@ -25,7 +27,7 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza',country='Venez
   const [busy,setBusy]=useState(false);
   const busyRef=useRef(false);
   const venezuela=String(country||'').trim().toLowerCase()==='venezuela';
-  const allowedTypes=useMemo(()=>scope==='DOCTOR'&&!venezuela?['PAYPAL','BINANCE']:['PAGO_MOVIL','TRANSFERENCIA','PAYPAL','BINANCE'],[scope,venezuela]);
+  const allowedTypes=useMemo(()=>scope==='DOCTOR'&&!venezuela?['PAYPAL','BINANCE','EFECTIVO','MIXTO']:['PAGO_MOVIL','TRANSFERENCIA','PAYPAL','BINANCE','EFECTIVO','MIXTO'],[scope,venezuela]);
 
   async function load(){
     const r=await fetch(`/api/payment-methods?scope=${scope}&slug=${slug}`);
@@ -53,6 +55,11 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza',country='Venez
     }else if(form.type==='BINANCE'){
       if(!form.uid.trim())return setMsg('Escribe el UID de Binance.');
       payload={...form,...methodPreset('BINANCE'),accountValue:form.uid.trim(),instructions:form.instructions.trim()||'Envía el pago por Binance, copia el ID/TxID y sube el comprobante.',requiresProof:true};
+    }else if(form.type==='EFECTIVO'){
+      payload={...form,...methodPreset('EFECTIVO'),accountValue:'Pago presencial',instructions:form.instructions.trim()||'Paga el saldo directamente al profesional o negocio al asistir.',requiresProof:false};
+    }else if(form.type==='MIXTO'){
+      if(!form.accountValue.trim())return setMsg('Explica cómo debe pagarse el apartado y cómo se completa el saldo.');
+      payload={...form,...methodPreset('MIXTO'),accountValue:form.accountValue.trim(),instructions:form.instructions.trim()||'Paga el apartado por el medio indicado y completa el saldo pendiente al asistir.',requiresProof:true};
     }else{
       if(!/^\S+@\S+\.\S+$/.test(form.email.trim()))return setMsg('Escribe un correo PayPal válido.');
       payload={...form,...methodPreset('PAYPAL'),accountValue:form.email.trim().toLowerCase(),instructions:form.instructions.trim()||'Envía el pago a este correo PayPal, guarda el ID de la operación y sube el comprobante.',requiresProof:true};
@@ -76,7 +83,7 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza',country='Venez
 
   function edit(m:any){
     setEditingId(m.id);
-    const type=['PAGO_MOVIL','TRANSFERENCIA','BINANCE','PAYPAL'].includes(String(m.type))?String(m.type):'PAYPAL';
+    const type=['PAGO_MOVIL','TRANSFERENCIA','BINANCE','PAYPAL','EFECTIVO','MIXTO'].includes(String(m.type))?String(m.type):'PAYPAL';
     const value=String(m.account_value??m.accountValue??'');
     setForm({
       ...blank,
@@ -94,7 +101,8 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza',country='Venez
       accountNumber:lineValue(value,'Cuenta'),
       holder:lineValue(value,'Titular'),
       email:type==='PAYPAL'?value:'',
-      uid:type==='BINANCE'?value:''
+      uid:type==='BINANCE'?value:'',
+      accountValue:type==='MIXTO'?value:value
     });
     setShow(true);
     setMsg('');
@@ -134,7 +142,7 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza',country='Venez
 
   return <section className="panel" style={{marginTop:18}}>
     <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
-      <div><h2>Métodos de pago</h2><div className="muted" style={{fontSize:13}}>{scope==='MASTER'?'Cómo pagan profesionales y negocios a TUCITA.':venezuela?'En Venezuela puedes ofrecer Pago Móvil, transferencia, PayPal y Binance.':'Para este país TUCITA habilita únicamente PayPal y Binance.'}</div></div>
+      <div><h2>Métodos de pago</h2><div className="muted" style={{fontSize:13}}>{scope==='MASTER'?'Cómo pagan profesionales y negocios a TUCITA.':venezuela?'Puedes ofrecer Pago Móvil, transferencia, PayPal, Binance, efectivo y pago mixto.':'Puedes ofrecer PayPal, Binance, efectivo y pago mixto.'}</div></div>
       <button className="btn btn-primary" onClick={()=>{if(show)reset();else{const type=allowedTypes[0]||'PAYPAL';setEditingId('');setForm({...blank,type,...methodPreset(type)});setShow(true)}}}>{show?<><X size={16}/> Cerrar</>:<><Plus size={16}/> Agregar método</>}</button>
     </div>
 
@@ -146,6 +154,8 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza',country='Venez
         {allowedTypes.includes('TRANSFERENCIA')&&<option value="TRANSFERENCIA">Transferencia bancaria</option>}
         {allowedTypes.includes('PAYPAL')&&<option value="PAYPAL">PayPal</option>}
         {allowedTypes.includes('BINANCE')&&<option value="BINANCE">Binance</option>}
+        {allowedTypes.includes('EFECTIVO')&&<option value="EFECTIVO">Efectivo</option>}
+        {allowedTypes.includes('MIXTO')&&<option value="MIXTO">Pago mixto</option>}
       </select></div>
 
       {form.type==='PAGO_MOVIL'&&<>
@@ -167,9 +177,11 @@ export function PaymentMethodsManager({scope,slug='sofia-mendoza',country='Venez
 
       {form.type==='PAYPAL'&&<div className="field"><label>Correo de PayPal</label><input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="correo@ejemplo.com"/></div>}
       {form.type==='BINANCE'&&<div className="field"><label>UID de Binance</label><input inputMode="numeric" value={form.uid} onChange={e=>setForm({...form,uid:e.target.value.replace(/\s/g,'')})} placeholder="UID de Binance"/></div>}
+      {form.type==='EFECTIVO'&&<div className="notice"><strong>Pago presencial.</strong><br/>Si un servicio exige apartado, TUCITA no permitirá usar solo efectivo para asegurar ese horario.</div>}
+      {form.type==='MIXTO'&&<div className="field"><label>Cómo se paga el apartado y el saldo</label><textarea rows={3} value={form.accountValue} onChange={e=>setForm({...form,accountValue:e.target.value})} placeholder="Ej. Apartado por Pago Móvil al 0412… / Banco… y saldo restante en efectivo al llegar."/></div>}
 
       <div className="field"><label>Instrucciones adicionales (opcional)</label><textarea rows={3} value={form.instructions} onChange={e=>setForm({...form,instructions:e.target.value})} placeholder="Ej. Coloca tu nombre en el concepto y conserva la referencia."/></div>
-      <div className="notice"><strong>Seguridad del cobro</strong><br/>El cliente verá estos datos, ingresará referencia y comprobante, y la reserva quedará en revisión hasta que apruebes el pago.</div>
+      <div className="notice"><strong>Seguridad del cobro</strong><br/>{form.type==='EFECTIVO'?'El cliente verá que el pago se completa presencialmente.':form.type==='MIXTO'?'El cliente registra el apartado y TUCITA muestra el saldo pendiente para completar al asistir.':'El cliente verá estos datos, ingresará referencia y comprobante, y la reserva quedará en revisión hasta que apruebes el pago.'}</div>
       <div className="button-row"><button className="btn btn-primary" onClick={save} disabled={busy}>{busy?'Guardando…':editingId?'Guardar cambios':'Guardar método'}</button>{editingId&&<button className="btn btn-secondary" onClick={reset}>Cancelar</button>}</div>
     </div>}
 
