@@ -6,6 +6,7 @@ import { COUNTRY_PHONE_CODES } from '@/lib/provider-catalog';
 import { countryDialCode, digitsOnly, normalizedNationalPhone, phoneMaxLength } from '@/lib/phone';
 import { DeleteProfileButton } from '@/components/DeleteProfileButton';
 import { AccountModeSwitcher } from '@/components/AccountModeSwitcher';
+import PushNotificationsButton from '@/components/PushNotificationsButton';
 
 function splitPhone(value:string){
   const v=String(value||'').trim();
@@ -67,6 +68,11 @@ export default function PerfilPaciente(){
       <div className="notice">Tu documento y fecha de nacimiento son privados. No aparecen en las páginas públicas de reservas.</div>
       <button className="btn btn-primary" onClick={save} disabled={saving} aria-busy={saving}>{saving?'Guardando…':'Guardar cambios'}</button>
     </div>}</section>
+    <section className="panel" style={{marginTop:18}}>
+      <h2>Recordatorios de citas</h2>
+      <p className="muted" style={{margin:'0 0 12px'}}>Activa las notificaciones para recibir avisos importantes, incluido el recordatorio aproximadamente 15 minutos antes de una cita confirmada.</p>
+      <PushNotificationsButton/>
+    </section>
     {hasProfessional&&<section className="panel" style={{marginTop:18}}>
       <h2>Cuenta profesional</h2>
       <p className="muted">Volver a tu panel profesional.</p>
