@@ -15,10 +15,10 @@ export const metadata: Metadata = {
     statusBarStyle:'default'
   },
   formatDetection:{telephone:false},
-  icons:{icon:'/icons/tucita-brand.svg',apple:'/icons/icon-192.png'}
+  icons:{icon:'/icons/icon-192.png',apple:'/icons/icon-192.png'}
 };
 
-export const viewport: Viewport = { themeColor:'#0f766e' };
+export const viewport: Viewport = { themeColor:'#0B6F69' };
 
 export default function RootLayout({children}:{children:React.ReactNode}){
   return (
