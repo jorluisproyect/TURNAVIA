@@ -8,6 +8,8 @@ export type TravelServiceMeta={
   locationId:string;
   capacity:number;
   childPrice:number|null;
+  depositMode:'NONE'|'FIXED'|'PERCENT';
+  depositValue:number;
 };
 
 const PREFIX='TUCITA_TRAVEL_V1:';
@@ -33,7 +35,9 @@ export function parseTravelServiceDescription(value?:string|null):TravelServiceM
       returnTime:typeof parsed.returnTime==='string'?parsed.returnTime:'',
       locationId:typeof parsed.locationId==='string'?parsed.locationId:'',
       capacity:Math.max(1,Math.min(500,Number(parsed.capacity||1))),
-      childPrice:parsed.childPrice===null||parsed.childPrice===undefined||parsed.childPrice===''?null:Math.max(0,Number(parsed.childPrice||0))
+      childPrice:parsed.childPrice===null||parsed.childPrice===undefined||parsed.childPrice===''?null:Math.max(0,Number(parsed.childPrice||0)),
+      depositMode:parsed.depositMode==='FIXED'||parsed.depositMode==='PERCENT'?parsed.depositMode:'NONE',
+      depositValue:parsed.depositMode==='FIXED'||parsed.depositMode==='PERCENT'?Math.max(0,Number(parsed.depositValue||0)):0
     };
   }catch{return null}
 }
@@ -51,7 +55,9 @@ export function travelServiceFields(value?:string|null){
     returnTime:'',
     locationId:'',
     capacity:1,
-    childPrice:null
+    childPrice:null,
+    depositMode:'NONE' as const,
+    depositValue:0
   };
 }
 
@@ -65,7 +71,9 @@ export function serializeTravelServiceDescription(meta:Partial<TravelServiceMeta
     returnTime:String(meta.returnTime||'').slice(0,5),
     locationId:String(meta.locationId||'').slice(0,80),
     capacity:Math.max(1,Math.min(500,Number(meta.capacity||1))),
-    childPrice:meta.childPrice===null||meta.childPrice===undefined?null:Math.max(0,Number(meta.childPrice||0))
+    childPrice:meta.childPrice===null||meta.childPrice===undefined?null:Math.max(0,Number(meta.childPrice||0)),
+    depositMode:meta.depositMode==='FIXED'||meta.depositMode==='PERCENT'?meta.depositMode:'NONE',
+    depositValue:meta.depositMode==='FIXED'||meta.depositMode==='PERCENT'?Math.max(0,Number(meta.depositValue||0)):0
   });
 }
 
@@ -82,6 +90,10 @@ export function validateTravelServiceMeta(meta:Partial<TravelServiceMeta>){
     const childPrice=Number(meta.childPrice);
     if(!Number.isFinite(childPrice)||childPrice<0||childPrice>1000000)return 'El precio de niño no es válido.';
   }
+  const depositMode=meta.depositMode==='FIXED'||meta.depositMode==='PERCENT'?meta.depositMode:'NONE';
+  const depositValue=Number(meta.depositValue||0);
+  if(depositMode==='PERCENT'&&(!Number.isFinite(depositValue)||depositValue<1||depositValue>100))return 'El apartado porcentual debe estar entre 1% y 100%.';
+  if(depositMode==='FIXED'&&(!Number.isFinite(depositValue)||depositValue<=0||depositValue>1000000))return 'El monto fijo de apartado no es válido.';
   for(const [label,value] of [['salida',meta.departureTime],['regreso',meta.returnTime]] as const){
     const v=String(value||'');
     if(v&&!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v))return 'La hora de '+label+' no es válida.';
