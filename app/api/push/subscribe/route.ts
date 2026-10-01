@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
-import { currentSession, isOwnerMasterSession } from '@/lib/access';
+import { currentSession } from '@/lib/access';
 import { pushConfig, savePushSubscription, deletePushSubscription, sendPushToAuthUser } from '@/lib/push';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
 export async function GET(){
-  if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo Master.'},{status:403});
+  const session=await currentSession();
+  if(!session?.user)return NextResponse.json({error:'No autorizado'},{status:401});
   return NextResponse.json(pushConfig());
 }
 
 export async function POST(req:Request){
-  if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo Master.'},{status:403});
   const session=await currentSession();
   if(!session?.user)return NextResponse.json({error:'No autorizado'},{status:401});
   const body=await req.json().catch(()=>({}));
@@ -24,19 +24,17 @@ export async function POST(req:Request){
 }
 
 export async function PUT(){
-  if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo Master.'},{status:403});
   const session=await currentSession();
   if(!session?.user)return NextResponse.json({error:'No autorizado'},{status:401});
   const result=await sendPushToAuthUser(String(session.user.id),{
     title:'TUCITA · Notificaciones activas',
-    body:'Tu teléfono ya puede recibir avisos de pagos nuevos.',
+    body:'Tu teléfono ya puede recibir recordatorios y avisos de TUCITA.',
     url:'/master'
   });
   return NextResponse.json(result);
 }
 
 export async function DELETE(req:Request){
-  if(!(await isOwnerMasterSession()))return NextResponse.json({error:'Solo Master.'},{status:403});
   const session=await currentSession();
   if(!session?.user)return NextResponse.json({error:'No autorizado'},{status:401});
   const body=await req.json().catch(()=>({}));
