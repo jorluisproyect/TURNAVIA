@@ -8,7 +8,7 @@ import { categoryUsesCredentials } from '@/lib/provider-media';
 type Slot={time:string;available:boolean;startsAt:string;remaining?:number};
 type LocationInfo={id:string;name:string;address:string;city:string;state:string;country:string;room:string};
 type Availability={id:string;date:string;slots:Slot[];location:LocationInfo};
-type Service={id:string;name:string;description:string;summary?:string;serviceImage?:string;travelImage?:string;travelDate?:string;departureTime?:string;returnTime?:string;locationId?:string;capacity?:number;childPrice?:number|null;durationMinutes:number;price:number;currency:string};
+type Service={id:string;name:string;description:string;summary?:string;serviceImage?:string;travelImage?:string;travelDate?:string;departureTime?:string;returnTime?:string;locationId?:string;capacity?:number;childPrice?:number|null;depositMode?:'NONE'|'FIXED'|'PERCENT';depositValue?:number;durationMinutes:number;price:number;currency:string};
 type PaymentMethod={id:string;name:string;type:string;account_label?:string;account_value?:string;instructions?:string;requires_proof?:boolean;active:boolean};
 type State={provider:{slug:string;name:string;initials:string;category:string;activity:string;type:string;location:string;dayStatus:string;delayMinutes:number;profileImage?:string;workImages?:string[];licenseNumber?:string;credentialStatus?:string};services:Service[];availability:Availability[];paymentInstructions:string};
 
@@ -98,6 +98,8 @@ export default function BookingClient({slug,patientLoggedIn=false}:{slug:string;
  const currentBlocks=useMemo(()=>data?.availability.filter(a=>a.date===date)||[],[data,date]);
  const selectedBlock=useMemo(()=>currentBlocks.find(a=>a.slots.some(s=>s.startsAt===startsAt))||currentBlocks[0],[currentBlocks,startsAt]);
  const service=useMemo(()=>data?.services.find(s=>s.id===serviceId)||data?.services[0],[data,serviceId]);
+ const bookingBaseTotal=service?Number(service.price||0):0;
+ const depositAmountFor=(total:number)=>service?.depositMode==='PERCENT'?Math.min(total,Math.max(0,total*(Number(service.depositValue||0)/100))):service?.depositMode==='FIXED'?Math.min(total,Math.max(0,Number(service.depositValue||0))):0;
  const selectedMethod=useMemo(()=>methods.find(m=>m.name===form.paymentMethod),[methods,form.paymentMethod]);
  const requiresProof=selectedMethod?.requires_proof!==false;
  function conv(amount:number,from:string,to:string){
@@ -127,6 +129,11 @@ export default function BookingClient({slug,patientLoggedIn=false}:{slug:string;
    if(!service||!startsAt||!selectedBlock?.location?.id||!form.clientName||!form.phone||!form.email||!form.policyAccepted){
      setError('Completa tus datos y acepta la política de reserva.');return;
    }
+   const isTravelNow=Boolean(data&&['viaje','turismo','tour','excurs','full day'].some(x=>(data.provider.category+' '+data.provider.activity).toLowerCase().includes(x)));
+   const currentChildUnit=service.childPrice===null||service.childPrice===undefined?Number(service.price||0):Number(service.childPrice||0);
+   const currentTotal=isTravelNow?travelAdults*Number(service.price||0)+travelChildren*currentChildUnit:Number(service.price||0);
+   const currentDeposit=depositAmountFor(currentTotal);
+   if(String(selectedMethod?.type||'').toUpperCase()==='EFECTIVO'&&currentDeposit>0){setError('Este horario requiere un apartado. Elige Pago mixto u otro método para asegurarlo.');return}
    const remaining=selectedBlock?.slots?.find(s=>s.startsAt===startsAt)?.remaining;
    const partySize=travelAdults+travelChildren;
    if(data&&['viaje','turismo','tour','excurs','full day'].some(x=>(data.provider.category+' '+data.provider.activity).toLowerCase().includes(x))&&typeof remaining==='number'&&partySize>remaining){
@@ -153,6 +160,12 @@ export default function BookingClient({slug,patientLoggedIn=false}:{slug:string;
  const travelMode=['viaje','turismo','tour','excurs','full day'].some(x=>(provider.category+' '+provider.activity).toLowerCase().includes(x));
  const childUnitPrice=service?.childPrice===null||service?.childPrice===undefined?Number(service?.price||0):Number(service.childPrice||0);
  const travelTotal=service?(travelAdults*Number(service.price||0)+travelChildren*childUnitPrice):0;
+ const bookingTotal=travelMode?travelTotal:Number(service?.price||0);
+ const depositAmount=depositAmountFor(bookingTotal);
+ const selectedIsCash=String(selectedMethod?.type||'').toUpperCase()==='EFECTIVO';
+ const amountDueNow=depositAmount>0?depositAmount:(selectedIsCash?0:bookingTotal);
+ const balanceDue=Math.max(0,bookingTotal-amountDueNow);
+ const visibleMethods=depositAmount>0?methods.filter(m=>String(m.type||'').toUpperCase()!=='EFECTIVO'):methods;
  const partySize=travelAdults+travelChildren;
  const remainingSeats=selectedBlock?.slots?.find(s=>s.startsAt===startsAt)?.remaining;
  if(sent){
@@ -235,17 +248,30 @@ export default function BookingClient({slug,patientLoggedIn=false}:{slug:string;
        <div className="field"><label>Nota breve (opcional)</label><textarea rows={3} value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></div>
      </div></div>
 
+     <div className="booking-secure-card" style={{marginTop:24}}>
+       <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
+         <div><strong>{depositAmount>0?'Asegura tu horario':'Resumen de pago'}</strong><div className="muted" style={{fontSize:12,marginTop:4}}>{depositAmount>0?'Este apartado bloquea tu horario mientras el profesional valida el pago.':'Revisa el total antes de confirmar la reserva.'}</div></div>
+         {depositAmount>0&&<span className="pill" style={{background:'#fff4df',color:'var(--warning)'}}>Horario con apartado</span>}
+       </div>
+       <div className="booking-price-grid">
+         <div><small>Precio total</small><strong>{service?.currency} {bookingTotal.toFixed(2)}</strong></div>
+         <div className="due-now"><small>{depositAmount>0?'Apartado ahora':'Pagas ahora'}</small><strong>{service?.currency} {amountDueNow.toFixed(2)}</strong></div>
+         <div><small>Saldo al asistir</small><strong>{service?.currency} {balanceDue.toFixed(2)}</strong></div>
+       </div>
+       {depositAmount>0&&<div className="muted" style={{fontSize:11,marginTop:9}}>El saldo restante se completa según el método y las instrucciones del profesional.</div>}
+     </div>
+
      <div style={{marginTop:26}}><strong>{travelMode?'3. Registra el pago':'5. Registra el pago'}</strong>{data.paymentInstructions&&<div className="notice" style={{marginTop:10}}>{data.paymentInstructions}</div>}<div className="form">
-       <div className="field"><label>Método de pago</label><select value={form.paymentMethod} onChange={e=>setForm({...form,paymentMethod:e.target.value})}>{methods.length?methods.map(m=><option key={m.id} value={m.name}>{m.name}</option>):<option>No hay métodos configurados</option>}</select></div>
-       {methods.filter(m=>m.name===form.paymentMethod).map(m=><div className="notice" key={m.id}><strong>{m.name}</strong><br/>{m.account_label&&<><span style={{whiteSpace:'pre-line'}}>{m.account_label}: <strong>{m.account_value}</strong></span><br/></>}{m.instructions}</div>)}
+       <div className="field"><label>Método de pago</label><select value={form.paymentMethod} onChange={e=>setForm({...form,paymentMethod:e.target.value})}>{visibleMethods.length?visibleMethods.map(m=><option key={m.id} value={m.name}>{m.name}</option>):<option>No hay métodos disponibles para este servicio</option>}</select></div>
+       {visibleMethods.filter(m=>m.name===form.paymentMethod).map(m=><div className="notice" key={m.id}><strong>{m.name}</strong><br/>{m.account_label&&<><span style={{whiteSpace:'pre-line'}}>{m.account_label}: <strong>{m.account_value}</strong></span><br/></>}{m.instructions}</div>)}
        {requiresProof?<><div className="field"><label>{selectedMethod?.type==='BINANCE'?'ID / TxID de Binance':selectedMethod?.type==='PAYPAL'?'ID / referencia de PayPal':'Número / referencia del pago'}</label><input placeholder={selectedMethod?.type==='BINANCE'?'Pega el ID / TxID de Binance':selectedMethod?.type==='PAYPAL'?'Pega el ID de la operación PayPal':'Ej. 458923'} value={form.paymentReference} onChange={e=>setForm({...form,paymentReference:e.target.value})}/></div>
        <div className="field"><label>Comprobante</label><label className="btn btn-secondary" style={{width:'fit-content',cursor:'pointer'}}><UploadCloud size={16}/> {proof?proof.name:'Subir comprobante'}<input type="file" accept="image/*,.pdf" style={{display:'none'}} onChange={e=>fileChange(e.target.files?.[0])}/></label></div></>:<div className="notice"><strong>No requiere comprobante.</strong><br/>Este método permite confirmar la reserva sin subir referencia ni capture.</div>}
      </div></div>
 
      <label className="notice row" style={{marginTop:16,alignItems:'flex-start',cursor:'pointer'}}><input type="checkbox" checked={form.policyAccepted} onChange={e=>setForm({...form,policyAccepted:e.target.checked})}/><span><strong>Acepto la política de reserva preagendada.</strong><br/>Entiendo que mi reserva se confirma cuando el pago sea aprobado y que las reprogramaciones dependen de la disponibilidad del profesional o negocio.</span></label>
      {error&&<div className="notice danger" style={{marginTop:14}}>{error}</div>}
-     <div className="notice row" style={{marginTop:16,alignItems:'flex-start'}}><ShieldCheck size={17} style={{flex:'0 0 auto',marginTop:2}}/><span>{requiresProof?provider.name+' revisará el comprobante antes de confirmar.':'Este método no requiere comprobante y la reserva se confirma al enviarla.'}</span></div>
-     <button disabled={loading||!startsAt||!service||!methods.length} className="btn btn-primary" style={{width:'100%',marginTop:16,padding:15}} onClick={book}><CreditCard size={17}/>{loading?'Enviando…':service?(requiresProof?'Enviar pago y preagendar · '+service.currency+' '+(travelMode?travelTotal.toFixed(2):service.price):'Confirmar reserva · '+service.currency+' '+(travelMode?travelTotal.toFixed(2):service.price)):'Selecciona un servicio'}</button>
+     <div className="notice row" style={{marginTop:16,alignItems:'flex-start'}}><ShieldCheck size={17} style={{flex:'0 0 auto',marginTop:2}}/><span>{requiresProof?provider.name+' revisará el '+(depositAmount>0?'apartado':'pago')+' antes de confirmar.':selectedIsCash?'Tu horario se confirma y el saldo se paga presencialmente.':'Este método no requiere comprobante y la reserva se confirma al enviarla.'}</span></div>
+     <button disabled={loading||!startsAt||!service||!visibleMethods.length} className="btn btn-conversion" style={{width:'100%',marginTop:16,padding:15}} onClick={book}><CreditCard size={17}/>{loading?'Enviando…':service?(depositAmount>0?'Asegurar mi cita · '+service.currency+' '+amountDueNow.toFixed(2):selectedIsCash?'Confirmar cita · pagar al asistir':requiresProof?'Pagar y reservar · '+service.currency+' '+amountDueNow.toFixed(2):'Confirmar reserva · '+service.currency+' '+amountDueNow.toFixed(2)):'Selecciona un servicio'}</button>
    </section>
  </div></div>
 }
