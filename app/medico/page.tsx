@@ -51,7 +51,7 @@ export default function Medico(){
  const [profile,setProfile]=useState<any>({});
  const [settings,setSettings]=useState<any>({});
  const [paymentReminder,setPaymentReminder]=useState(false);
- const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:'',currency:'USD',childPrice:'',serviceImage:'',travelImage:'',travelDate:'',departureTime:'',returnTime:'',locationId:'',capacity:''};
+ const emptyService={id:'',name:'',description:'',summary:'',durationMinutes:30,price:'',currency:'USD',childPrice:'',serviceImage:'',travelImage:'',travelDate:'',departureTime:'',returnTime:'',locationId:'',capacity:'',depositMode:'PERCENT',depositValue:20};
  const [service,setService]=useState<any>(emptyService);
  const [av,setAv]=useState({date:'',start:'08:00',end:'12:00',locationId:''});
  const [locationForm,setLocationForm]=useState({id:'',name:'',address:'',city:'',state:'',country:'Venezuela',room:''});
@@ -223,7 +223,9 @@ export default function Medico(){
      departureTime:s.departureTime||'',
      returnTime:s.returnTime||'',
      locationId:s.locationId||data?.locations?.[0]?.id||'',
-     capacity:Number(s.capacity||1)
+     capacity:Number(s.capacity||1),
+     depositMode:s.depositMode||'NONE',
+     depositValue:Number(s.depositValue||0)
    });
    setModal('service');
  }
@@ -243,6 +245,11 @@ export default function Medico(){
  }
  async function saveService(){
    const travel=isTravelProvider(data?.provider?.category,data?.provider?.activity);
+   const depositMode=String(service.depositMode||'NONE');
+   const depositValue=Number(service.depositValue||0);
+   if(depositMode==='PERCENT'&&(depositValue<1||depositValue>100)){setToast('El apartado porcentual debe estar entre 1% y 100%.');return}
+   if(depositMode==='FIXED'&&depositValue<=0){setToast('Escribe el monto fijo que el cliente debe pagar para asegurar el horario.');return}
+   if(depositMode==='FIXED'&&!travel&&Number(service.price||0)>0&&depositValue>Number(service.price||0)){setToast('El apartado no puede ser mayor que el precio del servicio.');return}
    if(travel){
      if(!String(service.summary||'').trim()){setToast('Escribe una descripción corta para la tarjeta del viaje.');return}
      if(!String(service.travelDate||'').trim()){setToast('Selecciona la fecha de salida del viaje.');return}
@@ -356,7 +363,7 @@ export default function Medico(){
       {travelMode&&s.travelDate&&<div className="pill" style={{width:'fit-content',marginBottom:8}}>{new Date(s.travelDate+'T12:00:00').toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long'})}{s.departureTime?' · '+s.departureTime:''}{s.returnTime?'–'+s.returnTime:''}</div>}
       {travelMode&&<div className="muted" style={{fontSize:12,marginBottom:8}}>{s.capacity||1} cupo{Number(s.capacity||1)===1?'':'s'}</div>}
       <p>{(travelMode?s.summary:s.description)||'Sin descripción'}</p>
-      <div className="row" style={{gap:8,flexWrap:'wrap',alignItems:'center'}}><span className="pill">{s.durationMinutes} min</span><span className="pill">{s.currency}</span><strong>{s.price}</strong>{travelMode&&s.childPrice!==null&&s.childPrice!==undefined&&<span className="muted" style={{fontSize:11}}>Niño: {s.currency} {s.childPrice}</span>}</div>
+      <div className="row" style={{gap:8,flexWrap:'wrap',alignItems:'center'}}><span className="pill">{s.durationMinutes} min</span><span className="pill">{s.currency}</span><strong>{s.price}</strong>{travelMode&&s.childPrice!==null&&s.childPrice!==undefined&&<span className="muted" style={{fontSize:11}}>Niño: {s.currency} {s.childPrice}</span>}{s.depositMode!=='NONE'&&<span className="pill" style={{background:'#fff4df',color:'var(--warning)'}}>Apartado {s.depositMode==='PERCENT'?s.depositValue+'%':s.currency+' '+s.depositValue}</span>}</div>
       <div className="row" style={{gap:8,marginTop:12,flexWrap:'wrap'}}><button className="btn btn-secondary" onClick={()=>editService(s)}><Pencil size={15}/> Editar</button><button className="btn btn-secondary" onClick={()=>patch({action:'update_service',id:s.id,active:!s.active})} disabled={saving}>{saving?'Procesando…':s.active?'Pausar':'Activar'}</button></div>
     </div>)}</div>}
   </section>
@@ -452,6 +459,17 @@ export default function Medico(){
      <div className="field" style={{flex:1,minWidth:150}}><label>{travelMode?'Precio por adulto':'Precio'}</label><input type="number" min="0" step="0.01" value={service.price??''} onChange={e=>setService({...service,price:e.target.value===''?'':Number(e.target.value)})} placeholder="Escribe el monto"/></div>
      {travelMode&&<div className="field" style={{flex:1,minWidth:150}}><label>Precio por niño (opcional)</label><input type="number" min="0" step="0.01" value={service.childPrice} onChange={e=>setService({...service,childPrice:e.target.value===''?'':Number(e.target.value)})} placeholder="Igual al adulto"/><small className="muted">Si lo dejas vacío, el niño paga el mismo precio del adulto.</small></div>}
    </div>{fxPreview(Number(service.price||0),service.currency||'USD')}
+   <div className="booking-secure-card">
+     <div className="row space" style={{gap:12,flexWrap:'wrap'}}>
+       <div><strong>Apartado para asegurar la cita</strong><div className="muted" style={{fontSize:12,marginTop:4}}>Reduce inasistencias pidiendo un monto antes de bloquear definitivamente el horario.</div></div>
+       <span className="pill" style={{background:'#fff4df',color:'var(--warning)'}}>20% recomendado</span>
+     </div>
+     <div className="row" style={{gap:12,alignItems:'stretch',flexWrap:'wrap',marginTop:12}}>
+       <div className="field" style={{flex:1,minWidth:210}}><label>Tipo de apartado</label><select value={service.depositMode||'NONE'} onChange={e=>setService({...service,depositMode:e.target.value,depositValue:e.target.value==='PERCENT'?(Number(service.depositValue)||20):e.target.value==='FIXED'?(Number(service.depositValue)||1):0})}><option value="NONE">No exigir apartado</option><option value="PERCENT">Porcentaje del precio</option><option value="FIXED">Monto fijo</option></select></div>
+       {service.depositMode!=='NONE'&&<div className="field" style={{flex:1,minWidth:180}}><label>{service.depositMode==='PERCENT'?'Porcentaje requerido':'Monto requerido ('+(service.currency||'USD')+')'}</label><input type="number" min={service.depositMode==='PERCENT'?1:0.01} max={service.depositMode==='PERCENT'?100:undefined} step={service.depositMode==='PERCENT'?1:0.01} value={service.depositValue??''} onChange={e=>setService({...service,depositValue:e.target.value===''?'':Number(e.target.value)})} placeholder={service.depositMode==='PERCENT'?'20':'5.00'}/></div>}
+     </div>
+     {service.depositMode!=='NONE'&&<div className="notice" style={{marginTop:10}}><strong>El cliente verá claramente:</strong> precio total, apartado que paga ahora y saldo pendiente para el día de la cita.</div>}
+   </div>
  </div><div className="button-row" style={{marginTop:18}}><button className="btn btn-primary" onClick={saveService} disabled={saving}>{saving?'Guardando…':service.id?'Guardar cambios':travelMode?'Agregar viaje':'Agregar servicio'}</button><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancelar</button></div></div></div>}
 
  {modal==='location'&&<div className="modal-backdrop"><div className="modal"><h2>{locationForm.id?'Editar ubicación':'Nueva ubicación'}</h2><div className="form">
