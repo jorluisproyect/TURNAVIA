@@ -3,7 +3,6 @@ import './globals.css';
 import { PwaRegister } from '@/components/PwaRegister';
 import { PortraitGuard } from '@/components/PortraitGuard';
 import { SupportFloating } from '@/components/SupportFloating';
-import { AndroidTwaEnvironment } from '@/components/AndroidTwaEnvironment';
 
 export const metadata: Metadata = {
   title:'TUCITA · Agenda, paga y confirma',
@@ -26,7 +25,6 @@ export default function RootLayout({children}:{children:React.ReactNode}){
     <html lang="es">
       <body>
         <PwaRegister/>
-        <AndroidTwaEnvironment/>
         <PortraitGuard/>
         {children}
         <SupportFloating/>
