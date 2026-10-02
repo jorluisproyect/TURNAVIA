@@ -12,6 +12,10 @@ export function AndroidTwaEnvironment(){
     if(active){
       sessionStorage.setItem('tucita_android_twa','1');
       document.documentElement.classList.add('android-twa-mode');
+      if(window.location.pathname==='/' && (explicit||twa)){
+        window.location.replace('/app?android=1');
+        return;
+      }
     }
 
     return ()=>{};
